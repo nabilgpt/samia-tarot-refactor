@@ -1,57 +1,171 @@
 {
-  "common": {
-    "loading": "جاري التحميل...",
-    "error": "حدث خطأ",
-    "success": "تم بنجاح",
-    "cancel": "إلغاء",
-    "confirm": "تأكيد",
-    "save": "حفظ",
-    "edit": "تعديل",
-    "delete": "حذف",
-    "back": "رجوع",
-    "next": "التالي",
-    "previous": "السابق",
-    "search": "بحث",
-    "filter": "تصفية",
-    "sort": "ترتيب",
-    "view": "عرض",
-    "close": "إغلاق"
+  "app": {
+    "name": "سامية تاروت",
+    "tagline": "اكتشف مصيرك من خلال النجوم"
   },
   "nav": {
     "home": "الرئيسية",
     "services": "الخدمات",
-    "readers": "القراء",
+    "readers": "القارئات",
     "about": "من نحن",
     "contact": "اتصل بنا",
     "login": "تسجيل الدخول",
     "signup": "إنشاء حساب",
     "profile": "الملف الشخصي",
-    "wallet": "المحفظة",
-    "messages": "الرسائل",
-    "bookings": "الحجوزات",
+    "dashboard": "لوحة التحكم",
     "logout": "تسجيل الخروج"
   },
-  "home": {
-    "title": "سامية تاروت",
-    "subtitle": "اكتشف مستقبلك مع أفضل قراء التاروت",
-    "description": "منصة رائدة في عالم العرافة والتنجيم، نقدم لك قراءات دقيقة ومفصلة من خبراء معتمدين",
-    "cta": "ابدأ قراءتك الآن",
-    "featuredServices": "الخدمات المميزة",
-    "topReaders": "أفضل القراء",
-    "testimonials": "آراء العملاء",
-    "howItWorks": "كيف يعمل الموقع"
+  "hero": {
+    "title": "اكتشف مصيرك",
+    "subtitle": "تواصل مع خبراء قراءة التاروت واكتشف أسرار مستقبلك",
+    "cta": "ابدأ قراءتك",
+    "features": {
+      "expert": "قارئات خبيرات",
+      "available": "متاح 24/7",
+      "secure": "آمن وسري"
+    }
+  },
+  "services": {
+    "title": "خدماتنا",
+    "subtitle": "اختر من مجموعة خدماتنا الروحانية",
+    "tarot": {
+      "title": "قراءة التاروت",
+      "description": "اكتشف رؤى حول ماضيك وحاضرك ومستقبلك من خلال حكمة التاروت القديمة"
+    },
+    "astrology": {
+      "title": "علم التنجيم",
+      "description": "افهم شخصيتك ومصيرك من خلال محاذاة النجوم والكواكب"
+    },
+    "numerology": {
+      "title": "علم الأرقام",
+      "description": "اكتشف المعاني الخفية وراء الأرقام في حياتك"
+    },
+    "palmistry": {
+      "title": "قراءة الكف",
+      "description": "اقرأ خطوط كفك لتكشف رحلة حياتك"
+    }
   },
   "auth": {
-    "login": {
+    "signin": {
       "title": "تسجيل الدخول",
-      "subtitle": "مرحباً بعودتك",
-      "email": "البريد الإلكتروني",
-      "password": "كلمة المرور",
-      "rememberMe": "تذكرني",
-      "forgotPassword": "نسيت كلمة المرور؟",
-      "loginButton": "تسجيل الدخول",
-      "noAccount": "ليس لديك حساب؟",
-      "signupLink": "إنشاء حساب جديد"
+      "subtitle": "مرحباً بعودتك إلى سامية تاروت",
+      "submit": "تسجيل الدخول",
+      "success": "تم تسجيل الدخول بنجاح!",
+      "error": "فشل في تسجيل الدخول. يرجى التحقق من بياناتك."
+    },
+    "signup": {
+      "title": "إنشاء حساب",
+      "subtitle": "انضم إلى عائلة سامية تاروت",
+      "submit": "إنشاء الحساب",
+      "success": "تم إنشاء الحساب بنجاح! مرحباً بك في سامية تاروت",
+      "error": "فشل في إنشاء الحساب. يرجى المحاولة مرة أخرى.",
+      "step1of3": "الخطوة 1 من 3 - المعلومات الشخصية",
+      "step2of3": "الخطوة 2 من 3 - الأمان وكلمة المرور",
+      "step3of3": "الخطوة 3 من 3 - التحقق"
+    },
+    "social": {
+      "success": "تم التحقق بنجاح!",
+      "error": "فشل في التحقق. يرجى المحاولة مرة أخرى."
+    },
+    "methods": {
+      "email": "البريد الإلكتروني وكلمة المرور",
+      "social": "تسجيل الدخول الاجتماعي",
+      "mobile": "الهاتف المحمول فقط"
+    },
+    "socialSignin": "تسجيل الدخول عبر وسائل التواصل الاجتماعي",
+    "socialSignup": "إنشاء حساب عبر وسائل التواصل الاجتماعي",
+    "continueWith": "المتابعة مع",
+    "signupWith": "إنشاء حساب مع",
+    "connecting": "جاري الاتصال...",
+    "mobileAuth": "التحقق عبر الهاتف المحمول",
+    "phoneNumber": "رقم الهاتف",
+    "sendOTP": "إرسال رمز التحقق",
+    "enterOTP": "أدخل رمز التحقق",
+    "verifyOTP": "تحقق من الرمز",
+    "otpSentTo": "تم إرسال رمز التحقق إلى",
+    "changePhone": "تغيير رقم الهاتف",
+    "phoneVerified": "تم التحقق من رقم الهاتف بنجاح!",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "firstName": "الاسم الأول",
+    "lastName": "اسم العائلة",
+    "phone": "رقم الهاتف",
+    "country": "البلد",
+    "countryCode": "رمز البلد",
+    "dateOfBirth": "تاريخ الميلاد",
+    "zodiac": "البرج",
+    "gender": "الجنس",
+    "optional": "اختياري",
+    "rememberMe": "تذكرني",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "termsText": "أوافق على",
+    "termsLink": "الشروط والأحكام",
+    "and": "و",
+    "privacyLink": "سياسة الخصوصية",
+    "passwordRequirements": "يجب أن تكون كلمة المرور 8 أحرف على الأقل مع أحرف وأرقام ورموز خاصة",
+    "nextStep": "الخطوة التالية",
+    "back": "رجوع",
+    "backToForm": "العودة إلى النموذج",
+    "or": "أو",
+    "noAccount": "ليس لديك حساب؟",
+    "haveAccount": "لديك حساب بالفعل؟",
+    "placeholders": {
+      "email": "example@email.com",
+      "password": "••••••••",
+      "confirmPassword": "••••••••",
+      "firstName": "أدخل اسمك الأول",
+      "lastName": "أدخل اسم العائلة",
+      "phone": "501234567",
+      "country": "اختر بلدك",
+      "zodiac": "سيتم ملؤه تلقائياً",
+      "gender": "اختر الجنس"
+    },
+    "genders": {
+      "male": "ذكر",
+      "female": "أنثى",
+      "preferNotToSay": "أفضل عدم الإفصاح"
+    },
+    "verification": {
+      "title": "التحقق مطلوب",
+      "subtitle": "يرجى التحقق من بريدك الإلكتروني ورقم هاتفك",
+      "emailTitle": "التحقق من البريد الإلكتروني",
+      "phoneTitle": "التحقق من الهاتف",
+      "captchaTitle": "التحقق البشري",
+      "sendEmail": "إرسال رمز البريد الإلكتروني",
+      "sendPhone": "إرسال رمز الرسائل النصية",
+      "enterCode": "أدخل الرمز المكون من 6 أرقام",
+      "verify": "تحقق",
+      "emailSent": "تم إرسال رمز التحقق إلى بريدك الإلكتروني",
+      "phoneSent": "تم إرسال رمز التحقق إلى هاتفك",
+      "emailError": "فشل في إرسال رمز التحقق عبر البريد الإلكتروني",
+      "phoneError": "فشل في إرسال رمز التحقق عبر الهاتف",
+      "emailVerified": "تم التحقق من البريد الإلكتروني بنجاح",
+      "phoneVerified": "تم التحقق من الهاتف بنجاح",
+      "captchaVerified": "تم إكمال التحقق البشري",
+      "invalidCode": "رمز التحقق غير صحيح",
+      "captchaText": "يرجى التحقق من أنك إنسان",
+      "verifyCaptcha": "تحقق",
+      "captchaError": "فشل التحقق من reCAPTCHA. يرجى المحاولة مرة أخرى.",
+      "captchaExpired": "انتهت صلاحية reCAPTCHA. يرجى التحديث والمحاولة مرة أخرى.",
+      "refreshCaptcha": "تحديث reCAPTCHA",
+      "captchaHelp": "أكمل reCAPTCHA للتحقق من أنك إنسان والحماية من الرسائل المزعجة."
+    },
+    "errors": {
+      "emailRequired": "البريد الإلكتروني مطلوب",
+      "emailInvalid": "يرجى إدخال بريد إلكتروني صحيح",
+      "passwordRequired": "كلمة المرور مطلوبة",
+      "passwordWeak": "يجب أن تكون كلمة المرور 8 أحرف على الأقل مع أحرف وأرقام ورموز خاصة",
+      "confirmPasswordRequired": "يرجى تأكيد كلمة المرور",
+      "passwordMismatch": "كلمات المرور غير متطابقة",
+      "firstNameRequired": "الاسم الأول مطلوب",
+      "lastNameRequired": "اسم العائلة مطلوب",
+      "phoneRequired": "رقم الهاتف مطلوب",
+      "phoneInvalid": "يرجى إدخال رقم هاتف صحيح",
+      "countryRequired": "يرجى اختيار بلدك",
+      "dateOfBirthRequired": "تاريخ الميلاد مطلوب",
+      "termsRequired": "يجب قبول الشروط والأحكام",
+      "verificationIncomplete": "يرجى إكمال جميع خطوات التحقق"
     }
   },
   "signup": {
@@ -78,7 +192,7 @@
     "termsText": "أوافق على",
     "termsLink": "الشروط والأحكام",
     "privacyLink": "سياسة الخصوصية",
-    "passwordRequirements": "كلمة المرور يجب أن تحتوي على 8 أحرف على الأقل، حروف، أرقام، ورموز خاصة",
+    "passwordRequirements": "يجب أن تكون كلمة المرور 8 أحرف على الأقل مع أحرف وأرقام ورموز خاصة",
     "success": "تم إنشاء الحساب بنجاح! مرحباً بك في سامية تاروت",
     "placeholders": {
       "firstName": "أدخل اسمك الأول",
@@ -86,7 +200,7 @@
       "email": "example@email.com",
       "phone": "76543210",
       "country": "اختر بلدك",
-      "zodiac": "سيتم تحديده تلقائياً",
+      "zodiac": "سيتم ملؤه تلقائياً",
       "gender": "اختر الجنس",
       "password": "••••••••",
       "confirmPassword": "••••••••"
@@ -98,112 +212,64 @@
     },
     "security": {
       "title": "الأمان وكلمة المرور",
-      "subtitle": "قم بإنشاء كلمة مرور قوية لحماية حسابك"
+      "subtitle": "أنشئ كلمة مرور قوية لحماية حسابك"
     },
     "verification": {
-      "title": "التحقق من الهوية",
-      "subtitle": "نحتاج للتحقق من بريدك الإلكتروني ورقم هاتفك",
+      "title": "التحقق",
+      "subtitle": "تحقق من بريدك الإلكتروني ورقم هاتفك",
       "emailTitle": "التحقق من البريد الإلكتروني",
-      "phoneTitle": "التحقق من رقم الهاتف",
-      "captchaTitle": "التحقق من أنك لست روبوت",
-      "sendEmail": "إرسال رمز التحقق",
-      "sendPhone": "إرسال رمز SMS",
-      "enterCode": "أدخل رمز التحقق",
+      "phoneTitle": "التحقق من الهاتف",
+      "captchaTitle": "التحقق البشري",
+      "sendEmail": "إرسال رمز البريد الإلكتروني",
+      "sendPhone": "إرسال رمز الرسائل النصية",
+      "enterCode": "أدخل الرمز المكون من 6 أرقام",
       "verify": "تحقق",
-      "verifyCaptcha": "أنا لست روبوت",
       "emailSent": "تم إرسال رمز التحقق إلى بريدك الإلكتروني",
       "phoneSent": "تم إرسال رمز التحقق إلى هاتفك",
+      "emailError": "فشل في إرسال رمز التحقق عبر البريد الإلكتروني",
+      "phoneError": "فشل في إرسال رمز التحقق عبر الهاتف",
       "emailVerified": "تم التحقق من البريد الإلكتروني بنجاح",
-      "phoneVerified": "تم التحقق من رقم الهاتف بنجاح",
-      "captchaVerified": "تم التحقق بنجاح",
-      "captchaText": "انقر للتحقق من أنك لست روبوت",
-      "emailError": "فشل في إرسال رمز التحقق للبريد الإلكتروني",
-      "phoneError": "فشل في إرسال رمز التحقق للهاتف",
+      "phoneVerified": "تم التحقق من الهاتف بنجاح",
+      "captchaVerified": "تم إكمال التحقق البشري",
       "invalidCode": "رمز التحقق غير صحيح"
     },
     "errors": {
       "firstNameRequired": "الاسم الأول مطلوب",
       "lastNameRequired": "اسم العائلة مطلوب",
       "emailRequired": "البريد الإلكتروني مطلوب",
-      "emailInvalid": "البريد الإلكتروني غير صحيح",
+      "emailInvalid": "يرجى إدخال بريد إلكتروني صحيح",
       "phoneRequired": "رقم الهاتف مطلوب",
-      "phoneInvalid": "رقم الهاتف غير صحيح",
-      "countryRequired": "البلد مطلوب",
-      "dobRequired": "تاريخ الميلاد مطلوب",
+      "phoneInvalid": "يرجى إدخال رقم هاتف صحيح",
+      "countryRequired": "يرجى اختيار بلدك",
+      "dateOfBirthRequired": "تاريخ الميلاد مطلوب",
       "passwordRequired": "كلمة المرور مطلوبة",
-      "passwordWeak": "كلمة المرور ضعيفة جداً",
-      "confirmPasswordRequired": "تأكيد كلمة المرور مطلوب",
-      "passwordMismatch": "كلمة المرور غير متطابقة",
-      "termsRequired": "يجب الموافقة على الشروط والأحكام",
-      "verificationIncomplete": "يجب إكمال جميع خطوات التحقق",
+      "passwordWeak": "يجب أن تكون كلمة المرور 8 أحرف على الأقل مع أحرف وأرقام ورموز خاصة",
+      "confirmPasswordRequired": "يرجى تأكيد كلمة المرور",
+      "passwordMismatch": "كلمات المرور غير متطابقة",
+      "termsRequired": "يجب قبول الشروط والأحكام",
+      "verificationIncomplete": "يرجى إكمال جميع خطوات التحقق",
       "general": "حدث خطأ أثناء إنشاء الحساب"
     }
   },
-  "services": {
-    "title": "خدماتنا",
-    "subtitle": "اختر الخدمة التي تناسبك",
-    "categories": {
-      "tarot": "قراءة التاروت",
-      "astrology": "علم التنجيم",
-      "numerology": "علم الأرقام",
-      "palmistry": "قراءة الكف",
-      "crystals": "العلاج بالكريستال"
-    },
-    "bookNow": "احجز الآن",
-    "duration": "المدة",
-    "price": "السعر",
+  "readers": {
+    "title": "قارئاتنا الخبيرات",
+    "subtitle": "تواصل مع قارئات التاروت ذوات الخبرة",
+    "available": "متاحة",
+    "busy": "مشغولة",
+    "offline": "غير متصلة",
     "rating": "التقييم",
-    "reviews": "المراجعات"
-  },
-  "booking": {
-    "title": "حجز جلسة",
-    "selectDate": "اختر التاريخ",
-    "selectTime": "اختر الوقت",
-    "selectReader": "اختر القارئ",
-    "serviceDetails": "تفاصيل الخدمة",
-    "paymentMethod": "طريقة الدفع",
-    "totalAmount": "المبلغ الإجمالي",
-    "confirmBooking": "تأكيد الحجز",
-    "bookingSuccess": "تم الحجز بنجاح"
-  },
-  "profile": {
-    "title": "الملف الشخصي",
-    "personalInfo": "المعلومات الشخصية",
-    "myBookings": "حجوزاتي",
-    "paymentHistory": "تاريخ المدفوعات",
-    "settings": "الإعدادات",
-    "changePassword": "تغيير كلمة المرور",
-    "notifications": "الإشعارات",
-    "language": "اللغة",
-    "theme": "المظهر"
-  },
-  "wallet": {
-    "title": "المحفظة",
-    "balance": "الرصيد الحالي",
-    "addFunds": "إضافة رصيد",
-    "transactions": "المعاملات",
-    "withdraw": "سحب",
-    "deposit": "إيداع"
-  },
-  "messages": {
-    "title": "الرسائل",
-    "newMessage": "رسالة جديدة",
-    "typeMessage": "اكتب رسالتك...",
-    "send": "إرسال",
-    "online": "متصل",
-    "offline": "غير متصل",
-    "lastSeen": "آخر ظهور"
+    "experience": "سنوات خبرة",
+    "specialties": "التخصصات",
+    "rate": "في الدقيقة",
+    "startReading": "ابدأ القراءة"
   },
   "footer": {
-    "description": "منصة سامية تاروت - رائدة في عالم العرافة والتنجيم",
+    "description": "رفيقك الموثوق في الرحلة الروحانية لاكتشاف الذات",
     "quickLinks": "روابط سريعة",
     "services": "الخدمات",
     "support": "الدعم",
     "legal": "قانوني",
-    "privacy": "سياسة الخصوصية",
-    "terms": "الشروط والأحكام",
-    "contact": "اتصل بنا",
     "followUs": "تابعنا",
-    "allRightsReserved": "جميع الحقوق محفوظة"
+    "rights": "جميع الحقوق محفوظة"
   }
 } 

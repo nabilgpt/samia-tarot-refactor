@@ -1,21 +1,7 @@
 {
-  "common": {
-    "loading": "Loading...",
-    "error": "An error occurred",
-    "success": "Success",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "save": "Save",
-    "edit": "Edit",
-    "delete": "Delete",
-    "back": "Back",
-    "next": "Next",
-    "previous": "Previous",
-    "search": "Search",
-    "filter": "Filter",
-    "sort": "Sort",
-    "view": "View",
-    "close": "Close"
+  "app": {
+    "name": "SAMIA TAROT",
+    "tagline": "Discover Your Destiny Through the Stars"
   },
   "nav": {
     "home": "Home",
@@ -26,32 +12,160 @@
     "login": "Login",
     "signup": "Sign Up",
     "profile": "Profile",
-    "wallet": "Wallet",
-    "messages": "Messages",
-    "bookings": "Bookings",
+    "dashboard": "Dashboard",
     "logout": "Logout"
   },
-  "home": {
-    "title": "SAMIA TAROT",
-    "subtitle": "Discover your future with the best tarot readers",
-    "description": "Leading platform in the world of fortune telling and astrology, we provide you with accurate and detailed readings from certified experts",
-    "cta": "Start Your Reading Now",
-    "featuredServices": "Featured Services",
-    "topReaders": "Top Readers",
-    "testimonials": "Testimonials",
-    "howItWorks": "How It Works"
+  "hero": {
+    "title": "Discover Your Destiny",
+    "subtitle": "Connect with expert tarot readers and unlock the mysteries of your future",
+    "cta": "Start Your Reading",
+    "features": {
+      "expert": "Expert Readers",
+      "available": "24/7 Available",
+      "secure": "Secure & Private"
+    }
+  },
+  "services": {
+    "title": "Our Services",
+    "subtitle": "Choose from our range of mystical services",
+    "tarot": {
+      "title": "Tarot Reading",
+      "description": "Discover insights about your past, present, and future through ancient tarot wisdom"
+    },
+    "astrology": {
+      "title": "Astrology",
+      "description": "Understand your personality and destiny through the alignment of stars and planets"
+    },
+    "numerology": {
+      "title": "Numerology",
+      "description": "Unlock the hidden meanings behind numbers in your life"
+    },
+    "palmistry": {
+      "title": "Palm Reading",
+      "description": "Read the lines of your palm to reveal your life's journey"
+    }
   },
   "auth": {
-    "login": {
-      "title": "Login",
-      "subtitle": "Welcome back",
-      "email": "Email",
-      "password": "Password",
-      "rememberMe": "Remember me",
-      "forgotPassword": "Forgot password?",
-      "loginButton": "Login",
-      "noAccount": "Don't have an account?",
-      "signupLink": "Create new account"
+    "signin": {
+      "title": "Sign In",
+      "subtitle": "Welcome back to SAMIA TAROT",
+      "submit": "Sign In",
+      "success": "Successfully signed in!",
+      "error": "Failed to sign in. Please check your credentials."
+    },
+    "signup": {
+      "title": "Sign Up",
+      "subtitle": "Join the SAMIA TAROT family",
+      "submit": "Create Account",
+      "success": "Account created successfully! Welcome to SAMIA TAROT",
+      "error": "Failed to create account. Please try again.",
+      "step1of3": "Step 1 of 3 - Personal Information",
+      "step2of3": "Step 2 of 3 - Security & Password",
+      "step3of3": "Step 3 of 3 - Verification"
+    },
+    "social": {
+      "success": "Successfully authenticated!",
+      "error": "Authentication failed. Please try again."
+    },
+    "methods": {
+      "email": "Email & Password",
+      "social": "Social Login",
+      "mobile": "Mobile Only"
+    },
+    "socialSignin": "Sign in with Social Media",
+    "socialSignup": "Sign up with Social Media",
+    "continueWith": "Continue with",
+    "signupWith": "Sign up with",
+    "connecting": "Connecting...",
+    "mobileAuth": "Mobile Authentication",
+    "phoneNumber": "Phone Number",
+    "sendOTP": "Send OTP",
+    "enterOTP": "Enter OTP Code",
+    "verifyOTP": "Verify OTP",
+    "otpSentTo": "OTP sent to",
+    "changePhone": "Change Phone Number",
+    "phoneVerified": "Phone number verified successfully!",
+    "email": "Email Address",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone Number",
+    "country": "Country",
+    "countryCode": "Country Code",
+    "dateOfBirth": "Date of Birth",
+    "zodiac": "Zodiac Sign",
+    "gender": "Gender",
+    "optional": "optional",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "termsText": "I agree to the",
+    "termsLink": "Terms & Conditions",
+    "and": "and",
+    "privacyLink": "Privacy Policy",
+    "passwordRequirements": "Password must be at least 8 characters with letters, numbers, and special characters",
+    "nextStep": "Next Step",
+    "back": "Back",
+    "backToForm": "Back to Form",
+    "or": "OR",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "placeholders": {
+      "email": "example@email.com",
+      "password": "••••••••",
+      "confirmPassword": "••••••••",
+      "firstName": "Enter your first name",
+      "lastName": "Enter your last name",
+      "phone": "501234567",
+      "country": "Select your country",
+      "zodiac": "Will be auto-filled",
+      "gender": "Select gender"
+    },
+    "genders": {
+      "male": "Male",
+      "female": "Female",
+      "preferNotToSay": "Prefer not to say"
+    },
+    "verification": {
+      "title": "Verification Required",
+      "subtitle": "Please verify your email and phone number",
+      "emailTitle": "Email Verification",
+      "phoneTitle": "Phone Verification",
+      "captchaTitle": "Human Verification",
+      "sendEmail": "Send Email Code",
+      "sendPhone": "Send SMS Code",
+      "enterCode": "Enter 6-digit code",
+      "verify": "Verify",
+      "emailSent": "Verification code sent to your email",
+      "phoneSent": "Verification code sent to your phone",
+      "emailError": "Failed to send email verification",
+      "phoneError": "Failed to send phone verification",
+      "emailVerified": "Email verified successfully",
+      "phoneVerified": "Phone verified successfully",
+      "captchaVerified": "Human verification completed",
+      "invalidCode": "Invalid verification code",
+      "captchaText": "Please verify you are human",
+      "verifyCaptcha": "Verify",
+      "captchaError": "reCAPTCHA verification failed. Please try again.",
+      "captchaExpired": "reCAPTCHA has expired. Please refresh and try again.",
+      "refreshCaptcha": "Refresh reCAPTCHA",
+      "captchaHelp": "Complete the reCAPTCHA to verify you are human and protect against spam."
+    },
+    "errors": {
+      "emailRequired": "Email is required",
+      "emailInvalid": "Please enter a valid email address",
+      "passwordRequired": "Password is required",
+      "passwordWeak": "Password must be at least 8 characters with letters, numbers, and special characters",
+      "confirmPasswordRequired": "Please confirm your password",
+      "passwordMismatch": "Passwords do not match",
+      "firstNameRequired": "First name is required",
+      "lastNameRequired": "Last name is required",
+      "phoneRequired": "Phone number is required",
+      "phoneInvalid": "Please enter a valid phone number",
+      "countryRequired": "Please select your country",
+      "dateOfBirthRequired": "Date of birth is required",
+      "termsRequired": "You must accept the terms and conditions",
+      "verificationIncomplete": "Please complete all verification steps"
     }
   },
   "signup": {
@@ -101,24 +215,22 @@
       "subtitle": "Create a strong password to protect your account"
     },
     "verification": {
-      "title": "Identity Verification",
-      "subtitle": "We need to verify your email and phone number",
+      "title": "Verification",
+      "subtitle": "Verify your email and phone number",
       "emailTitle": "Email Verification",
       "phoneTitle": "Phone Verification",
       "captchaTitle": "Human Verification",
-      "sendEmail": "Send Verification Code",
+      "sendEmail": "Send Email Code",
       "sendPhone": "Send SMS Code",
-      "enterCode": "Enter verification code",
+      "enterCode": "Enter 6-digit code",
       "verify": "Verify",
-      "verifyCaptcha": "I'm not a robot",
       "emailSent": "Verification code sent to your email",
       "phoneSent": "Verification code sent to your phone",
+      "emailError": "Failed to send email verification",
+      "phoneError": "Failed to send phone verification",
       "emailVerified": "Email verified successfully",
       "phoneVerified": "Phone verified successfully",
-      "captchaVerified": "Verification successful",
-      "captchaText": "Click to verify you're not a robot",
-      "emailError": "Failed to send email verification code",
-      "phoneError": "Failed to send phone verification code",
+      "captchaVerified": "Human verification completed",
       "invalidCode": "Invalid verification code"
     },
     "errors": {
@@ -128,82 +240,36 @@
       "emailInvalid": "Please enter a valid email address",
       "phoneRequired": "Phone number is required",
       "phoneInvalid": "Please enter a valid phone number",
-      "countryRequired": "Country is required",
-      "dobRequired": "Date of birth is required",
+      "countryRequired": "Please select your country",
+      "dateOfBirthRequired": "Date of birth is required",
       "passwordRequired": "Password is required",
-      "passwordWeak": "Password is too weak",
+      "passwordWeak": "Password must be at least 8 characters with letters, numbers, and special characters",
       "confirmPasswordRequired": "Please confirm your password",
       "passwordMismatch": "Passwords do not match",
       "termsRequired": "You must accept the terms and conditions",
       "verificationIncomplete": "Please complete all verification steps",
-      "general": "An error occurred while creating the account"
+      "general": "An error occurred during signup"
     }
   },
-  "services": {
-    "title": "Our Services",
-    "subtitle": "Choose the service that suits you",
-    "categories": {
-      "tarot": "Tarot Reading",
-      "astrology": "Astrology",
-      "numerology": "Numerology",
-      "palmistry": "Palm Reading",
-      "crystals": "Crystal Healing"
-    },
-    "bookNow": "Book Now",
-    "duration": "Duration",
-    "price": "Price",
-    "rating": "Rating",
-    "reviews": "Reviews"
-  },
-  "booking": {
-    "title": "Book Session",
-    "selectDate": "Select Date",
-    "selectTime": "Select Time",
-    "selectReader": "Select Reader",
-    "serviceDetails": "Service Details",
-    "paymentMethod": "Payment Method",
-    "totalAmount": "Total Amount",
-    "confirmBooking": "Confirm Booking",
-    "bookingSuccess": "Booking Successful"
-  },
-  "profile": {
-    "title": "Profile",
-    "personalInfo": "Personal Information",
-    "myBookings": "My Bookings",
-    "paymentHistory": "Payment History",
-    "settings": "Settings",
-    "changePassword": "Change Password",
-    "notifications": "Notifications",
-    "language": "Language",
-    "theme": "Theme"
-  },
-  "wallet": {
-    "title": "Wallet",
-    "balance": "Current Balance",
-    "addFunds": "Add Funds",
-    "transactions": "Transactions",
-    "withdraw": "Withdraw",
-    "deposit": "Deposit"
-  },
-  "messages": {
-    "title": "Messages",
-    "newMessage": "New Message",
-    "typeMessage": "Type your message...",
-    "send": "Send",
-    "online": "Online",
+  "readers": {
+    "title": "Our Expert Readers",
+    "subtitle": "Connect with experienced tarot readers",
+    "available": "Available",
+    "busy": "Busy",
     "offline": "Offline",
-    "lastSeen": "Last seen"
+    "rating": "Rating",
+    "experience": "years experience",
+    "specialties": "Specialties",
+    "rate": "per minute",
+    "startReading": "Start Reading"
   },
   "footer": {
-    "description": "SAMIA TAROT Platform - Leading in fortune telling and astrology",
+    "description": "Your trusted companion in the mystical journey of self-discovery",
     "quickLinks": "Quick Links",
     "services": "Services",
     "support": "Support",
     "legal": "Legal",
-    "privacy": "Privacy Policy",
-    "terms": "Terms & Conditions",
-    "contact": "Contact Us",
     "followUs": "Follow Us",
-    "allRightsReserved": "All rights reserved"
+    "rights": "All rights reserved"
   }
 } 
