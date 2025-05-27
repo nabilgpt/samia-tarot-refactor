@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = 'https://uusefmlielktdcltzwzt.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwczovL3N1cGFiYXNlLmNvbS9qd3Qvc2NvcGVzIjpbImF1dGgiXSwicm9sZSI6ImFub24iLCJpYXQiOjE2ODg0MDk3MDcsImV4cCI6MjAwMDAwMDAwMH0.JfSt1aI8mJQ4GuCPrlIxw3htv6yE-0Ajl-JbixcM1UA';
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase, authHelpers } from '../lib/supabase.js';
 
 const WhatsAppAuth = () => {
   const [phone, setPhone] = useState('');
@@ -28,8 +24,8 @@ const WhatsAppAuth = () => {
         options: {
           channel: 'whatsapp',
           data: {
-            twilioAccountSid: 'ACbea6761e4edb95a695c739b733ff33e4',
-            twilioMessageServiceSid: 'VA8be8fc33969f9e3dbf23e16fd4174e00'
+            twilioAccountSid: import.meta.env.VITE_TWILIO_ACCOUNT_SID,
+            twilioMessageServiceSid: import.meta.env.VITE_TWILIO_MESSAGE_SERVICE_SID
           }
         }
       });
@@ -101,7 +97,7 @@ const WhatsAppAuth = () => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await authHelpers.signOut();
     setUser(null);
     setOtpSent(false);
     setPhone('');
@@ -111,7 +107,7 @@ const WhatsAppAuth = () => {
 
   // Listen for auth state changes
   React.useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = authHelpers.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUser(session.user);
         setMessage('Authentication successful!');

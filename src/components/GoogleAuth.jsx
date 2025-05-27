@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  'https://uusefmlielktdcltzwzt.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwczovL3N1cGFiYXNlLmNvbS9qd3Qvc2NvcGVzIjpbImF1dGgiXSwicm9sZSI6ImFub24iLCJpYXQiOjE2ODg0MDk3MDcsImV4cCI6MjAwMDAwMDAwMH0.JfSt1aI8mJQ4GuCPrlIxw3htv6yE-0Ajl-JbixcM1UA'
-);
+import { supabase, authHelpers } from '../lib/supabase.js';
 
 const GoogleAuth = () => {
   const [user, setUser] = useState(null);
@@ -13,20 +8,20 @@ const GoogleAuth = () => {
 
   useEffect(() => {
     // Check for existing session
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    const checkSession = async () => {
+      const session = await authHelpers.getCurrentSession();
       if (session?.user) {
         setUser(session.user);
       }
     };
-
-    getSession();
+    
+    checkSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = authHelpers.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUser(session.user);
-        setMessage('Successfully signed in!');
+        setMessage('Authentication successful!');
       } else {
         setUser(null);
         setMessage('');
