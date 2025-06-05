@@ -26,12 +26,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Create admin client with service role key for admin operations
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
+// Fallback to regular client if service role key is not available
+export const supabaseAdmin = supabaseServiceRoleKey 
+  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : supabase; // Use regular client as fallback
 
 // Helper functions for common operations
 export const auth = supabase.auth;

@@ -35,6 +35,33 @@ const SpreadPositionEditor = ({
   // Add validation state
   const [validationErrors, setValidationErrors] = useState([]);
 
+  // Initialize positions if empty or count mismatch
+  const [currentPositions, setCurrentPositions] = useState(() => {
+    if (positions.length === cardCount) {
+      return positions;
+    }
+    
+    // Generate default positions in a grid layout
+    const defaultPositions = [];
+    const cols = Math.ceil(Math.sqrt(cardCount));
+    const rows = Math.ceil(cardCount / cols);
+    
+    for (let i = 0; i < cardCount; i++) {
+      const row = Math.floor(i / cols);
+      const col = i % cols;
+      defaultPositions.push({
+        position: i + 1,
+        name: `Position ${i + 1}`,
+        name_ar: `الموضع ${i + 1}`,
+        meaning: `Meaning for position ${i + 1}`,
+        meaning_ar: `معنى الموضع ${i + 1}`,
+        x: (col / Math.max(cols - 1, 1)) * 80 + 10,
+        y: (row / Math.max(rows - 1, 1)) * 80 + 10
+      });
+    }
+    return defaultPositions;
+  });
+
   // Validation function
   const validatePositions = useCallback(() => {
     const errors = [];
@@ -62,33 +89,6 @@ const SpreadPositionEditor = ({
     setValidationErrors(errors);
     return errors.length === 0;
   }, [currentPositions]);
-
-  // Initialize positions if empty or count mismatch
-  const [currentPositions, setCurrentPositions] = useState(() => {
-    if (positions.length === cardCount) {
-      return positions;
-    }
-    
-    // Generate default positions in a grid layout
-    const defaultPositions = [];
-    const cols = Math.ceil(Math.sqrt(cardCount));
-    const rows = Math.ceil(cardCount / cols);
-    
-    for (let i = 0; i < cardCount; i++) {
-      const row = Math.floor(i / cols);
-      const col = i % cols;
-      defaultPositions.push({
-        position: i + 1,
-        name: `Position ${i + 1}`,
-        name_ar: `الموضع ${i + 1}`,
-        meaning: `Meaning for position ${i + 1}`,
-        meaning_ar: `معنى الموضع ${i + 1}`,
-        x: (col / Math.max(cols - 1, 1)) * 80 + 10,
-        y: (row / Math.max(rows - 1, 1)) * 80 + 10
-      });
-    }
-    return defaultPositions;
-  });
 
   const snapToGridPosition = useCallback((x, y) => {
     if (!snapToGrid) return { x, y };

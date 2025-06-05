@@ -44,7 +44,7 @@ CREATE TABLE tarot_spreads (
   positions JSONB NOT NULL, -- Array of position objects with name, meaning, coordinates
   difficulty_level TEXT CHECK (difficulty_level IN ('beginner', 'intermediate', 'advanced')) DEFAULT 'beginner',
   category TEXT CHECK (category IN ('love', 'career', 'general', 'spiritual', 'health', 'finance')),
-  deck_id UUID REFERENCES tarot_decks(id) DEFAULT (SELECT id FROM tarot_decks WHERE is_default = true LIMIT 1),
+  deck_id UUID REFERENCES tarot_decks(id),
   image_url TEXT, -- Layout diagram
   is_active BOOLEAN DEFAULT true,
   is_custom BOOLEAN DEFAULT false, -- True for reader-created spreads
@@ -156,10 +156,18 @@ CREATE INDEX IF NOT EXISTS idx_spread_notifications_unread ON reader_spread_noti
 -- FUNCTIONS AND TRIGGERS
 -- =====================================================
 
--- Function to automatically approve system spreads
+-- Function to set default deck and auto-approve system spreads
 CREATE OR REPLACE FUNCTION auto_approve_system_spreads()
 RETURNS TRIGGER AS $$
 BEGIN
+  -- Set default deck if not provided
+  IF NEW.deck_id IS NULL THEN
+    SELECT id INTO NEW.deck_id 
+    FROM tarot_decks 
+    WHERE is_default = true 
+    LIMIT 1;
+  END IF;
+  
   -- Auto-approve spreads created by admins or super_admins
   IF NEW.is_custom = false OR 
      (SELECT role FROM profiles WHERE id = NEW.created_by) IN ('admin', 'super_admin') THEN
@@ -369,56 +377,75 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create some default system spreads
-INSERT INTO tarot_spreads (
-  name, name_ar, description, description_ar, card_count, 
-  positions, difficulty_level, category, is_custom, approval_status,
-  approved_by, approved_at
-) VALUES 
-(
-  'Three Card Spread', 'انتشار الثلاث ورق', 
-  'Simple past, present, future reading', 'قراءة بسيطة للماضي والحاضر والمستقبل',
-  3,
-  '[
-    {"position": 1, "name": "Past", "name_ar": "الماضي", "meaning": "What influences from the past", "x": 20, "y": 50},
-    {"position": 2, "name": "Present", "name_ar": "الحاضر", "meaning": "Current situation", "x": 50, "y": 50},
-    {"position": 3, "name": "Future", "name_ar": "المستقبل", "meaning": "What is to come", "x": 80, "y": 50}
-  ]'::jsonb,
-  'beginner', 'general', false, 'approved', 
-  (SELECT id FROM profiles WHERE role = 'super_admin' LIMIT 1), NOW()
-),
-(
-  'Celtic Cross', 'الصليب السلتي',
-  'Comprehensive 10-card spread for detailed insights', 'انتشار شامل من 10 ورق للحصول على رؤى مفصلة',
-  10,
-  '[
-    {"position": 1, "name": "Present Situation", "name_ar": "الوضع الحالي", "meaning": "The heart of the matter", "x": 50, "y": 50},
-    {"position": 2, "name": "Challenge", "name_ar": "التحدي", "meaning": "What crosses you", "x": 50, "y": 30},
-    {"position": 3, "name": "Distant Past", "name_ar": "الماضي البعيد", "meaning": "Foundational influences", "x": 30, "y": 50},
-    {"position": 4, "name": "Recent Past", "name_ar": "الماضي القريب", "meaning": "Recent influences", "x": 50, "y": 70},
-    {"position": 5, "name": "Possible Outcome", "name_ar": "النتيجة المحتملة", "meaning": "What may come to pass", "x": 70, "y": 50},
-    {"position": 6, "name": "Near Future", "name_ar": "المستقبل القريب", "meaning": "Immediate future", "x": 50, "y": 10},
-    {"position": 7, "name": "Your Approach", "name_ar": "نهجك", "meaning": "How you approach the situation", "x": 85, "y": 70},
-    {"position": 8, "name": "External Influences", "name_ar": "التأثيرات الخارجية", "meaning": "Outside influences", "x": 85, "y": 50},
-    {"position": 9, "name": "Hopes and Fears", "name_ar": "الآمال والمخاوف", "meaning": "Your inner feelings", "x": 85, "y": 30},
-    {"position": 10, "name": "Final Outcome", "name_ar": "النتيجة النهائية", "meaning": "The final outcome", "x": 85, "y": 10}
-  ]'::jsonb,
-  'advanced', 'general', false, 'approved',
-  (SELECT id FROM profiles WHERE role = 'super_admin' LIMIT 1), NOW()
-),
-(
-  'Love Spread', 'انتشار الحب',
-  'Five-card spread focused on love and relationships', 'انتشار خمس ورق يركز على الحب والعلاقات',
-  5,
-  '[
-    {"position": 1, "name": "You", "name_ar": "أنت", "meaning": "Your current state in love", "x": 25, "y": 60},
-    {"position": 2, "name": "Your Partner", "name_ar": "شريكك", "meaning": "Your partners state", "x": 75, "y": 60},
-    {"position": 3, "name": "The Relationship", "name_ar": "العلاقة", "meaning": "The relationship dynamic", "x": 50, "y": 30},
-    {"position": 4, "name": "Challenges", "name_ar": "التحديات", "meaning": "What challenges you face", "x": 25, "y": 80},
-    {"position": 5, "name": "Outcome", "name_ar": "النتيجة", "meaning": "Where the relationship is heading", "x": 75, "y": 80}
-  ]'::jsonb,
-  'intermediate', 'love', false, 'approved',
-  (SELECT id FROM profiles WHERE role = 'super_admin' LIMIT 1), NOW()
-);
+-- First get a valid admin user ID or create a system user
+DO $$
+DECLARE
+  system_user_id UUID;
+BEGIN
+  -- Try to find an admin user
+  SELECT id INTO system_user_id 
+  FROM profiles 
+  WHERE role IN ('admin', 'super_admin') 
+  AND is_active = true 
+  LIMIT 1;
+  
+  -- If no admin found, use a hardcoded system UUID
+  IF system_user_id IS NULL THEN
+    system_user_id := '00000000-0000-0000-0000-000000000000';
+  END IF;
+  
+  -- Insert spreads with valid created_by
+  INSERT INTO tarot_spreads (
+    name, name_ar, description, description_ar, card_count, 
+    positions, difficulty_level, category, is_custom, approval_status,
+    created_by, approved_by, approved_at
+  ) VALUES 
+  (
+    'Three Card Spread', 'انتشار الثلاث ورق', 
+    'Simple past, present, future reading', 'قراءة بسيطة للماضي والحاضر والمستقبل',
+    3,
+    '[
+      {"position": 1, "name": "Past", "name_ar": "الماضي", "meaning": "What influences from the past", "meaning_ar": "التأثيرات من الماضي", "x": 20, "y": 50},
+      {"position": 2, "name": "Present", "name_ar": "الحاضر", "meaning": "Current situation", "meaning_ar": "الوضع الحالي", "x": 50, "y": 50},
+      {"position": 3, "name": "Future", "name_ar": "المستقبل", "meaning": "What is to come", "meaning_ar": "ما سيأتي", "x": 80, "y": 50}
+    ]'::jsonb,
+    'beginner', 'general', false, 'approved', 
+    system_user_id, system_user_id, NOW()
+  ),
+  (
+    'Celtic Cross', 'الصليب السلتي',
+    'Comprehensive 10-card spread for detailed insights', 'انتشار شامل من 10 ورق للحصول على رؤى مفصلة',
+    10,
+    '[
+      {"position": 1, "name": "Present Situation", "name_ar": "الوضع الحالي", "meaning": "The heart of the matter", "meaning_ar": "جوهر الأمر", "x": 50, "y": 50},
+      {"position": 2, "name": "Challenge", "name_ar": "التحدي", "meaning": "What crosses you", "meaning_ar": "ما يعترض طريقك", "x": 50, "y": 30},
+      {"position": 3, "name": "Distant Past", "name_ar": "الماضي البعيد", "meaning": "Foundational influences", "meaning_ar": "التأثيرات الأساسية", "x": 30, "y": 50},
+      {"position": 4, "name": "Recent Past", "name_ar": "الماضي القريب", "meaning": "Recent influences", "meaning_ar": "التأثيرات الحديثة", "x": 50, "y": 70},
+      {"position": 5, "name": "Possible Outcome", "name_ar": "النتيجة المحتملة", "meaning": "What may come to pass", "meaning_ar": "ما قد يحدث", "x": 70, "y": 50},
+      {"position": 6, "name": "Near Future", "name_ar": "المستقبل القريب", "meaning": "Immediate future", "meaning_ar": "المستقبل المباشر", "x": 50, "y": 10},
+      {"position": 7, "name": "Your Approach", "name_ar": "نهجك", "meaning": "How you approach the situation", "meaning_ar": "كيف تتعامل مع الوضع", "x": 85, "y": 70},
+      {"position": 8, "name": "External Influences", "name_ar": "التأثيرات الخارجية", "meaning": "Outside influences", "meaning_ar": "التأثيرات الخارجية", "x": 85, "y": 50},
+      {"position": 9, "name": "Hopes and Fears", "name_ar": "الآمال والمخاوف", "meaning": "Your inner feelings", "meaning_ar": "مشاعرك الداخلية", "x": 85, "y": 30},
+      {"position": 10, "name": "Final Outcome", "name_ar": "النتيجة النهائية", "meaning": "The final outcome", "meaning_ar": "النتيجة النهائية", "x": 85, "y": 10}
+    ]'::jsonb,
+    'advanced', 'general', false, 'approved',
+    system_user_id, system_user_id, NOW()
+  ),
+  (
+    'Love Spread', 'انتشار الحب',
+    'Five-card spread focused on love and relationships', 'انتشار خمس ورق يركز على الحب والعلاقات',
+    5,
+    '[
+      {"position": 1, "name": "You", "name_ar": "أنت", "meaning": "Your current state in love", "meaning_ar": "حالتك الحالية في الحب", "x": 25, "y": 60},
+      {"position": 2, "name": "Your Partner", "name_ar": "شريكك", "meaning": "Your partners state", "meaning_ar": "حالة شريكك", "x": 75, "y": 60},
+      {"position": 3, "name": "The Relationship", "name_ar": "العلاقة", "meaning": "The relationship dynamic", "meaning_ar": "ديناميكية العلاقة", "x": 50, "y": 30},
+      {"position": 4, "name": "Challenges", "name_ar": "التحديات", "meaning": "What challenges you face", "meaning_ar": "التحديات التي تواجهها", "x": 25, "y": 80},
+      {"position": 5, "name": "Outcome", "name_ar": "النتيجة", "meaning": "Where the relationship is heading", "meaning_ar": "إلى أين تتجه العلاقة", "x": 75, "y": 80}
+    ]'::jsonb,
+    'intermediate', 'love', false, 'approved',
+    system_user_id, system_user_id, NOW()
+  );
+END $$;
 
 COMMENT ON TABLE tarot_decks IS 'Available tarot deck types for spreads';
 COMMENT ON TABLE tarot_spreads IS 'Enhanced tarot spreads with approval workflow and deck assignments';
