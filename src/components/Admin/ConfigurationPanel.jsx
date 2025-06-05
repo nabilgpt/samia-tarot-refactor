@@ -436,14 +436,14 @@ const ConfigurationPanel = () => {
             label={language === 'ar' ? 'مفتاح Supabase العام' : 'Supabase Anon Key'}
             value={formData.supabase_anon_key}
             onChange={(value) => handleInputChange('supabase_anon_key', value)}
-            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            placeholder="Enter your Supabase anon key"
           />
 
           <SecretInput
             label={language === 'ar' ? 'مفتاح خدمة Supabase' : 'Supabase Service Key'}
             value={formData.supabase_service_key}
             onChange={(value) => handleInputChange('supabase_service_key', value)}
-            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            placeholder="Enter your Supabase service role key"
           />
 
           <div>

@@ -13,9 +13,19 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Supabase configuration
-const supabaseUrl = 'http://uuseflmielktdcltzwzt.supabase.co';
-const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1c2VmbG1pZWxrdGRjbHR6d3p0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODM0NTExNSwiZXhwIjoyMDYzOTIxMTE1fQ.TNcj0otaeYtl0nDJYn760wSgSuKSYG8s7r-LD04Z9_E';
+// Supabase configuration from environment variables
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Validate required environment variables
+if (!supabaseUrl) {
+  console.error('❌ Missing required environment variable: VITE_SUPABASE_URL');
+  process.exit(1);
+}
+if (!supabaseServiceKey) {
+  console.error('❌ Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -94,9 +104,9 @@ async function insertDefaultConfig() {
 
       // Database Configuration
       { key: 'database_type', value: '"supabase"', section: 'database', editable: true, description: 'Primary database type' },
-      { key: 'supabase_url', value: '"http://uuseflmielktdcltzwzt.supabase.co"', section: 'database', editable: true, description: 'Supabase project URL' },
-      { key: 'supabase_anon_key', value: '"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1c2VmbG1pZWxrdGRjbHR6d3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzNDUxMTUsImV4cCI6MjA2MzkyMTExNX0.Qcds_caGg7xbe4rl1Z8Rh4Nox79VJWRDabp5_Bt0YOw"', section: 'database', editable: true, description: 'Supabase anonymous key' },
-      { key: 'supabase_service_key', value: '"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1c2VmbG1pZWxrdGRjbHR6d3p0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODM0NTExNSwiZXhwIjoyMDYzOTIxMTE1fQ.TNcj0otaeYtl0nDJYn760wSgSuKSYG8s7r-LD04Z9_E"', section: 'database', editable: true, description: 'Supabase service role key' },
+      { key: 'supabase_url', value: '""', section: 'database', editable: true, description: 'Supabase project URL' },
+      { key: 'supabase_anon_key', value: '""', section: 'database', editable: true, description: 'Supabase anonymous key' },
+      { key: 'supabase_service_key', value: '""', section: 'database', editable: true, description: 'Supabase service role key' },
       { key: 'supabase_storage_bucket', value: '"samia-tarot-uploads"', section: 'database', editable: true, description: 'Supabase storage bucket name' },
 
       // Storage Configuration

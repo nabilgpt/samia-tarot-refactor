@@ -52,14 +52,14 @@ const PaymentMethodsAdmin = () => {
       
       setPaymentMethods(methods);
       
-      // Mock gateway data
+      // Mock gateway data - using empty values for security
       setPaymentGateways([
         {
           id: 1,
           gateway: 'stripe',
-          api_key: 'sk_test_...',
-          public_key: 'pk_test_...',
-          webhook_secret: 'whsec_...',
+          api_key: '',
+          public_key: '',
+          webhook_secret: '',
           supports_apple_pay: true,
           supports_google_pay: true,
           enabled: true
@@ -67,8 +67,8 @@ const PaymentMethodsAdmin = () => {
         {
           id: 2,
           gateway: 'square',
-          api_key: 'sq0atp-...',
-          public_key: 'sq0idp-...',
+          api_key: '',
+          public_key: '',
           webhook_secret: '',
           supports_apple_pay: false,
           supports_google_pay: true,

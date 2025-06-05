@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { UserAPI } from '../../api/userApi';
 import WorkingHoursManager from '../../components/reader/WorkingHoursManager';
+import SpreadManager from '../../components/Reader/SpreadManager';
 import { 
   User, 
   Settings, 
@@ -192,6 +193,7 @@ const ReaderDashboard = () => {
   const tabs = [
     { id: 'profile', name: t('reader.tabs.profile'), icon: User },
     { id: 'services', name: t('reader.tabs.services'), icon: Settings },
+    { id: 'spreads', name: i18n.language === 'ar' ? 'إدارة الانتشارات' : 'Tarot Spreads', icon: Sparkles },
     { id: 'working-hours', name: 'Working Hours', icon: Clock },
     { id: 'calendar', name: t('reader.tabs.calendar'), icon: Calendar },
     { id: 'bookings', name: t('reader.tabs.bookings'), icon: BookOpen },
@@ -332,6 +334,7 @@ const ReaderDashboard = () => {
               <div className="relative z-10">
                 {activeTab === 'profile' && <ProfileTab />}
                 {activeTab === 'services' && <ServicesTab />}
+                {activeTab === 'spreads' && <SpreadsTab />}
                 {activeTab === 'working-hours' && <WorkingHoursManager />}
                 {activeTab === 'calendar' && <CalendarTab />}
                 {activeTab === 'bookings' && <BookingsTab />}
@@ -894,6 +897,15 @@ const ServicesTab = () => {
           }}
         />
       )}
+    </div>
+  );
+};
+
+// Spreads Tab Component
+const SpreadsTab = () => {
+  return (
+    <div className="space-y-8">
+      <SpreadManager />
     </div>
   );
 };

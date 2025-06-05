@@ -270,7 +270,7 @@ const DatabaseStoragePanel = () => {
                 value={supabaseConfig.anon_key}
                 onChange={(e) => setSupabaseConfig(prev => ({ ...prev, anon_key: e.target.value }))}
                 className="flex-1 px-4 py-3 bg-dark-700/50 border border-gold-400/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 transition-all duration-200"
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                placeholder="Enter your Supabase anon key"
               />
               <button
                 onClick={() => toggleSecretVisibility('anon_key')}
@@ -293,7 +293,7 @@ const DatabaseStoragePanel = () => {
                 value={supabaseConfig.service_key}
                 onChange={(e) => setSupabaseConfig(prev => ({ ...prev, service_key: e.target.value }))}
                 className="flex-1 px-4 py-3 bg-dark-700/50 border border-gold-400/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 transition-all duration-200"
-                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                placeholder="Enter your Supabase service role key"
               />
               <button
                 onClick={() => toggleSecretVisibility('service_key')}

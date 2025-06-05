@@ -13,9 +13,19 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Supabase configuration
-const SUPABASE_URL = 'https://uusefmlielktdcltzwzt.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1c2VmbG1pZWxrdGRjbHR6d3p0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODM0NTExNSwiZXhwIjoyMDYzOTIxMTE1fQ.TNcj0otaeYtl0nDJYn760wSgSuKSYG8s7r-LD04Z9_E';
+// Supabase configuration from environment variables
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Validate required environment variables
+if (!SUPABASE_URL) {
+  console.error('❌ Missing required environment variable: VITE_SUPABASE_URL');
+  process.exit(1);
+}
+if (!SUPABASE_SERVICE_KEY) {
+  console.error('❌ Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
 
 // Create Supabase client with service role
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {

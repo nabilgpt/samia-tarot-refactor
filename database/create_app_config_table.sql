@@ -46,9 +46,9 @@ INSERT INTO app_config (key, value, section, editable, description) VALUES
 
 -- Database Configuration
 ('database_type', '"supabase"', 'database', true, 'Primary database type'),
-('supabase_url', '"http://uuseflmielktdcltzwzt.supabase.co"', 'database', true, 'Supabase project URL'),
-('supabase_anon_key', '"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1c2VmbG1pZWxrdGRjbHR6d3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzNDUxMTUsImV4cCI6MjA2MzkyMTExNX0.Qcds_caGg7xbe4rl1Z8Rh4Nox79VJWRDabp5_Bt0YOw"', 'database', true, 'Supabase anonymous key'),
-('supabase_service_key', '"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1c2VmbG1pZWxrdGRjbHR6d3p0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODM0NTExNSwiZXhwIjoyMDYzOTIxMTE1fQ.TNcj0otaeYtl0nDJYn760wSgSuKSYG8s7r-LD04Z9_E"', 'database', true, 'Supabase service role key'),
+('supabase_url', '""', 'database', true, 'Supabase project URL'),
+('supabase_anon_key', '""', 'database', true, 'Supabase anonymous key'),
+('supabase_service_key', '""', 'database', true, 'Supabase service role key'),
 ('supabase_storage_bucket', '"samia-tarot-uploads"', 'database', true, 'Supabase storage bucket name'),
 
 -- Storage Configuration

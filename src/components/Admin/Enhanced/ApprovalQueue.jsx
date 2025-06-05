@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useUI } from '../../../context/UIContext';
 import WorkingHoursApprovalQueue from '../../admin/WorkingHoursApprovalQueue';
+import SpreadApproval from '../../Admin/SpreadApproval';
 
 const ApprovalQueue = () => {
   const { t } = useTranslation();
@@ -43,6 +44,12 @@ const ApprovalQueue = () => {
       name: language === 'ar' ? 'الموافقات العامة' : 'General Approvals',
       icon: Shield,
       description: language === 'ar' ? 'طلبات تسجيل القراء وتحديث الملفات' : 'Reader registrations and profile updates'
+    },
+    {
+      id: 'spreads',
+      name: language === 'ar' ? 'انتشارات التاروت' : 'Tarot Spreads',
+      icon: Star,
+      description: language === 'ar' ? 'الموافقة على انتشارات التاروت المخصصة' : 'Custom tarot spread approvals'
     },
     {
       id: 'working-hours',
