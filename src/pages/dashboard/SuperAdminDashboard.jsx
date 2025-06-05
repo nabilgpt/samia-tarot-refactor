@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import Particles from 'react-particles';
 import { loadSlim } from 'tsparticles-slim';
-import SuperAdminDrawer from '../../components/Layout/SuperAdminDrawer.jsx';
+import SuperAdminLayout from '../../components/Layout/SuperAdminLayout.jsx';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
 import SuperAdminAPI from '../../api/superAdminApi.js';
@@ -18,26 +18,11 @@ import DatabaseManagementTab from './SuperAdmin/DatabaseManagementTab.jsx';
 import FinancialControlsTab from './SuperAdmin/FinancialControlsTab.jsx';
 import ImpersonationPanel from './SuperAdmin/ImpersonationPanel.jsx';
 
-// Icons
-import { 
-  StarIcon, 
-  UsersIcon, 
-  CogIcon, 
-  EyeIcon, 
-  CircleStackIcon,
-  CurrencyDollarIcon,
-  ClipboardDocumentListIcon,
-  UserIcon,
-  ShieldCheckIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline';
-
 const SuperAdminDashboard = () => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { language } = useUI();
   const [activeTab, setActiveTab] = useState('users');
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({});
@@ -214,44 +199,65 @@ const SuperAdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white relative overflow-hidden">
-      {/* Particle Background */}
-      <Particles
-        id="super-admin-particles"
-        init={particlesInit}
-        options={particlesConfig}
-        className="absolute inset-0 z-0"
-      />
+    <SuperAdminLayout activeTab={activeTab} setActiveTab={setActiveTab}>
+      <div className="min-h-screen relative overflow-hidden">
+        {/* Particle Background */}
+        <Particles
+          id="super-admin-particles"
+          init={particlesInit}
+          options={particlesConfig}
+          className="absolute inset-0 z-0"
+        />
 
-      {/* Cosmic background effects */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-20 left-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-80 h-80 bg-gold-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl animate-pulse delay-500"></div>
+        {/* Cosmic background effects */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-20 left-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-10 w-80 h-80 bg-gold-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-cyan-500/15 rounded-full blur-3xl animate-pulse delay-500"></div>
+        </div>
+
+        {/* Main Content with Tab Navigation */}
+        <div className="relative z-10 p-6">
+          {/* Tab Navigation */}
+          <div className="mb-8">
+            <div className="flex flex-wrap gap-2 p-2 bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl">
+              {[
+                { id: 'users', label: language === 'ar' ? 'إدارة المستخدمين' : 'User Management' },
+                { id: 'system', label: language === 'ar' ? 'إعدادات النظام' : 'System Settings' },
+                { id: 'realtime', label: language === 'ar' ? 'التحكم المباشر' : 'Real-Time Controls' },
+                { id: 'database', label: language === 'ar' ? 'إدارة قاعدة البيانات' : 'Database Management' },
+                { id: 'financial', label: language === 'ar' ? 'التحكم المالي' : 'Financial Controls' },
+                { id: 'audit', label: language === 'ar' ? 'سجلات المراجعة' : 'Audit Logs' },
+                { id: 'impersonation', label: language === 'ar' ? 'انتحال الهوية' : 'User Impersonation' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    activeTab === tab.id
+                      ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border border-purple-400/30'
+                      : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 100, damping: 15 }}
+            className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl min-h-[600px] p-6"
+          >
+            {renderTabContent()}
+          </motion.div>
+        </div>
       </div>
-
-      {/* SuperAdmin Drawer Navigation */}
-      <SuperAdminDrawer
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        isOpen={isDrawerOpen}
-        setIsOpen={setIsDrawerOpen}
-      />
-
-      {/* Main Content */}
-      <div className="relative z-10 pt-20 p-6">
-        {/* Content Area */}
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 100, damping: 15 }}
-          className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl min-h-[calc(100vh-8rem)] p-6"
-        >
-          {renderTabContent()}
-        </motion.div>
-      </div>
-    </div>
+    </SuperAdminLayout>
   );
 };
 

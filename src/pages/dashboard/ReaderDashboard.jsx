@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import Particles from 'react-particles';
 import { loadSlim } from 'tsparticles-slim';
+import ReaderLayout from '../../components/Layout/ReaderLayout.jsx';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { UserAPI } from '../../api/userApi';
@@ -201,7 +202,7 @@ const ReaderDashboard = () => {
   ];
 
     return (
-    <div className="min-h-screen bg-gray-900 text-white overflow-hidden">
+    <ReaderLayout>
       {/* Particle Background - EXACT SAME AS HOME.JSX */}
       <Particles
         id="tsparticles"
@@ -360,7 +361,7 @@ const ReaderDashboard = () => {
           <div className="w-12 h-12 bg-gradient-to-br from-gold-500 to-yellow-600 rounded-full opacity-60 blur-sm"></div>
         </motion.div>
       </div>
-    </div>
+    </ReaderLayout>
   );
 };
 
