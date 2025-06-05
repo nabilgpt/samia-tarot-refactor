@@ -1,0 +1,189 @@
+/**
+ * Form Field Text Color Overrides
+ * Ensures all form inputs have black text for visibility and accessibility
+ */
+
+/* Input field text color enforcement */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="url"],
+input[type="search"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="number"],
+select,
+textarea {
+  color: #000000 !important; /* Force black text */
+}
+
+/* Placeholder text color - slightly lighter but still visible */
+input::placeholder,
+textarea::placeholder {
+  color: #4a5568 !important; /* Gray-600 equivalent */
+  opacity: 0.7;
+}
+
+/* Select option text color */
+select option {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+/* Dark mode specific overrides */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="tel"],
+.dark input[type="url"],
+.dark input[type="search"],
+.dark input[type="date"],
+.dark input[type="datetime-local"],
+.dark input[type="time"],
+.dark input[type="number"],
+.dark select,
+.dark textarea {
+  color: #000000 !important; /* Force black text even in dark mode */
+  background-color: #ffffff !important; /* Ensure white background */
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #4a5568 !important; /* Consistent placeholder color */
+  opacity: 0.7;
+}
+
+.dark select option {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+/* Specific classes for form components */
+.form-input,
+.form-select,
+.form-textarea {
+  color: #000000 !important;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: #4a5568 !important;
+  opacity: 0.7;
+}
+
+/* Read-only field styling */
+input[readonly],
+select[readonly],
+textarea[readonly] {
+  color: #000000 !important;
+  background-color: #f7fafc !important; /* Light gray background for readonly */
+  cursor: not-allowed;
+}
+
+.dark input[readonly],
+.dark select[readonly], 
+.dark textarea[readonly] {
+  color: #000000 !important;
+  background-color: #f7fafc !important; /* Keep light background even in dark mode */
+}
+
+/* Focus state improvements */
+input:focus,
+select:focus,
+textarea:focus {
+  color: #000000 !important;
+  outline: 2px solid #7c3aed; /* Purple focus ring */
+  outline-offset: 2px;
+}
+
+/* Disabled state */
+input:disabled,
+select:disabled,
+textarea:disabled {
+  color: #6b7280 !important; /* Gray-500 for disabled text */
+  background-color: #f3f4f6 !important; /* Gray-100 background */
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dark input:disabled,
+.dark select:disabled,
+.dark textarea:disabled {
+  color: #6b7280 !important;
+  background-color: #f3f4f6 !important;
+}
+
+/* Autofill styling override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* Country code field specific styling */
+.country-code-field {
+  color: #000000 !important;
+  background-color: #f7fafc !important;
+  font-weight: 500;
+  border-right: 1px solid #e2e8f0 !important;
+}
+
+.dark .country-code-field {
+  color: #000000 !important;
+  background-color: #f7fafc !important;
+  border-right: 1px solid #e2e8f0 !important;
+}
+
+/* Zodiac field readonly styling */
+.zodiac-field {
+  color: #000000 !important;
+  background-color: #fef7e0 !important; /* Light yellow background */
+  font-weight: 500;
+}
+
+.dark .zodiac-field {
+  color: #000000 !important;
+  background-color: #fef7e0 !important;
+}
+
+/* Error state text color */
+input.error,
+select.error,
+textarea.error {
+  color: #000000 !important;
+  border-color: #ef4444 !important;
+}
+
+/* Success state text color */
+input.success,
+select.success,
+textarea.success {
+  color: #000000 !important;
+  border-color: #10b981 !important;
+}
+
+/* Profile form specific overrides */
+.profile-form input,
+.profile-form select,
+.profile-form textarea {
+  color: #000000 !important;
+}
+
+.profile-form input::placeholder,
+.profile-form textarea::placeholder {
+  color: #4a5568 !important;
+  opacity: 0.7;
+}
+
+/* Mobile specific adjustments */
+@media (max-width: 768px) {
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"] {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+} 

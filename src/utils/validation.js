@@ -6,7 +6,7 @@ export const validateEmail = (email) => {
 
 // Phone validation (international format)
 export const validatePhone = (phone) => {
-  const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+  const phoneRegex = /^[+]?[1-9][\d]{0,15}$/;
   return phoneRegex.test(phone.replace(/\s/g, ''));
 };
 
@@ -83,10 +83,7 @@ export const getCountryCodeFromCountry = (countryName) => {
     'Nigeria': '+234',
     'Kenya': '+254',
     'Ghana': '+233',
-    'Ethiopia': '+251',
-    'Morocco': '+212',
-    'Algeria': '+213',
-    'Tunisia': '+216'
+    'Ethiopia': '+251'
   };
 
   return countryCodes[countryName] || '';

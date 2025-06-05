@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase configuration using environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://uusefmlielktdcltzwzt.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwczovL3N1cGFiYXNlLmNvbS9qd3Qvc2NvcGVzIjpbImF1dGgiXSwicm9sZSI6ImFub24iLCJpYXQiOjE2ODg0MDk3MDcsImV4cCI6MjAwMDAwMDAwMH0.JfSt1aI8mJQ4GuCPrlIxw3htv6yE-0Ajl-JbixcM1UA';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'http://uuseflmielktdcltzwzt.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1c2VmbG1pZWxrdGRjbHR6d3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgzNDUxMTUsImV4cCI6MjA2MzkyMTExNX0.Qcds_caGg7xbe4rl1Z8Rh4Nox79VJWRDabp5_Bt0YOw';
+const supabaseServiceRoleKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1c2VmbG1pZWxrdGRjbHR6d3p0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODM0NTExNSwiZXhwIjoyMDYzOTIxMTE1fQ.TNcj0otaeYtl0nDJYn760wSgSuKSYG8s7r-LD04Z9_E';
 
 // Create and export the Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -13,16 +14,105 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
+// Create admin client with service role key for admin operations
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
+
 // Helper functions for common operations
 export const auth = supabase.auth;
 
-// Database table helpers
-export const db = {
+// Helper function to safely query a table that might not exist
+export const safeTableQuery = async (tableName, operation, fallbackData = null) => {
+  try {
+    let query = supabase.from(tableName);
+    
+    // Apply the operation (select, insert, update, etc.)
+    const result = await operation(query);
+    
+    return result;
+  } catch (error) {
+    // Check if it's a table not found error
+    if (error.message?.includes('does not exist') || 
+        error.message?.includes('relation') || 
+        error.code === 'PGRST116' ||
+        error.status === 404) {
+      
+      console.warn(`Table "${tableName}" does not exist. Using fallback data.`, error.message);
+      
+      return {
+        data: fallbackData,
+        error: null,
+        warning: `Table "${tableName}" not found`
+      };
+    }
+    
+    // Re-throw other errors
+    throw error;
+  }
+};
+
+// Enhanced database table helpers with safe fallbacks
+export const safeDb = {
   profiles: () => supabase.from('profiles'),
   services: () => supabase.from('services'),
   bookings: () => supabase.from('bookings'),
   payments: () => supabase.from('payments'),
-  messages: () => supabase.from('messages')
+  messages: () => supabase.from('messages'),
+  
+  // Safe wrappers for potentially missing tables
+  call_sessions: () => ({
+    select: (columns = '*') => safeTableQuery('call_sessions', (query) => query.select(columns), []),
+    insert: (data) => safeTableQuery('call_sessions', (query) => query.insert(data), null),
+    update: (data) => safeTableQuery('call_sessions', (query) => query.update(data), null),
+    delete: () => safeTableQuery('call_sessions', (query) => query.delete(), null)
+  }),
+  
+  call_recordings: () => ({
+    select: (columns = '*') => safeTableQuery('call_recordings', (query) => query.select(columns), []),
+    insert: (data) => safeTableQuery('call_recordings', (query) => query.insert(data), null),
+    update: (data) => safeTableQuery('call_recordings', (query) => query.update(data), null),
+    delete: () => safeTableQuery('call_recordings', (query) => query.delete(), null)
+  }),
+  
+  emergency_call_logs: () => ({
+    select: (columns = '*') => safeTableQuery('emergency_call_logs', (query) => query.select(columns), []),
+    insert: (data) => safeTableQuery('emergency_call_logs', (query) => query.insert(data), null),
+    update: (data) => safeTableQuery('emergency_call_logs', (query) => query.update(data), null),
+    delete: () => safeTableQuery('emergency_call_logs', (query) => query.delete(), null)
+  })
+};
+
+// Function to check if required tables exist
+export const checkRequiredTables = async () => {
+  const requiredTables = ['call_sessions', 'call_recordings', 'emergency_call_logs'];
+  const missingTables = [];
+  
+  for (const tableName of requiredTables) {
+    try {
+      await supabase.from(tableName).select('id').limit(1);
+    } catch (error) {
+      if (error.message?.includes('does not exist') || 
+          error.message?.includes('relation') || 
+          error.code === 'PGRST116' ||
+          error.status === 404) {
+        missingTables.push(tableName);
+      }
+    }
+  }
+  
+  if (missingTables.length > 0) {
+    console.warn('Missing Supabase tables detected:', missingTables);
+    console.warn('Please run the CREATE_MISSING_SUPABASE_TABLES.sql script in your Supabase dashboard');
+  }
+  
+  return {
+    allTablesExist: missingTables.length === 0,
+    missingTables
+  };
 };
 
 // Auth helper functions
@@ -223,6 +313,32 @@ export const messageHelpers = {
       }, callback)
       .subscribe();
   }
+};
+
+// Original database table helpers (for backward compatibility)
+export const db = {
+  profiles: () => supabase.from('profiles'),
+  services: () => supabase.from('services'),
+  bookings: () => supabase.from('bookings'),
+  payments: () => supabase.from('payments'),
+  messages: () => supabase.from('messages')
+};
+
+// Function to initialize and check Supabase setup
+export const initializeSupabase = async () => {
+  console.log('🔍 Checking Supabase table setup...');
+  
+  const tableCheck = await checkRequiredTables();
+  
+  if (!tableCheck.allTablesExist) {
+    console.warn('⚠️  Some required tables are missing:', tableCheck.missingTables);
+    console.warn('📋 To create missing tables, run the SQL script: CREATE_MISSING_SUPABASE_TABLES.sql');
+    console.warn('🔧 Some features may be limited until tables are created.');
+  } else {
+    console.log('✅ All required Supabase tables are present');
+  }
+  
+  return tableCheck;
 };
 
 export default supabase; 

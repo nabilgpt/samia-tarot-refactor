@@ -30,8 +30,18 @@ const Footer = () => {
   ];
 
   const legalLinks = [
-    { key: 'privacy', path: '/privacy', label: t('footer.privacy') },
-    { key: 'terms', path: '/terms', label: t('footer.terms') },
+    { 
+      key: 'privacy', 
+      href: 'https://docs.google.com/document/d/1o1qaqFrgv7R9gyu-peN6TbnQhvz9z27OHuHrP_yWYCc/edit?usp=sharing',
+      label: t('footer.privacy'),
+      external: true
+    },
+    { 
+      key: 'terms', 
+      href: 'https://docs.google.com/document/d/1gGDfqW5WbaqAv0FXd6pxMi1XbUUHe1WlvkIeliebVMw/edit?usp=drive_link',
+      label: t('footer.terms'),
+      external: true
+    },
     { key: 'cookies', path: '/cookies', label: 'سياسة الكوكيز' }
   ];
 
@@ -132,12 +142,23 @@ const Footer = () => {
             <ul className="space-y-2">
               {legalLinks.map((link) => (
                 <li key={link.key}>
-                  <Link
-                    to={link.path}
-                    className="text-gray-400 hover:text-gold-400 transition-colors duration-200 text-sm"
-                  >
-                    {link.label}
-                  </Link>
+                  {link.external ? (
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-gold-400 transition-colors duration-200 text-sm"
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      to={link.path}
+                      className="text-gray-400 hover:text-gold-400 transition-colors duration-200 text-sm"
+                    >
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

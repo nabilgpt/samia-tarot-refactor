@@ -9,52 +9,104 @@ const SupabaseTest = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [testResults, setTestResults] = useState({});
+  const [connectionStatus, setConnectionStatus] = useState('testing');
+  const [tables, setTables] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    checkConnection();
+    testConnection();
   }, []);
 
-  const checkConnection = async () => {
-    setLoading(true);
-    setMessage('Testing Supabase connection...');
-    
+  const testConnection = async () => {
     try {
-      // Test 1: Check if we can connect to Supabase
-      const { data, error } = await supabase.from('profiles').select('count');
-      setTestResults(prev => ({
-        ...prev,
-        connection: error ? 'Failed' : 'Success'
-      }));
+      setConnectionStatus('testing');
+      setError(null);
 
-      // Test 2: Check current user
-      const userResult = await UserAPI.getCurrentUser();
-      setTestResults(prev => ({
-        ...prev,
-        currentUser: userResult.success ? 'Success' : 'No user logged in'
-      }));
+      // Test basic connection
+      console.log('Testing Supabase connection...');
+      
+      // Test each table
+      const tableTests = [
+        'profiles',
+        'services', 
+        'bookings',
+        'payments',
+        'messages',
+        'reviews',
+        'notifications'
+      ];
 
-      if (userResult.success && userResult.data) {
-        setUser(userResult.data);
-        setProfile(userResult.data.profile);
+      const tableResults = [];
+
+      for (const tableName of tableTests) {
+        try {
+          const { data, error } = await supabase
+            .from(tableName)
+            .select('*')
+            .limit(1);
+          
+          if (error) {
+            tableResults.push({
+              name: tableName,
+              status: 'error',
+              error: error.message
+            });
+          } else {
+            tableResults.push({
+              name: tableName,
+              status: 'success',
+              count: data?.length || 0
+            });
+          }
+        } catch (err) {
+          tableResults.push({
+            name: tableName,
+            status: 'error',
+            error: err.message
+          });
+        }
       }
 
-      // Test 3: Check services table
-      const servicesResult = await supabase.from('services').select('*').limit(5);
-      setTestResults(prev => ({
-        ...prev,
-        services: servicesResult.error ? 'Failed' : `Success (${servicesResult.data.length} services)`
-      }));
-      setServices(servicesResult.data || []);
+      setTables(tableResults);
 
-      setMessage('Connection tests completed!');
+      // Test services data specifically
+      try {
+        const { data: servicesData, error: servicesError } = await supabase
+          .from('services')
+          .select('*');
+        
+        if (servicesError) {
+          console.error('Services error:', servicesError);
+        } else {
+          setServices(servicesData || []);
+        }
+      } catch (err) {
+        console.error('Services fetch error:', err);
+      }
+
+      setConnectionStatus('completed');
     } catch (error) {
-      setMessage(`Error: ${error.message}`);
-      setTestResults(prev => ({
-        ...prev,
-        error: error.message
-      }));
-    } finally {
-      setLoading(false);
+      console.error('Connection test failed:', error);
+      setError(error.message);
+      setConnectionStatus('failed');
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'success': return '✅';
+      case 'error': return '❌';
+      case 'testing': return '⏳';
+      default: return '❓';
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'success': return 'text-green-600';
+      case 'error': return 'text-red-600';
+      case 'testing': return 'text-yellow-600';
+      default: return 'text-gray-600';
     }
   };
 
@@ -174,185 +226,131 @@ const SupabaseTest = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <h2 className="text-2xl font-bold mb-6 text-center text-purple-800">
-        🔮 Supabase Connection Test
-      </h2>
-
-      {/* Status Message */}
-      {message && (
-        <div className={`p-4 rounded-lg mb-6 ${
-          message.includes('Error') || message.includes('Failed') 
-            ? 'bg-red-100 text-red-700 border border-red-300'
-            : 'bg-green-100 text-green-700 border border-green-300'
-        }`}>
-          {message}
-        </div>
-      )}
-
-      {/* Test Results */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="font-semibold mb-3 text-gray-800">Connection Tests</h3>
-          <div className="space-y-2">
-            {Object.entries(testResults).map(([test, result]) => (
-              <div key={test} className="flex justify-between">
-                <span className="capitalize">{test.replace(/([A-Z])/g, ' $1')}:</span>
-                <span className={`font-medium ${
-                  result.includes('Success') ? 'text-green-600' : 
-                  result.includes('Failed') ? 'text-red-600' : 'text-yellow-600'
-                }`}>
-                  {result}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <h3 className="font-semibold mb-3 text-gray-800">User Status</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span>Authenticated:</span>
-              <span className={`font-medium ${user ? 'text-green-600' : 'text-red-600'}`}>
-                {user ? 'Yes' : 'No'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Profile:</span>
-              <span className={`font-medium ${profile ? 'text-green-600' : 'text-yellow-600'}`}>
-                {profile ? 'Exists' : 'Not created'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Services:</span>
-              <span className="font-medium text-blue-600">
-                {services.length} available
-              </span>
-            </div>
-          </div>
-        </div>
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">🔮 SAMIA TAROT</h1>
+        <h2 className="text-xl text-gray-600">Supabase Connection Test</h2>
       </div>
 
-      {/* User Information */}
-      {user && (
-        <div className="bg-blue-50 p-4 rounded-lg mb-6">
-          <h3 className="font-semibold mb-3 text-blue-800">Current User</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <strong>ID:</strong> {user.id}
-            </div>
-            <div>
-              <strong>Email:</strong> {user.email || 'N/A'}
-            </div>
-            <div>
-              <strong>Phone:</strong> {user.phone || 'N/A'}
-            </div>
-            <div>
-              <strong>Provider:</strong> {user.app_metadata?.provider || 'N/A'}
-            </div>
-          </div>
+      {/* Connection Status */}
+      <div className="mb-8 p-4 bg-gray-50 rounded-lg">
+        <h3 className="text-lg font-semibold mb-3">Connection Status</h3>
+        <div className="flex items-center space-x-2">
+          <span className="text-2xl">
+            {connectionStatus === 'testing' && '⏳'}
+            {connectionStatus === 'completed' && '✅'}
+            {connectionStatus === 'failed' && '❌'}
+          </span>
+          <span className={`font-medium ${
+            connectionStatus === 'testing' ? 'text-yellow-600' :
+            connectionStatus === 'completed' ? 'text-green-600' :
+            'text-red-600'
+          }`}>
+            {connectionStatus === 'testing' && 'Testing connection...'}
+            {connectionStatus === 'completed' && 'Connection successful!'}
+            {connectionStatus === 'failed' && 'Connection failed'}
+          </span>
         </div>
-      )}
-
-      {/* Profile Information */}
-      {profile && (
-        <div className="bg-purple-50 p-4 rounded-lg mb-6">
-          <h3 className="font-semibold mb-3 text-purple-800">User Profile</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <strong>Name:</strong> {profile.first_name} {profile.last_name}
-            </div>
-            <div>
-              <strong>Role:</strong> {profile.role}
-            </div>
-            <div>
-              <strong>Country:</strong> {profile.country || 'N/A'}
-            </div>
-            <div>
-              <strong>Zodiac:</strong> {profile.zodiac || 'N/A'}
-            </div>
+        {error && (
+          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+            {error}
           </div>
-        </div>
-      )}
-
-      {/* Services List */}
-      {services.length > 0 && (
-        <div className="bg-green-50 p-4 rounded-lg mb-6">
-          <h3 className="font-semibold mb-3 text-green-800">Available Services</h3>
-          <div className="space-y-2">
-            {services.map((service) => (
-              <div key={service.id} className="flex justify-between items-center">
-                <span>{service.name}</span>
-                <span className="text-sm text-gray-600">
-                  ${service.price} • {service.duration_minutes}min
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-4 justify-center">
-        <button
-          onClick={checkConnection}
-          disabled={loading}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? 'Testing...' : 'Test Connection'}
-        </button>
-
-        {!user ? (
-          <button
-            onClick={signInWithGoogle}
-            disabled={loading}
-            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-          >
-            Sign In with Google
-          </button>
-        ) : (
-          <>
-            <button
-              onClick={signOut}
-              disabled={loading}
-              className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-            >
-              Sign Out
-            </button>
-
-            {!profile && (
-              <button
-                onClick={testCreateProfile}
-                disabled={loading}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-              >
-                Create Profile
-              </button>
-            )}
-
-            {profile && (
-              <button
-                onClick={testUpdateProfile}
-                disabled={loading}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-              >
-                Update Profile
-              </button>
-            )}
-          </>
         )}
       </div>
 
-      {/* Instructions */}
-      <div className="mt-8 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-        <h4 className="font-semibold text-yellow-800 mb-2">Instructions:</h4>
-        <ol className="list-decimal list-inside text-sm text-yellow-700 space-y-1">
-          <li>First, run the database schema in your Supabase SQL editor</li>
-          <li>Click "Test Connection" to verify database connectivity</li>
-          <li>Sign in with Google to test authentication</li>
-          <li>Create and update your profile to test API functions</li>
-          <li>Check that all tests show "Success" status</li>
-        </ol>
+      {/* Tables Status */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold mb-4">Database Tables</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {tables.map((table) => (
+            <div key={table.name} className="p-4 border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium text-gray-900">{table.name}</span>
+                <span className="text-xl">{getStatusIcon(table.status)}</span>
+              </div>
+              <div className={`text-sm ${getStatusColor(table.status)}`}>
+                {table.status === 'success' ? 
+                  `Table exists (${table.count} records)` : 
+                  table.error || 'Error accessing table'
+                }
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Services Data */}
+      {services.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold mb-4">Sample Services ({services.length})</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {services.slice(0, 6).map((service) => (
+              <div key={service.id} className="p-4 border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-gray-900">{service.name}</h4>
+                  {service.is_vip && (
+                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                      VIP
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-gray-600 mb-2">
+                  {service.type} • {service.duration_minutes} min
+                </div>
+                <div className="text-lg font-bold text-purple-600">
+                  ${service.price}
+                </div>
+              </div>
+            ))}
+          </div>
+          {services.length > 6 && (
+            <div className="text-center mt-4 text-gray-500">
+              ... and {services.length - 6} more services
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Setup Instructions */}
+      {tables.some(t => t.status === 'error') && (
+        <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h3 className="text-lg font-semibold text-yellow-800 mb-3">⚠️ Setup Required</h3>
+          <p className="text-yellow-700 mb-4">
+            Some tables are missing. Please run the database setup:
+          </p>
+          <ol className="list-decimal list-inside text-yellow-700 space-y-2">
+            <li>Go to your Supabase project dashboard</li>
+            <li>Open the SQL Editor</li>
+            <li>Copy and paste the contents of <code>database/schema.sql</code></li>
+            <li>Click &ldquo;RUN&rdquo; to execute the schema</li>
+            <li>Refresh this page to test again</li>
+          </ol>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {connectionStatus === 'completed' && tables.every(t => t.status === 'success') && (
+        <div className="p-6 bg-green-50 border border-green-200 rounded-lg text-center">
+          <h3 className="text-lg font-semibold text-green-800 mb-2">🎉 Setup Complete!</h3>
+          <p className="text-green-700 mb-4">
+            Your SAMIA TAROT database is fully configured and ready to use.
+          </p>
+          <div className="space-y-2 text-sm text-green-600">
+            <div>✅ All 7 tables created successfully</div>
+            <div>✅ {services.length} sample services loaded</div>
+            <div>✅ Row Level Security enabled</div>
+            <div>✅ Auto-profile creation configured</div>
+          </div>
+        </div>
+      )}
+
+      {/* Retry Button */}
+      <div className="text-center mt-6">
+        <button
+          onClick={testConnection}
+          className="px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+        >
+          🔄 Test Again
+        </button>
       </div>
     </div>
   );

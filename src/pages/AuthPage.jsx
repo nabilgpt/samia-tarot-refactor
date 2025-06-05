@@ -5,6 +5,7 @@ import { Eye, EyeOff, Mail, Phone, Calendar, MapPin, User, Lock, Shield, Check, 
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
 import Button from '../components/Button';
+import AnimatedBackground from '../components/UI/AnimatedBackground';
 import SocialAuth from '../components/SocialAuth';
 import ReCaptchaComponent from '../components/ReCaptchaComponent';
 import { getCountryCodeFromCountry, getZodiacFromDateOfBirth, validateEmail, validatePhone, validatePassword } from '../utils/validation';
@@ -662,13 +663,23 @@ const AuthPage = () => {
         />
         <label className="text-sm text-gray-300">
           {t('auth.termsText')}{' '}
-          <Link to="/terms" className="text-gold-400 hover:underline">
+          <a 
+            href="https://docs.google.com/document/d/1gGDfqW5WbaqAv0FXd6pxMi1XbUUHe1WlvkIeliebVMw/edit?usp=drive_link"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gold-400 hover:underline"
+          >
             {t('auth.termsLink')}
-          </Link>{' '}
+          </a>{' '}
           {t('auth.and')}{' '}
-          <Link to="/privacy" className="text-gold-400 hover:underline">
+          <a 
+            href="https://docs.google.com/document/d/1o1qaqFrgv7R9gyu-peN6TbnQhvz9z27OHuHrP_yWYCc/edit?usp=sharing"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gold-400 hover:underline"
+          >
             {t('auth.privacyLink')}
-          </Link>
+          </a>
         </label>
       </div>
       {errors.termsAccepted && <p className="text-red-400 text-sm">{errors.termsAccepted}</p>}
@@ -820,90 +831,92 @@ const AuthPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-cosmic-gradient flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
-        <div className="card-glow">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold gradient-text mb-2">
-              {t('app.name')}
-            </h1>
-            <p className="text-gray-400">{t('app.tagline')}</p>
+    <AnimatedBackground variant="auth" intensity="normal">
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl">
+          <div className="bg-theme-card backdrop-blur-xl border border-theme rounded-2xl p-8 shadow-theme-card">
+            <div className="text-center mb-8">
+              <h1 className="text-4xl font-bold text-theme-primary mb-2">
+                {t('app.name')}
+              </h1>
+              <p className="text-theme-secondary">{t('app.tagline')}</p>
+            </div>
+
+            {authMethod === 'form' && (
+              <>
+                {renderModeSelector()}
+                
+                {mode === 'signin' && renderSigninForm()}
+                {mode === 'signup' && step === 1 && renderSignupStep1()}
+                {mode === 'signup' && step === 2 && renderSignupStep2()}
+                {mode === 'signup' && step === 3 && renderSignupStep3()}
+              </>
+            )}
+
+            {authMethod !== 'form' && (
+              <>
+                <div className="mb-6">
+                  <Button
+                    onClick={() => setAuthMethod('form')}
+                    variant="outline"
+                    size="sm"
+                    className="mb-4"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    {t('auth.backToForm')}
+                  </Button>
+                </div>
+
+                {authMethod === 'social' && (
+                  <SocialAuth
+                    mode={mode}
+                    onSuccess={handleSocialSuccess}
+                    onError={handleSocialError}
+                  />
+                )}
+
+                {authMethod === 'mobile' && (
+                  <SocialAuth
+                    mode="mobile"
+                    onSuccess={handleSocialSuccess}
+                    onError={handleSocialError}
+                  />
+                )}
+              </>
+            )}
+
+            {authMethod === 'form' && (
+              <>
+                <div className="relative my-8">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-600"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-dark-800 text-gray-400">{t('auth.or')}</span>
+                  </div>
+                </div>
+
+                {renderAuthMethodSelector()}
+              </>
+            )}
           </div>
 
           {authMethod === 'form' && (
-            <>
-              {renderModeSelector()}
-              
-              {mode === 'signin' && renderSigninForm()}
-              {mode === 'signup' && step === 1 && renderSignupStep1()}
-              {mode === 'signup' && step === 2 && renderSignupStep2()}
-              {mode === 'signup' && step === 3 && renderSignupStep3()}
-            </>
-          )}
-
-          {authMethod !== 'form' && (
-            <>
-              <div className="mb-6">
-                <Button
-                  onClick={() => setAuthMethod('form')}
-                  variant="outline"
-                  size="sm"
-                  className="mb-4"
+            <div className="text-center mt-6">
+              <p className="text-gray-400">
+                {mode === 'signin' ? t('auth.noAccount') : t('auth.haveAccount')}{' '}
+                <button
+                  onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+                  className="text-gold-400 hover:underline font-medium"
                 >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  {t('auth.backToForm')}
-                </Button>
-              </div>
-
-              {authMethod === 'social' && (
-                <SocialAuth
-                  mode={mode}
-                  onSuccess={handleSocialSuccess}
-                  onError={handleSocialError}
-                />
-              )}
-
-              {authMethod === 'mobile' && (
-                <SocialAuth
-                  mode="mobile"
-                  onSuccess={handleSocialSuccess}
-                  onError={handleSocialError}
-                />
-              )}
-            </>
-          )}
-
-          {authMethod === 'form' && (
-            <>
-              <div className="relative my-8">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-600"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-dark-800 text-gray-400">{t('auth.or')}</span>
-                </div>
-              </div>
-
-              {renderAuthMethodSelector()}
-            </>
+                  {mode === 'signin' ? t('auth.signup.title') : t('auth.signin.title')}
+                </button>
+              </p>
+            </div>
           )}
         </div>
-
-        {authMethod === 'form' && (
-          <div className="text-center mt-6">
-            <p className="text-gray-400">
-              {mode === 'signin' ? t('auth.noAccount') : t('auth.haveAccount')}{' '}
-              <button
-                onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-                className="text-gold-400 hover:underline font-medium"
-              >
-                {mode === 'signin' ? t('auth.signup.title') : t('auth.signin.title')}
-              </button>
-            </p>
-          </div>
-        )}
       </div>
-    </div>
+    </AnimatedBackground>
   );
 };
 
