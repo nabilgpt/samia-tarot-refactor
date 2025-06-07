@@ -1,4 +1,4 @@
-import { supabase, safeTableQuery } from '../lib/supabase.js';
+import { supabase } from '../lib/supabase.js';
 import RecordingService from '../services/recordingService';
 import AIWatchdogService from '../services/aiWatchdogService';
 

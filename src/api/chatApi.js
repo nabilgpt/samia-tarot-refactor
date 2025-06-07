@@ -98,7 +98,7 @@ export const ChatAPI = {
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${bookingId}/${Date.now()}.${fileExt}`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('chat-attachments')
         .upload(fileName, imageFile);
 
@@ -145,7 +145,7 @@ export const ChatAPI = {
       // Upload audio to Supabase storage
       const fileName = `${bookingId}/voice/${Date.now()}.webm`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('chat-attachments')
         .upload(fileName, audioFile);
 

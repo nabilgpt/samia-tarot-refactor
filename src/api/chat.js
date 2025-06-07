@@ -749,14 +749,14 @@ router.post('/voice-notes', voiceRateLimit, authenticateToken, upload.single('vo
     const fileExtension = req.file.originalname.split('.').pop();
     const fileName = `voice_notes/${session_id}/${userId}_${Date.now()}.${fileExtension}`;
     
-    // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+        // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
       .from('chat-files')
       .upload(fileName, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: false
       });
-    
+
     if (uploadError) {
       console.error('Voice note upload error:', uploadError);
       return res.status(500).json({
@@ -897,7 +897,7 @@ router.put('/messages/:id/read', chatRateLimit, authenticateToken, async (req, r
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-router.use((error, req, res, next) => {
+router.use((error, req, res, _next) => {
   console.error('Chat API Error:', error);
   res.status(500).json({
     success: false,
