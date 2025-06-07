@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase.js';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { format, subDays } from 'date-fns';
 
 export const AnalyticsAPI = {
   // =============================================
@@ -354,9 +354,19 @@ export const AnalyticsAPI = {
 
   async getReaderPerformance(startDate = null, endDate = null) {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('reader_performance')
         .select('*');
+
+      // Apply date filters if provided
+      if (startDate) {
+        query = query.gte('created_at', startDate);
+      }
+      if (endDate) {
+        query = query.lte('created_at', endDate);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -374,7 +384,6 @@ export const AnalyticsAPI = {
   async getOverviewStats() {
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
-      const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
 
       // Get active users count
       const { data: activeUsers, error: activeUsersError } = await supabase

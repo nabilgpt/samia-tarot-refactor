@@ -1,6 +1,6 @@
-import { supabase } from '../lib/supabase.js';
+const { supabase } = require('./lib/supabase.js');
 
-export const TarotAPI = {
+const TarotAPI = {
   // =====================================================
   // TAROT CARDS
   // =====================================================
@@ -700,4 +700,6 @@ export const TarotAPI = {
 
     return insights;
   }
-}; 
+};
+
+module.exports = { TarotAPI }; 
