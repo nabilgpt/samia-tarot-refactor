@@ -5,29 +5,113 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabaseServiceRoleKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// Check for development/placeholder values
+const isDevelopmentMode = !supabaseUrl || 
+  supabaseUrl.includes('placeholder') || 
+  supabaseUrl.includes('your-project-id') ||
+  !supabaseAnonKey || 
+  supabaseAnonKey.includes('placeholder') ||
+  supabaseAnonKey.includes('your_supabase');
+
 // Validate required environment variables
 if (!supabaseUrl) {
-  throw new Error('Missing required environment variable: VITE_SUPABASE_URL');
+  if (isDevelopmentMode) {
+    console.warn('⚠️ DEVELOPMENT MODE: VITE_SUPABASE_URL not configured. Using mock setup.');
+  } else {
+    throw new Error('Missing required environment variable: VITE_SUPABASE_URL');
+  }
 }
+
 if (!supabaseAnonKey) {
-  throw new Error('Missing required environment variable: VITE_SUPABASE_ANON_KEY');
+  if (isDevelopmentMode) {
+    console.warn('⚠️ DEVELOPMENT MODE: VITE_SUPABASE_ANON_KEY not configured. Using mock setup.');
+  } else {
+    throw new Error('Missing required environment variable: VITE_SUPABASE_ANON_KEY');
+  }
 }
-if (!supabaseServiceRoleKey) {
+
+if (!supabaseServiceRoleKey && !isDevelopmentMode) {
   console.warn('Missing SUPABASE_SERVICE_ROLE_KEY - admin operations will be disabled');
 }
 
+// Create mock client for development mode
+const createMockSupabaseClient = () => {
+  console.log('🔧 Creating mock Supabase client for development...');
+  
+  return {
+    auth: {
+      getUser: async () => ({ data: { user: null }, error: { message: 'Mock mode - no real authentication' } }),
+      getSession: async () => ({ data: { session: null }, error: null }),
+      signOut: async () => ({ error: null }),
+      onAuthStateChange: (callback) => {
+        // Mock auth state change
+        setTimeout(() => callback('SIGNED_OUT', null), 100);
+        return { data: { subscription: { unsubscribe: () => {} } } };
+      }
+    },
+    from: (table) => ({
+      select: () => ({ 
+        data: [], 
+        error: { message: `Mock mode - table "${table}" not available` },
+        single: async () => ({ data: null, error: { message: `Mock mode - no data for table "${table}"` } }),
+        limit: () => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
+        order: () => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
+        eq: () => ({ 
+          data: [], 
+          error: { message: `Mock mode - table "${table}" not available` },
+          single: async () => ({ data: null, error: { message: `Mock mode - no data for table "${table}"` } })
+        }),
+        gte: () => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
+        lte: () => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } })
+      }),
+      insert: () => ({ 
+        data: null, 
+        error: { message: `Mock mode - cannot insert into table "${table}"` },
+        select: () => ({ 
+          data: null, 
+          error: { message: `Mock mode - cannot insert into table "${table}"` },
+          single: async () => ({ data: null, error: { message: `Mock mode - cannot insert into table "${table}"` } })
+        })
+      }),
+      update: () => ({ 
+        data: null, 
+        error: { message: `Mock mode - cannot update table "${table}"` },
+        eq: () => ({
+          data: null, 
+          error: { message: `Mock mode - cannot update table "${table}"` },
+          select: () => ({ 
+            data: null, 
+            error: { message: `Mock mode - cannot update table "${table}"` },
+            single: async () => ({ data: null, error: { message: `Mock mode - cannot update table "${table}"` } })
+          })
+        })
+      }),
+      delete: () => ({ data: null, error: { message: `Mock mode - cannot delete from table "${table}"` } })
+    }),
+    storage: {
+      from: (bucket) => ({
+        upload: async () => ({ data: null, error: { message: `Mock mode - cannot upload to bucket "${bucket}"` } }),
+        getPublicUrl: () => ({ data: { publicUrl: `https://mock-storage/${bucket}/mock-file.jpg` } })
+      })
+    },
+    rpc: async (funcName) => ({ data: null, error: { message: `Mock mode - cannot call RPC function "${funcName}"` } })
+  };
+};
+
 // Create and export the Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
-});
+export const supabase = isDevelopmentMode ? 
+  createMockSupabaseClient() : 
+  createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  });
 
 // Create admin client with service role key for admin operations
 // Fallback to regular client if service role key is not available
-export const supabaseAdmin = supabaseServiceRoleKey 
+export const supabaseAdmin = (!isDevelopmentMode && supabaseServiceRoleKey) 
   ? createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: {
         autoRefreshToken: false,
@@ -39,8 +123,20 @@ export const supabaseAdmin = supabaseServiceRoleKey
 // Helper functions for common operations
 export const auth = supabase.auth;
 
+// Development mode indicator
+export const isDevMode = isDevelopmentMode;
+
 // Helper function to safely query a table that might not exist
 export const safeTableQuery = async (tableName, operation, fallbackData = null) => {
+  if (isDevelopmentMode) {
+    console.warn(`🔧 Mock mode: Simulating query for table "${tableName}"`);
+    return {
+      data: fallbackData,
+      error: null,
+      warning: `Mock mode - table "${tableName}" simulation`
+    };
+  }
+
   try {
     let query = supabase.from(tableName);
     
@@ -102,6 +198,14 @@ export const safeDb = {
 
 // Function to check if required tables exist
 export const checkRequiredTables = async () => {
+  if (isDevelopmentMode) {
+    console.log('🔧 Mock mode: Skipping table existence check');
+    return {
+      allTablesExist: false,
+      missingTables: ['all_tables_mocked_in_dev_mode']
+    };
+  }
+
   const requiredTables = ['call_sessions', 'call_recordings', 'emergency_call_logs'];
   const missingTables = [];
   
@@ -133,18 +237,30 @@ export const checkRequiredTables = async () => {
 export const authHelpers = {
   // Get current user
   getCurrentUser: async () => {
+    if (isDevelopmentMode) {
+      console.log('🔧 Mock mode: No user authentication');
+      return null;
+    }
     const { data: { user } } = await supabase.auth.getUser();
     return user;
   },
 
   // Get current session
   getCurrentSession: async () => {
+    if (isDevelopmentMode) {
+      console.log('🔧 Mock mode: No session available');
+      return null;
+    }
     const { data: { session } } = await supabase.auth.getSession();
     return session;
   },
 
   // Sign out
   signOut: async () => {
+    if (isDevelopmentMode) {
+      console.log('🔧 Mock mode: Sign out simulation');
+      return { error: null };
+    }
     const { error } = await supabase.auth.signOut();
     return { error };
   },
@@ -159,6 +275,10 @@ export const authHelpers = {
 export const profileHelpers = {
   // Get user profile
   getProfile: async (userId) => {
+    if (isDevelopmentMode) {
+      console.log('🔧 Mock mode: Profile data not available');
+      return { data: null, error: { message: 'Mock mode - no profile data' } };
+    }
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -169,6 +289,10 @@ export const profileHelpers = {
 
   // Update user profile
   updateProfile: async (userId, updates) => {
+    if (isDevelopmentMode) {
+      console.log('🔧 Mock mode: Profile update simulation');
+      return { data: null, error: { message: 'Mock mode - cannot update profile' } };
+    }
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
@@ -180,6 +304,10 @@ export const profileHelpers = {
 
   // Create user profile
   createProfile: async (profile) => {
+    if (isDevelopmentMode) {
+      console.log('🔧 Mock mode: Profile creation simulation');
+      return { data: null, error: { message: 'Mock mode - cannot create profile' } };
+    }
     const { data, error } = await supabase
       .from('profiles')
       .insert([profile])
@@ -193,6 +321,10 @@ export const profileHelpers = {
 export const serviceHelpers = {
   // Get all services
   getAllServices: async () => {
+    if (isDevelopmentMode) {
+      console.log('🔧 Mock mode: Service data not available');
+      return { data: [], error: { message: 'Mock mode - no services data' } };
+    }
     const { data, error } = await supabase
       .from('services')
       .select('*')
@@ -338,21 +470,46 @@ export const db = {
   messages: () => supabase.from('messages')
 };
 
-// Function to initialize and check Supabase setup
+// Initialize Supabase with development mode awareness
 export const initializeSupabase = async () => {
-  console.log('🔍 Checking Supabase table setup...');
-  
-  const tableCheck = await checkRequiredTables();
-  
-  if (!tableCheck.allTablesExist) {
-    console.warn('⚠️  Some required tables are missing:', tableCheck.missingTables);
-    console.warn('📋 To create missing tables, run the SQL script: CREATE_MISSING_SUPABASE_TABLES.sql');
-    console.warn('🔧 Some features may be limited until tables are created.');
-  } else {
-    console.log('✅ All required Supabase tables are present');
+  if (isDevelopmentMode) {
+    console.log('🔧 DEVELOPMENT MODE ACTIVE');
+    console.log('📝 To connect to real Supabase:');
+    console.log('   1. Get your project credentials from: https://supabase.com/dashboard');
+    console.log('   2. Update VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env');
+    console.log('   3. Restart the development server');
+    return {
+      initialized: true,
+      mode: 'development-mock',
+      message: 'Running in mock mode - update environment variables to connect to real Supabase'
+    };
   }
-  
-  return tableCheck;
+
+  try {
+    // Test connection
+    const { data, error } = await supabase.from('profiles').select('count').limit(1);
+    
+    if (error) {
+      console.warn('Supabase connection test failed:', error.message);
+      return {
+        initialized: false,
+        error: error.message
+      };
+    }
+
+    console.log('✅ Supabase connected successfully');
+    return {
+      initialized: true,
+      mode: 'production',
+      message: 'Connected to Supabase successfully'
+    };
+  } catch (error) {
+    console.error('Supabase initialization failed:', error);
+    return {
+      initialized: false,
+      error: error.message
+    };
+  }
 };
 
 export default supabase; 

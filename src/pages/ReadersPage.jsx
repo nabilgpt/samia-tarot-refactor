@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import Particles from 'react-particles';
+import Particles from 'react-tsparticles';
 import { loadSlim } from 'tsparticles-slim';
 import { Star, Clock, Users, MessageCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';

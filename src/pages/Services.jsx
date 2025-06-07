@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import Particles from 'react-particles';
+import Particles from 'react-tsparticles';
 import { loadSlim } from 'tsparticles-slim';
 import { 
   Star, 

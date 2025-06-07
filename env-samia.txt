@@ -1,0 +1,212 @@
+# =============================================================================
+# SAMIA TAROT - Environment Variables Configuration
+# =============================================================================
+# Copy this file to .env and update the values
+# رمز يدلك على توابع حياتك وآخرتك
+
+# =============================================================================
+# NODE ENVIRONMENT
+# =============================================================================
+NODE_ENV=development
+API_VERSION=1.0.0
+PORT=5000
+
+# =============================================================================
+# SUPABASE DATABASE CONFIGURATION
+# =============================================================================
+# Get these from your Supabase Dashboard > Settings > API
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
+
+# Database connection string (optional - for direct DB access)
+DATABASE_URL=postgresql://postgres:your_password@db.your-project-id.supabase.co:5432/postgres
+
+# =============================================================================
+# JWT & AUTHENTICATION
+# =============================================================================
+# Generate strong random keys for production
+JWT_SECRET=your_super_secret_jwt_key_here_make_it_long_and_random_123456789
+JWT_REFRESH_SECRET=your_refresh_token_secret_here_also_make_it_very_long_987654321
+JWT_EXPIRES_IN=24h
+JWT_REFRESH_EXPIRES_IN=7d
+
+# =============================================================================
+# PAYMENT GATEWAYS
+# =============================================================================
+# Stripe Configuration
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_stripe_webhook_secret_here
+
+# Square Configuration  
+SQUARE_APPLICATION_ID=your_square_application_id_here
+SQUARE_ACCESS_TOKEN=your_square_access_token_here
+SQUARE_WEBHOOK_SIGNATURE_KEY=your_square_webhook_signature_key
+
+# PayPal Configuration
+PAYPAL_CLIENT_ID=your_paypal_client_id_here
+PAYPAL_CLIENT_SECRET=your_paypal_client_secret_here
+PAYPAL_MODE=sandbox
+
+# =============================================================================
+# CRYPTOCURRENCY (USDT/Bitcoin)
+# =============================================================================
+# For USDT verification
+USDT_WALLET_ADDRESS=your_usdt_wallet_address_here
+ETHEREUM_RPC_URL=https://mainnet.infura.io/v3/your_infura_project_id
+TRON_RPC_URL=https://api.trongrid.io
+
+# Bitcoin wallet (if needed)
+BITCOIN_WALLET_ADDRESS=your_bitcoin_wallet_address_here
+
+# =============================================================================
+# EMAIL SERVICES
+# =============================================================================
+# SMTP Configuration (Gmail, SendGrid, etc.)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_app_specific_password_here
+
+# SendGrid (alternative)
+SENDGRID_API_KEY=your_sendgrid_api_key_here
+FROM_EMAIL=noreply@samia-tarot.com
+FROM_NAME=SAMIA TAROT
+
+# =============================================================================
+# SMS SERVICES
+# =============================================================================
+# Twilio Configuration
+TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
+TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
+TWILIO_PHONE_NUMBER=+1234567890
+
+# =============================================================================
+# AI SERVICES
+# =============================================================================
+# OpenAI for Tarot readings
+OPENAI_API_KEY=sk-your_openai_api_key_here
+OPENAI_MODEL=gpt-4
+OPENAI_MAX_TOKENS=2000
+
+# Alternative AI services
+ANTHROPIC_API_KEY=your_anthropic_claude_api_key_here
+GEMINI_API_KEY=your_google_gemini_api_key_here
+
+# =============================================================================
+# FILE STORAGE & CDN
+# =============================================================================
+# Supabase Storage (default)
+SUPABASE_STORAGE_BUCKET=samia-tarot-files
+
+# Alternative: AWS S3
+AWS_ACCESS_KEY_ID=your_aws_access_key_here
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key_here
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=samia-tarot-storage
+
+# Cloudinary (for image processing)
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+# =============================================================================
+# REAL-TIME SERVICES
+# =============================================================================
+# Redis for sessions and caching
+REDIS_URL=redis://localhost:6379
+REDIS_PASSWORD=your_redis_password_if_needed
+
+# Socket.IO settings
+SOCKET_IO_CORS_ORIGIN=http://localhost:3000
+
+# =============================================================================
+# SECURITY & CAPTCHA
+# =============================================================================
+# Google reCAPTCHA
+RECAPTCHA_SITE_KEY=your_recaptcha_site_key_here
+RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key_here
+
+# Rate limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# =============================================================================
+# LOGGING & MONITORING
+# =============================================================================
+# Sentry for error tracking
+SENTRY_DSN=your_sentry_dsn_here
+
+# LogRocket for user session recording
+LOGROCKET_APP_ID=your_logrocket_app_id_here
+
+# =============================================================================
+# WEBHOOKS & INTEGRATIONS
+# =============================================================================
+# WhatsApp Business API
+WHATSAPP_PHONE_NUMBER_ID=your_whatsapp_phone_number_id
+WHATSAPP_ACCESS_TOKEN=your_whatsapp_access_token
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=your_webhook_verify_token
+
+# Discord bot (for notifications)
+DISCORD_BOT_TOKEN=your_discord_bot_token_here
+DISCORD_CHANNEL_ID=your_discord_channel_id
+
+# =============================================================================
+# FRONTEND URLS
+# =============================================================================
+FRONTEND_URL=http://localhost:3000
+ADMIN_DASHBOARD_URL=http://localhost:3000/dashboard/admin
+READER_DASHBOARD_URL=http://localhost:3000/dashboard/reader
+
+# =============================================================================
+# API KEYS FOR EXTERNAL SERVICES
+# =============================================================================
+# Google Maps (if needed for location services)
+GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+
+# Translation services
+GOOGLE_TRANSLATE_API_KEY=your_google_translate_api_key_here
+
+# =============================================================================
+# DEVELOPMENT & TESTING
+# =============================================================================
+# For development only
+DEBUG=true
+LOG_LEVEL=debug
+ENABLE_SWAGGER=true
+
+# Test database (separate from production)
+TEST_DATABASE_URL=postgresql://postgres:test_password@localhost:5432/samia_tarot_test
+
+# =============================================================================
+# PRODUCTION OVERRIDES
+# =============================================================================
+# Uncomment and modify for production deployment
+# NODE_ENV=production
+# DEBUG=false
+# LOG_LEVEL=error
+# ENABLE_SWAGGER=false
+# FRONTEND_URL=https://your-production-domain.com
+# API_URL=https://api.your-production-domain.com
+
+# =============================================================================
+# CUSTOM APP SETTINGS
+# =============================================================================
+# App-specific configurations
+APP_NAME=SAMIA TAROT
+APP_DESCRIPTION=منصة سامية تاروت للعرافة والتنجيم
+DEFAULT_LANGUAGE=ar
+SUPPORTED_LANGUAGES=ar,en,fr
+
+# Business settings
+MIN_READING_DURATION=15
+MAX_READING_DURATION=120
+DEFAULT_READING_PRICE=25.00
+CURRENCY=USD
+
+# Session settings
+SESSION_TIMEOUT=3600000
+MAX_CONCURRENT_SESSIONS=5 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import Particles from 'react-particles';
+import Particles from 'react-tsparticles';
 import { loadSlim } from 'tsparticles-slim';
 import { useCallback, useMemo } from 'react';
 import Navbar from '../Navbar';

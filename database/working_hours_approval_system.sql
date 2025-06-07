@@ -275,8 +275,8 @@ CREATE POLICY "all_view_settings" ON booking_window_settings
 -- Function to submit working hours request
 CREATE OR REPLACE FUNCTION submit_working_hours_request(
     p_action_type TEXT,
-    p_target_schedule_id UUID DEFAULT NULL,
     p_requested_changes JSONB,
+    p_target_schedule_id UUID DEFAULT NULL,
     p_old_values JSONB DEFAULT NULL,
     p_request_notes TEXT DEFAULT NULL
 ) RETURNS UUID AS $$

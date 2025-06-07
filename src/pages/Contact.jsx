@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import Particles from 'react-particles';
+import Particles from 'react-tsparticles';
 import { loadSlim } from 'tsparticles-slim';
 import { 
   Mail, 

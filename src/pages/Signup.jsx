@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import Particles from 'react-particles';
+import Particles from 'react-tsparticles';
 import { loadSlim } from 'tsparticles-slim';
 import { Eye, EyeOff, Mail, Phone, Calendar, MapPin, User, Lock, Shield, Check, Sparkles, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
