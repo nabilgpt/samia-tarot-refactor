@@ -504,7 +504,7 @@ const emergencyResponseSchema = Joi.object({
     .items(Joi.string().valid('phone', 'email', 'sms', 'emergency_contact', 'local_authorities'))
     .when('contact_attempted', {
       is: true,
-      then: Joi.min(1).required(),
+      then: Joi.array().min(1).required(),
       otherwise: Joi.optional()
     })
     .messages({

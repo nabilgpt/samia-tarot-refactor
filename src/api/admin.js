@@ -6,7 +6,6 @@
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
-const { createClient } = require('@supabase/supabase-js');
 
 // Import authentication middleware
 const { authenticateToken, requireRole } = require('./middleware/auth.js');
@@ -14,11 +13,8 @@ const { authenticateToken, requireRole } = require('./middleware/auth.js');
 // Import enhanced admin routes and controllers
 const adminRoutes = require('./routes/adminRoutes.js');
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Import Supabase client (already configured with dotenv)
+const { supabaseAdmin: supabase } = require('./lib/supabase.js');
 
 // =============================================================================
 // RATE LIMITING

@@ -1,0 +1,407 @@
+{
+  "passed": [
+    {
+      "category": "Environment",
+      "test": "Required: SUPABASE_URL",
+      "status": "passed",
+      "message": "Variable is set",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.833Z"
+    },
+    {
+      "category": "Environment",
+      "test": "Required: SUPABASE_ANON_KEY",
+      "status": "passed",
+      "message": "Variable is set",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.834Z"
+    },
+    {
+      "category": "Environment",
+      "test": "Required: JWT_SECRET",
+      "status": "passed",
+      "message": "Variable is set",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.834Z"
+    },
+    {
+      "category": "Environment",
+      "test": "Required: NODE_ENV",
+      "status": "passed",
+      "message": "Variable is set",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.834Z"
+    },
+    {
+      "category": "Environment",
+      "test": "Optional: STRIPE_SECRET_KEY",
+      "status": "passed",
+      "message": "Variable is set",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.834Z"
+    },
+    {
+      "category": "Environment",
+      "test": "Optional: OPENAI_API_KEY",
+      "status": "passed",
+      "message": "Variable is set",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.834Z"
+    },
+    {
+      "category": "Environment",
+      "test": "Optional: SMTP_HOST",
+      "status": "passed",
+      "message": "Variable is set",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.835Z"
+    },
+    {
+      "category": "Environment",
+      "test": "Optional: AWS_ACCESS_KEY_ID",
+      "status": "passed",
+      "message": "Variable is set",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.835Z"
+    },
+    {
+      "category": "Environment",
+      "test": "Optional: REDIS_URL",
+      "status": "passed",
+      "message": "Variable is set",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.835Z"
+    },
+    {
+      "category": "Environment",
+      "test": "JWT Secret Strength",
+      "status": "passed",
+      "message": "JWT secret has adequate length",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.835Z"
+    },
+    {
+      "category": "Security",
+      "test": "Rate Limiting",
+      "status": "passed",
+      "message": "Rate limiting enabled",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.836Z"
+    },
+    {
+      "category": "FileSystem",
+      "test": "Upload directory",
+      "status": "passed",
+      "message": "directory exists and writable",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.837Z"
+    },
+    {
+      "category": "Database",
+      "test": "Connection",
+      "status": "passed",
+      "message": "Database connection successful",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:19.871Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: profiles",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:20.160Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: services",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:20.407Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: bookings",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:20.646Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: payments",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:20.758Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: wallets",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:20.869Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: transactions",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:20.967Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: messages",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:21.080Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: reviews",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:21.182Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: notifications",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:21.289Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: call_sessions",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:21.391Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: ai_models",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:21.499Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: ai_sessions",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:21.605Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: learning_paths",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:21.719Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: course_content",
+      "status": "passed",
+      "message": "Table exists and accessible",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:21.842Z"
+    },
+    {
+      "category": "External Services",
+      "test": "Stripe API",
+      "status": "passed",
+      "message": "API key configured",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.710Z"
+    },
+    {
+      "category": "External Services",
+      "test": "OpenAI API",
+      "status": "passed",
+      "message": "API key configured",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.710Z"
+    }
+  ],
+  "warnings": [
+    {
+      "category": "Environment",
+      "test": "Optional: AGORA_APP_ID",
+      "status": "warning",
+      "message": "Optional variable not set",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.834Z"
+    },
+    {
+      "category": "Security",
+      "test": "Production Mode",
+      "status": "warning",
+      "message": "Not running in production mode",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.836Z"
+    },
+    {
+      "category": "Security",
+      "test": "HTTPS Enforcement",
+      "status": "warning",
+      "message": "HTTPS enforcement not configured",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.836Z"
+    },
+    {
+      "category": "Security",
+      "test": "CORS Configuration",
+      "status": "warning",
+      "message": "CORS origin not specified",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.836Z"
+    },
+    {
+      "category": "Database",
+      "test": "Foreign Keys",
+      "status": "warning",
+      "message": "Could not verify foreign key constraints",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.057Z"
+    },
+    {
+      "category": "Database",
+      "test": "Orphaned Bookings",
+      "status": "warning",
+      "message": "Could not execute check: Could not find the function public.execute_sql(sql) in the schema cache",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.184Z"
+    },
+    {
+      "category": "Database",
+      "test": "Invalid Wallet Balances",
+      "status": "warning",
+      "message": "Could not execute check: Could not find the function public.execute_sql(sql) in the schema cache",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.335Z"
+    },
+    {
+      "category": "Database",
+      "test": "Duplicate User Profiles",
+      "status": "warning",
+      "message": "Could not execute check: Could not find the function public.execute_sql(sql) in the schema cache",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.427Z"
+    },
+    {
+      "category": "External Services",
+      "test": "Agora WebRTC",
+      "status": "warning",
+      "message": "App ID not configured",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.711Z"
+    }
+  ],
+  "failed": [
+    {
+      "category": "FileSystem",
+      "test": "Logs directory",
+      "status": "failed",
+      "message": "directory does not exist",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.837Z"
+    },
+    {
+      "category": "FileSystem",
+      "test": "Backups directory",
+      "status": "failed",
+      "message": "directory does not exist",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:18.838Z"
+    },
+    {
+      "category": "Database",
+      "test": "Table: reader_availability",
+      "status": "failed",
+      "message": "Table not accessible: relation \"public.reader_availability\" does not exist",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:21.957Z"
+    },
+    {
+      "category": "Seed Data",
+      "test": "Admin Users",
+      "status": "failed",
+      "message": "Only 0 records found, minimum 1 required",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.513Z"
+    },
+    {
+      "category": "Seed Data",
+      "test": "Service Categories",
+      "status": "failed",
+      "message": "Query failed: column services.status does not exist",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.609Z"
+    },
+    {
+      "category": "Seed Data",
+      "test": "AI Models",
+      "status": "failed",
+      "message": "Query failed: column ai_models.status does not exist",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.701Z"
+    },
+    {
+      "category": "API",
+      "test": "GET /api/health",
+      "status": "failed",
+      "message": "Request failed: fetch failed",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.705Z"
+    },
+    {
+      "category": "API",
+      "test": "GET /api/auth/verify",
+      "status": "failed",
+      "message": "Request failed: fetch failed",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.706Z"
+    },
+    {
+      "category": "API",
+      "test": "GET /api/profiles",
+      "status": "failed",
+      "message": "Request failed: fetch failed",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.708Z"
+    },
+    {
+      "category": "API",
+      "test": "GET /api/services",
+      "status": "failed",
+      "message": "Request failed: fetch failed",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.709Z"
+    },
+    {
+      "category": "API",
+      "test": "GET /api/bookings",
+      "status": "failed",
+      "message": "Request failed: fetch failed",
+      "details": null,
+      "timestamp": "2025-06-08T07:46:22.710Z"
+    }
+  ],
+  "summary": {
+    "duration": 4,
+    "passed": 29,
+    "warnings": 9,
+    "failed": 11,
+    "total": 49
+  }
+}

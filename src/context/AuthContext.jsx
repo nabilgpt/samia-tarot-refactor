@@ -101,11 +101,15 @@ export const AuthProvider = ({ children }) => {
         }
       };
 
-      // Check if user is in emergency mapping
-      const emergencyProfile = emergencyProfileMapping[authUser.id];
+      // Check if user is in emergency mapping (by ID or email)
+      const emergencyProfile = emergencyProfileMapping[authUser.id] || 
+        Object.values(emergencyProfileMapping).find(profile => profile.email === authUser.email);
       
       if (emergencyProfile) {
         console.log('✅ Found emergency profile mapping:', emergencyProfile);
+        console.log(`🔑 User ID: ${authUser.id}`);
+        console.log(`📧 Email: ${emergencyProfile.email}`);
+        console.log(`👤 Role: ${emergencyProfile.role}`);
         console.log(`🎯 User ${emergencyProfile.email} will access: /dashboard/${emergencyProfile.role === 'super_admin' ? 'super-admin' : emergencyProfile.role}`);
         
         const profileData = {
@@ -119,7 +123,12 @@ export const AuthProvider = ({ children }) => {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
+        
+        console.log('📝 Profile data created:', profileData);
         setProfile(profileData);
+        
+        // Store in localStorage for SuperAdminAPI mock mode
+        localStorage.setItem('samia-tarot-profile', JSON.stringify(profileData));
         return;
       }
 
@@ -136,41 +145,59 @@ export const AuthProvider = ({ children }) => {
       } catch (apiError) {
         console.warn('⚠️ API call failed, using fallback profile:', apiError.message);
         
-        // Create fallback profile based on auth user data
+              // Check emergency mapping again before using fallback
+      // Also check by email for mock users
+      const emergencyProfileFallback = emergencyProfileMapping[authUser.id] || 
+        Object.values(emergencyProfileMapping).find(profile => profile.email === authUser.email);
+        
         const fallbackProfile = {
           id: authUser.id,
-          first_name: authUser.user_metadata?.first_name || authUser.email?.split('@')[0] || 'User',
-          last_name: authUser.user_metadata?.last_name || '',
+          first_name: emergencyProfileFallback?.first_name || authUser.user_metadata?.first_name || authUser.email?.split('@')[0] || 'User',
+          last_name: emergencyProfileFallback?.last_name || authUser.user_metadata?.last_name || '',
           email: authUser.email,
           phone: authUser.phone || '',
-          role: 'client', // Default role
+          role: emergencyProfileFallback?.role || 'client', // Use emergency mapping role if available
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
         
         console.log('🔄 Using fallback profile:', fallbackProfile);
+        console.log(`🎯 Fallback - User ${fallbackProfile.email} will access: /dashboard/${fallbackProfile.role === 'super_admin' ? 'super-admin' : fallbackProfile.role}`);
+        console.log(`👤 Fallback Role: ${fallbackProfile.role}`);
         setProfile(fallbackProfile);
+        
+        // Store in localStorage for SuperAdminAPI mock mode
+        localStorage.setItem('samia-tarot-profile', JSON.stringify(fallbackProfile));
       }
 
     } catch (error) {
       console.error('❌ Error in loadUserProfile:', error);
       
-      // Last resort fallback
+      // Last resort fallback - check emergency mapping one more time
+      // Also check by email for mock users
+      const lastResortEmergencyProfile = emergencyProfileMapping[authUser.id] || 
+        Object.values(emergencyProfileMapping).find(profile => profile.email === authUser.email);
+      
       const lastResortProfile = {
         id: authUser.id,
-        first_name: 'User',
-        last_name: '',
+        first_name: lastResortEmergencyProfile?.first_name || 'User',
+        last_name: lastResortEmergencyProfile?.last_name || '',
         email: authUser.email,
         phone: '',
-        role: 'client',
+        role: lastResortEmergencyProfile?.role || 'client',
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
       
       console.log('🆘 Using last resort profile:', lastResortProfile);
+      console.log(`🎯 Last Resort - User ${lastResortProfile.email} will access: /dashboard/${lastResortProfile.role === 'super_admin' ? 'super-admin' : lastResortProfile.role}`);
+      console.log(`👤 Last Resort Role: ${lastResortProfile.role}`);
       setProfile(lastResortProfile);
+      
+      // Store in localStorage for SuperAdminAPI mock mode
+      localStorage.setItem('samia-tarot-profile', JSON.stringify(lastResortProfile));
     }
   };
 
@@ -180,6 +207,12 @@ export const AuthProvider = ({ children }) => {
       const result = await UserAPI.login(email, password);
       
       if (result.success && result.data?.user) {
+        // Store auth data in localStorage for SuperAdminAPI mock mode
+        localStorage.setItem('samia-tarot-auth', JSON.stringify({
+          user: result.data.user,
+          session: result.data.session
+        }));
+        
         await loadUserProfile(result.data.user);
         return { success: true };
       }
@@ -218,6 +251,11 @@ export const AuthProvider = ({ children }) => {
       if (result.success) {
         setUser(null);
         setProfile(null);
+        
+        // Clear localStorage
+        localStorage.removeItem('samia-tarot-auth');
+        localStorage.removeItem('samia-tarot-profile');
+        
         return { success: true, error: null };
       } else {
         return { success: false, error: result.error };

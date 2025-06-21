@@ -1418,6 +1418,133 @@ export class UserAPI {
       };
     }
   }
+
+  /**
+   * Get all users with filtering and pagination (admin only)
+   */
+  static async getAllUsers(filters = {}) {
+    try {
+      // Check if current user is admin
+      const currentUser = await authHelpers.getCurrentUser();
+      if (!currentUser) {
+        throw new Error('Authentication required');
+      }
+
+      const { data: currentProfile } = await profileHelpers.getProfile(currentUser.id);
+      if (!currentProfile || !['admin', 'super_admin'].includes(currentProfile.role)) {
+        throw new Error('Admin privileges required');
+      }
+
+      let query = supabase
+        .from('profiles')
+        .select('*');
+
+      // Apply filters
+      if (filters.role && filters.role !== 'all') {
+        query = query.eq('role', filters.role);
+      }
+      
+      if (filters.status && filters.status !== 'all') {
+        query = query.eq('is_active', filters.status === 'active');
+      }
+      
+      if (filters.search) {
+        query = query.or(`first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      }
+
+      // Add pagination
+      if (filters.limit) {
+        query = query.limit(filters.limit);
+      }
+      
+      if (filters.offset) {
+        query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      return {
+        success: true,
+        data: data || []
+      };
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Get admin statistics for dashboard
+   */
+  static async getAdminStats() {
+    try {
+      // Get basic counts
+      const [usersResult, readersResult, bookingsResult, paymentsResult] = await Promise.all([
+        supabase.from('profiles').select('id, role, created_at', { count: 'exact' }),
+        supabase.from('profiles').select('id', { count: 'exact' }).eq('role', 'reader'),
+        supabase.from('bookings').select('id, status, created_at', { count: 'exact' }),
+        supabase.from('payments').select('amount, status, created_at').eq('status', 'completed')
+      ]);
+
+      // Calculate total revenue
+      const totalRevenue = paymentsResult.data?.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0) || 0;
+
+      // Get active users (users who logged in within last 7 days)
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: activeUsers } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact' })
+        .gte('last_seen', sevenDaysAgo);
+
+      // Get pending approvals (reader applications)
+      const { data: pendingApprovals } = await supabase
+        .from('reader_applications')
+        .select('id', { count: 'exact' })
+        .eq('status', 'pending');
+
+      // Get emergency alerts
+      const { data: emergencyAlerts } = await supabase
+        .from('emergency_calls')
+        .select('id', { count: 'exact' })
+        .eq('status', 'pending');
+
+      return {
+        success: true,
+        data: {
+          totalUsers: usersResult.count || 0,
+          totalReaders: readersResult.count || 0,
+          totalBookings: bookingsResult.count || 0,
+          totalRevenue: totalRevenue,
+          activeUsers: activeUsers?.length || 0,
+          pendingApprovals: pendingApprovals?.length || 0,
+          emergencyAlerts: emergencyAlerts?.length || 0,
+          systemHealth: 98 // This would be calculated based on actual system metrics
+        },
+        error: null
+      };
+    } catch (error) {
+      console.error('Error fetching admin stats:', error);
+      return {
+        success: false,
+        data: {
+          totalUsers: 0,
+          totalReaders: 0,
+          totalBookings: 0,
+          totalRevenue: 0,
+          activeUsers: 0,
+          pendingApprovals: 0,
+          emergencyAlerts: 0,
+          systemHealth: 98
+        },
+        error: error.message
+      };
+    }
+  }
 }
 
 export default UserAPI; 

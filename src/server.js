@@ -232,6 +232,14 @@ app.use('/api/bookings', require('./api/bookings').router);
 app.use('/api/payments', require('./api/payments').router);
 app.use('/api/chat', require('./api/chat').router);
 
+// Advanced Admin Routes
+try {
+  app.use('/api/admin/advanced', require('./api/routes/advancedAdminRoutesV2'));
+  console.log('✅ Advanced admin routes loaded successfully');
+} catch (error) {
+  console.warn('⚠️  Advanced admin routes not found, skipping...');
+}
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({

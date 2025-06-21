@@ -40,77 +40,34 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      // Fallback UI
-      const { fallback: FallbackComponent, showDetails = false } = this.props;
-
-      // If a custom fallback component is provided, use it
-      if (FallbackComponent) {
-        return (
-          <FallbackComponent 
-            error={this.state.error} 
-            errorInfo={this.state.errorInfo}
-            onRetry={this.handleRetry}
-          />
-        );
-      }
-
-      // Default fallback UI
       return (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="p-6"
-        >
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-8 h-8 text-red-400" />
-            </div>
-            
-            <h3 className="text-xl font-bold text-white mb-2">
-              Something went wrong
-            </h3>
-            
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+          <div className="bg-gray-800 rounded-lg p-8 max-w-lg w-full text-center">
+            <div className="text-red-400 text-6xl mb-4">⚠️</div>
+            <h1 className="text-2xl font-bold text-white mb-4">Something went wrong</h1>
             <p className="text-gray-300 mb-6">
-              An error occurred while loading this section. This doesn&apos;t affect the rest of the dashboard.
+              The application encountered an unexpected error. Please refresh the page or try again later.
             </p>
-
-            {showDetails && this.state.error && (
-              <div className="mb-6 p-4 bg-gray-900/50 rounded-lg text-left">
-                <p className="text-red-300 text-sm font-mono">
-                  {this.state.error.toString()}
-                </p>
-                {this.state.errorInfo && (
-                  <details className="mt-2">
-                    <summary className="text-gray-400 text-sm cursor-pointer">
-                      Error Details
-                    </summary>
-                    <pre className="text-xs text-gray-500 mt-2 overflow-x-auto">
-                      {this.state.errorInfo.componentStack}
-                    </pre>
-                  </details>
-                )}
-              </div>
+            
+            {process.env.NODE_ENV === 'development' && (
+              <details className="text-left bg-gray-700 p-4 rounded mb-4">
+                <summary className="text-red-400 cursor-pointer mb-2">Error Details</summary>
+                <pre className="text-xs text-gray-300 overflow-auto">
+                  {this.state.error && this.state.error.toString()}
+                  <br />
+                  {this.state.errorInfo.componentStack}
+                </pre>
+              </details>
             )}
-
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={this.handleRetry}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Try Again
-              </button>
-              
-              <button
-                onClick={() => window.location.reload()}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-              >
-                <Home className="w-4 h-4" />
-                Refresh Page
-              </button>
-            </div>
+            
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              Refresh Page
+            </button>
           </div>
-        </motion.div>
+        </div>
       );
     }
 

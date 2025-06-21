@@ -17,6 +17,7 @@ import AuditLogsTab from './SuperAdmin/AuditLogsTab.jsx';
 import DatabaseManagementTab from './SuperAdmin/DatabaseManagementTab.jsx';
 import FinancialControlsTab from './SuperAdmin/FinancialControlsTab.jsx';
 import ImpersonationPanel from './SuperAdmin/ImpersonationPanel.jsx';
+import SystemSecretsTab from '../../components/Admin/SystemSecretsTab.jsx';
 
 const SuperAdminDashboard = () => {
   const { t } = useTranslation();
@@ -189,6 +190,12 @@ const SuperAdminDashboard = () => {
             <ImpersonationPanel />
           </ErrorBoundary>
         );
+      case 'secrets':
+        return (
+          <ErrorBoundary>
+            <SystemSecretsTab />
+          </ErrorBoundary>
+        );
       default:
         return (
           <ErrorBoundary>
@@ -224,6 +231,7 @@ const SuperAdminDashboard = () => {
               {[
                 { id: 'users', label: language === 'ar' ? 'إدارة المستخدمين' : 'User Management' },
                 { id: 'system', label: language === 'ar' ? 'إعدادات النظام' : 'System Settings' },
+                { id: 'secrets', label: language === 'ar' ? 'المفاتيح السرية' : 'System Secrets' },
                 { id: 'realtime', label: language === 'ar' ? 'التحكم المباشر' : 'Real-Time Controls' },
                 { id: 'database', label: language === 'ar' ? 'إدارة قاعدة البيانات' : 'Database Management' },
                 { id: 'financial', label: language === 'ar' ? 'التحكم المالي' : 'Financial Controls' },

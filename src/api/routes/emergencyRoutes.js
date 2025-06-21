@@ -108,7 +108,7 @@ router.post('/anonymous-request', [emergencyRequestLimit, validateEmergencyReque
  * Trigger panic button (immediate highest priority emergency)
  * Body: { location, additional_info }
  */
-router.post('/panic-button', emergencyRequestAuth, emergencyController.triggerPanicButton);
+router.post('/panic-button', [...emergencyRequestAuth], emergencyController.triggerPanicButton);
 
 /**
  * POST /api/emergency/session/:session_id/escalate
@@ -127,14 +127,14 @@ router.post('/session/:session_id/escalate', [...userAuth, validateEmergencyEsca
  * Get all pending emergency requests (responders only)
  * Query params: severity, type, page, limit, unassigned_only
  */
-router.get('/pending', responderAuth, emergencyController.getPendingEmergencies);
+router.get('/pending', [...responderAuth], emergencyController.getPendingEmergencies);
 
 /**
  * GET /api/emergency/active
  * Get all active emergency responses (responders only)
  * Query params: assigned_to, severity, page, limit
  */
-router.get('/active', responderAuth, emergencyController.getActiveEmergencies);
+router.get('/active', [...responderAuth], emergencyController.getActiveEmergencies);
 
 /**
  * POST /api/emergency/:id/accept
@@ -178,7 +178,7 @@ router.post('/:id/escalate', [...responderAuth, validateEmergencyEscalation], em
  * URL params: id (emergency_id)
  * Body: { alert_type, recipients, message, channels }
  */
-router.post('/:id/alert', responderAuth, emergencyController.sendEmergencyAlert);
+router.post('/:id/alert', [...responderAuth], emergencyController.sendEmergencyAlert);
 
 /**
  * POST /api/emergency/:id/siren
@@ -186,14 +186,14 @@ router.post('/:id/alert', responderAuth, emergencyController.sendEmergencyAlert)
  * URL params: id (emergency_id)
  * Body: { siren_type, duration_seconds, message }
  */
-router.post('/:id/siren', responderAuth, emergencyController.triggerEmergencySiren);
+router.post('/:id/siren', [...responderAuth], emergencyController.triggerEmergencySiren);
 
 /**
  * POST /api/emergency/broadcast-alert
  * Broadcast emergency alert to all staff (admin only)
  * Body: { emergency_type, message, severity, departments }
  */
-router.post('/broadcast-alert', adminAuth, emergencyController.broadcastEmergencyAlert);
+router.post('/broadcast-alert', [...adminAuth], emergencyController.broadcastEmergencyAlert);
 
 // =============================================================================
 // 4. EMERGENCY RESOLUTION & FOLLOW-UP
@@ -221,7 +221,7 @@ router.post('/:id/close', [...adminAuth, validateEmergencyResolution], emergency
  * URL params: id (emergency_id)
  * Body: { follow_up_type, notes, schedule_date, assigned_to }
  */
-router.post('/:id/follow-up', responderAuth, emergencyController.addFollowUp);
+router.post('/:id/follow-up', [...responderAuth], emergencyController.addFollowUp);
 
 /**
  * PUT /api/emergency/:id/status
@@ -229,7 +229,7 @@ router.post('/:id/follow-up', responderAuth, emergencyController.addFollowUp);
  * URL params: id (emergency_id)
  * Body: { status, status_reason, estimated_resolution }
  */
-router.put('/:id/status', responderAuth, emergencyController.updateEmergencyStatus);
+router.put('/:id/status', [...responderAuth], emergencyController.updateEmergencyStatus);
 
 // =============================================================================
 // 5. EMERGENCY INFORMATION & TRACKING
@@ -240,14 +240,14 @@ router.put('/:id/status', responderAuth, emergencyController.updateEmergencyStat
  * Get specific emergency details
  * URL params: id (emergency_id)
  */
-router.get('/:id', responderAuth, emergencyController.getEmergencyDetails);
+router.get('/:id', [...responderAuth], emergencyController.getEmergencyDetails);
 
 /**
  * GET /api/emergency/:id/timeline
  * Get emergency response timeline
  * URL params: id (emergency_id)
  */
-router.get('/:id/timeline', responderAuth, emergencyController.getEmergencyTimeline);
+router.get('/:id/timeline', [...responderAuth], emergencyController.getEmergencyTimeline);
 
 /**
  * GET /api/emergency/user/:user_id/history
@@ -255,14 +255,14 @@ router.get('/:id/timeline', responderAuth, emergencyController.getEmergencyTimel
  * URL params: user_id
  * Query params: page, limit, status, date_from, date_to
  */
-router.get('/user/:user_id/history', adminAuth, emergencyController.getUserEmergencyHistory);
+router.get('/user/:user_id/history', [...adminAuth], emergencyController.getUserEmergencyHistory);
 
 /**
  * GET /api/emergency/my-requests
  * Get current user's emergency requests
  * Query params: status, page, limit
  */
-router.get('/my-requests', userAuth, emergencyController.getMyEmergencyRequests);
+router.get('/my-requests', [...userAuth], emergencyController.getMyEmergencyRequests);
 
 // =============================================================================
 // 6. EMERGENCY CONFIGURATION & SETTINGS
@@ -272,14 +272,14 @@ router.get('/my-requests', userAuth, emergencyController.getMyEmergencyRequests)
  * GET /api/emergency/types
  * Get available emergency types and their configurations
  */
-router.get('/types', userAuth, emergencyController.getEmergencyTypes);
+router.get('/types', [...userAuth], emergencyController.getEmergencyTypes);
 
 /**
  * GET /api/emergency/responders
  * Get available emergency responders (admin only)
  * Query params: available_only, specialization, location
  */
-router.get('/responders', adminAuth, emergencyController.getEmergencyResponders);
+router.get('/responders', [...adminAuth], emergencyController.getEmergencyResponders);
 
 /**
  * POST /api/emergency/responders/:id/availability
@@ -287,20 +287,20 @@ router.get('/responders', adminAuth, emergencyController.getEmergencyResponders)
  * URL params: id (responder_id)
  * Body: { available, specializations, max_concurrent, notes }
  */
-router.post('/responders/:id/availability', responderAuth, emergencyController.updateResponderAvailability);
+router.post('/responders/:id/availability', [...responderAuth], emergencyController.updateResponderAvailability);
 
 /**
  * GET /api/emergency/settings
  * Get emergency system settings (admin only)
  */
-router.get('/settings', adminAuth, emergencyController.getEmergencySettings);
+router.get('/settings', [...adminAuth], emergencyController.getEmergencySettings);
 
 /**
  * PUT /api/emergency/settings
  * Update emergency system settings (admin only)
  * Body: { auto_assignment, escalation_timeouts, alert_intervals, external_services }
  */
-router.put('/settings', adminAuth, emergencyController.updateEmergencySettings);
+router.put('/settings', [...adminAuth], emergencyController.updateEmergencySettings);
 
 // =============================================================================
 // 7. EMERGENCY ANALYTICS & REPORTING
@@ -311,28 +311,28 @@ router.put('/settings', adminAuth, emergencyController.updateEmergencySettings);
  * Get emergency system analytics (admin only)
  * Query params: date_from, date_to, type, severity, responder_id
  */
-router.get('/analytics', adminAuth, emergencyController.getEmergencyAnalytics);
+router.get('/analytics', [...adminAuth], emergencyController.getEmergencyAnalytics);
 
 /**
  * GET /api/emergency/response-times
  * Get emergency response time statistics
  * Query params: period, type, responder_id
  */
-router.get('/response-times', adminAuth, emergencyController.getResponseTimeAnalytics);
+router.get('/response-times', [...adminAuth], emergencyController.getResponseTimeAnalytics);
 
 /**
  * GET /api/emergency/performance
  * Get emergency system performance metrics
  * Query params: date_from, date_to, metrics
  */
-router.get('/performance', adminAuth, emergencyController.getEmergencyPerformance);
+router.get('/performance', [...adminAuth], emergencyController.getEmergencyPerformance);
 
 /**
  * POST /api/emergency/reports/generate
  * Generate emergency system report (admin only)
  * Body: { report_type, date_from, date_to, filters, format }
  */
-router.post('/reports/generate', adminAuth, emergencyController.generateEmergencyReport);
+router.post('/reports/generate', [...adminAuth], emergencyController.generateEmergencyReport);
 
 // =============================================================================
 // 8. REAL-TIME EMERGENCY MONITORING
@@ -342,27 +342,27 @@ router.post('/reports/generate', adminAuth, emergencyController.generateEmergenc
  * GET /api/emergency/monitor/dashboard
  * Get real-time emergency monitoring dashboard
  */
-router.get('/monitor/dashboard', responderAuth, emergencyController.getEmergencyMonitorDashboard);
+router.get('/monitor/dashboard', [...responderAuth], emergencyController.getEmergencyMonitorDashboard);
 
 /**
  * GET /api/emergency/monitor/alerts
  * Get active emergency alerts
  * Query params: severity, type, unacknowledged_only
  */
-router.get('/monitor/alerts', responderAuth, emergencyController.getActiveEmergencyAlerts);
+router.get('/monitor/alerts', [...responderAuth], emergencyController.getActiveEmergencyAlerts);
 
 /**
  * POST /api/emergency/monitor/heartbeat
  * Update responder heartbeat/availability
  * Body: { status, location, specializations }
  */
-router.post('/monitor/heartbeat', responderAuth, emergencyController.updateResponderHeartbeat);
+router.post('/monitor/heartbeat', [...responderAuth], emergencyController.updateResponderHeartbeat);
 
 /**
  * GET /api/emergency/monitor/queue
  * Get emergency response queue status
  */
-router.get('/monitor/queue', responderAuth, emergencyController.getEmergencyQueue);
+router.get('/monitor/queue', [...responderAuth], emergencyController.getEmergencyQueue);
 
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE

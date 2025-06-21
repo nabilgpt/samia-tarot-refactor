@@ -3,15 +3,20 @@ import { createClient } from '@supabase/supabase-js';
 // Supabase configuration using environment variables ONLY
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabaseServiceRoleKey = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseServiceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
-// Check for development/placeholder values
-const isDevelopmentMode = !supabaseUrl || 
+// Check for development/placeholder values or explicit development mode
+const isDevelopmentMode = false || // PRODUCTION MODE - USE REAL SUPABASE
+  import.meta.env.VITE_FORCE_MOCK_MODE ||
+  import.meta.env.VITE_ENABLE_MOCK_AUTH || 
+  !supabaseUrl || 
   supabaseUrl.includes('placeholder') || 
   supabaseUrl.includes('your-project-id') ||
   !supabaseAnonKey || 
   supabaseAnonKey.includes('placeholder') ||
   supabaseAnonKey.includes('your_supabase');
+
+console.log('🔧 Supabase Development Mode:', isDevelopmentMode);
 
 // Validate required environment variables
 if (!supabaseUrl) {
@@ -34,6 +39,16 @@ if (!supabaseServiceRoleKey && !isDevelopmentMode) {
   console.warn('Missing SUPABASE_SERVICE_ROLE_KEY - admin operations will be disabled');
 }
 
+// Emergency profile mapping for mock mode
+const emergencyProfileMapping = {
+  'c3922fea-329a-4d6e-800c-3e03c9fe341d': { email: 'info@samiatarot.com', role: 'super_admin' },
+  'c1a12781-5fef-46df-a1fc-2bf4e4cb6356': { email: 'nabilgpt.en@gmail.com', role: 'reader' },
+  'e2a4228e-7ce7-4463-8be7-c1c0d47e669e': { email: 'saeeeel@gmail.com', role: 'admin' },
+  'ebe682e9-06c8-4daa-a5d2-106e74313467': { email: 'tarotsamia@gmail.com', role: 'client' },
+  'e4161dcc-9d18-49c9-8d93-76ab8b75dc0a': { email: 'nabilzein@gmail.com', role: 'monitor' },
+  '0a28e972-9cc9-479b-aa1e-fafc5856af18': { email: 'super-admin-1748982300604@samiatarot.com', role: 'super_admin' }
+};
+
 // Create mock client for development mode
 const createMockSupabaseClient = () => {
   console.log('🔧 Creating mock Supabase client for development...');
@@ -43,27 +58,110 @@ const createMockSupabaseClient = () => {
       getUser: async () => ({ data: { user: null }, error: { message: 'Mock mode - no real authentication' } }),
       getSession: async () => ({ data: { session: null }, error: null }),
       signOut: async () => ({ error: null }),
+      signInWithPassword: async ({ email, password }) => {
+        console.log('🔧 Mock signInWithPassword called with:', email);
+        
+        // Find user in emergency mapping
+        const emergencyProfile = Object.entries(emergencyProfileMapping).find(([id, profile]) => profile.email === email);
+        const userId = emergencyProfile ? emergencyProfile[0] : 'mock-user-123';
+        
+        console.log('🔧 Mock login - Found emergency profile:', emergencyProfile);
+        console.log('🔧 Mock login - Using user ID:', userId);
+        
+        // Mock successful login for development
+        const mockUser = {
+          id: userId,
+          email: email,
+          user_metadata: { full_name: 'Development User' }
+        };
+        return { 
+          data: { 
+            user: mockUser, 
+            session: { user: mockUser, access_token: 'mock-token' } 
+          }, 
+          error: null 
+        };
+      },
+      signUp: async ({ email, password, options }) => {
+        console.log('🔧 Mock signUp called with:', email);
+        
+        // Find user in emergency mapping
+        const emergencyProfile = Object.entries(emergencyProfileMapping).find(([id, profile]) => profile.email === email);
+        const userId = emergencyProfile ? emergencyProfile[0] : 'mock-user-123';
+        
+        // Mock successful signup for development
+        const mockUser = {
+          id: userId,
+          email: email,
+          user_metadata: options?.data || { full_name: 'Development User' }
+        };
+        return { 
+          data: { 
+            user: mockUser, 
+            session: { user: mockUser, access_token: 'mock-token' } 
+          }, 
+          error: null 
+        };
+      },
+      signInWithOtp: async ({ phone, options }) => {
+        console.log('🔧 Mock signInWithOtp called with:', phone);
+        return { data: { user: null, session: null }, error: null };
+      },
+      verifyOtp: async ({ phone, token, type }) => {
+        console.log('🔧 Mock verifyOtp called');
+        return { data: { user: null, session: null }, error: null };
+      },
       onAuthStateChange: (callback) => {
-        // Mock auth state change
-        setTimeout(() => callback('SIGNED_OUT', null), 100);
+        // Mock auth state change - check for stored session
+        setTimeout(() => {
+          const storedAuth = localStorage.getItem('samia-tarot-auth');
+          if (storedAuth) {
+            try {
+              const authData = JSON.parse(storedAuth);
+              console.log('🔧 Mock onAuthStateChange: Found stored session, triggering SIGNED_IN');
+              callback('SIGNED_IN', authData.session || { user: authData.user });
+            } catch (error) {
+              console.warn('🔧 Mock onAuthStateChange: Failed to parse stored auth, triggering SIGNED_OUT');
+              callback('SIGNED_OUT', null);
+            }
+          } else {
+            console.log('🔧 Mock onAuthStateChange: No stored session, triggering SIGNED_OUT');
+            callback('SIGNED_OUT', null);
+          }
+        }, 100);
         return { data: { subscription: { unsubscribe: () => {} } } };
       }
     },
     from: (table) => ({
-      select: () => ({ 
-        data: [], 
-        error: { message: `Mock mode - table "${table}" not available` },
-        single: async () => ({ data: null, error: { message: `Mock mode - no data for table "${table}"` } }),
-        limit: () => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
-        order: () => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
-        eq: () => ({ 
+      select: (columns) => { 
+        const query = {
           data: [], 
           error: { message: `Mock mode - table "${table}" not available` },
-          single: async () => ({ data: null, error: { message: `Mock mode - no data for table "${table}"` } })
-        }),
-        gte: () => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
-        lte: () => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } })
-      }),
+          single: async () => ({ data: null, error: { message: `Mock mode - no data for table "${table}"` } }),
+          limit: (count) => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
+          order: (column, options) => ({ 
+            data: [], 
+            error: { message: `Mock mode - table "${table}" not available` },
+            range: (from, to) => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
+            limit: (count) => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } })
+          }),
+          eq: (column, value) => ({ 
+            data: [], 
+            error: { message: `Mock mode - table "${table}" not available` },
+            single: async () => ({ data: null, error: { message: `Mock mode - no data for table "${table}"` } }),
+            order: (column, options) => ({ 
+              data: [], 
+              error: { message: `Mock mode - table "${table}" not available` },
+              limit: (count) => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } })
+            })
+          }),
+          gte: (column, value) => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
+          lte: (column, value) => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
+          range: (from, to) => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } }),
+          group: (column) => ({ data: [], error: { message: `Mock mode - table "${table}" not available` } })
+        };
+        return query;
+      },
       insert: () => ({ 
         data: null, 
         error: { message: `Mock mode - cannot insert into table "${table}"` },
@@ -71,6 +169,15 @@ const createMockSupabaseClient = () => {
           data: null, 
           error: { message: `Mock mode - cannot insert into table "${table}"` },
           single: async () => ({ data: null, error: { message: `Mock mode - cannot insert into table "${table}"` } })
+        })
+      }),
+      upsert: (data, options) => ({ 
+        data: null, 
+        error: { message: `Mock mode - cannot upsert into table "${table}"` },
+        select: () => ({ 
+          data: null, 
+          error: { message: `Mock mode - cannot upsert into table "${table}"` },
+          single: async () => ({ data: null, error: { message: `Mock mode - cannot upsert into table "${table}"` } })
         })
       }),
       update: () => ({ 
@@ -98,27 +205,51 @@ const createMockSupabaseClient = () => {
   };
 };
 
-// Create and export the Supabase client
-export const supabase = isDevelopmentMode ? 
-  createMockSupabaseClient() : 
-  createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true
-    }
-  });
+// Singleton pattern to prevent multiple instances
+let _supabaseClient = null;
+let _supabaseAdminClient = null;
+
+// Create and export the Supabase client with singleton pattern
+const createSupabaseClient = () => {
+  if (_supabaseClient) return _supabaseClient;
+  
+  if (isDevelopmentMode) {
+    _supabaseClient = createMockSupabaseClient();
+  } else {
+    _supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        storageKey: 'samia-tarot-auth'
+      }
+    });
+  }
+  
+  return _supabaseClient;
+};
 
 // Create admin client with service role key for admin operations
-// Fallback to regular client if service role key is not available
-export const supabaseAdmin = (!isDevelopmentMode && supabaseServiceRoleKey) 
-  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+const createSupabaseAdminClient = () => {
+  if (_supabaseAdminClient) return _supabaseAdminClient;
+  
+  if (!isDevelopmentMode && supabaseServiceRoleKey) {
+    _supabaseAdminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
+        persistSession: false,
+        storageKey: 'samia-tarot-admin-auth'
       }
-    })
-  : supabase; // Use regular client as fallback
+    });
+  } else {
+    _supabaseAdminClient = createSupabaseClient(); // Use regular client as fallback
+  }
+  
+  return _supabaseAdminClient;
+};
+
+export const supabase = createSupabaseClient();
+export const supabaseAdmin = createSupabaseAdminClient();
 
 // Helper functions for common operations
 export const auth = supabase.auth;
@@ -238,6 +369,21 @@ export const authHelpers = {
   // Get current user
   getCurrentUser: async () => {
     if (isDevelopmentMode) {
+      console.log('🔧 Mock mode: Checking for stored user...');
+      
+      // Check localStorage for stored user
+      const storedAuth = localStorage.getItem('samia-tarot-auth');
+      if (storedAuth) {
+        try {
+          const authData = JSON.parse(storedAuth);
+          console.log('🔧 Mock mode: Found stored user:', authData.user?.email);
+          return authData.user;
+        } catch (error) {
+          console.warn('🔧 Mock mode: Failed to parse stored auth data:', error);
+          localStorage.removeItem('samia-tarot-auth');
+        }
+      }
+      
       console.log('🔧 Mock mode: No user authentication');
       return null;
     }
@@ -248,6 +394,21 @@ export const authHelpers = {
   // Get current session
   getCurrentSession: async () => {
     if (isDevelopmentMode) {
+      console.log('🔧 Mock mode: Checking for stored session...');
+      
+      // Check localStorage for stored session
+      const storedAuth = localStorage.getItem('samia-tarot-auth');
+      if (storedAuth) {
+        try {
+          const authData = JSON.parse(storedAuth);
+          console.log('🔧 Mock mode: Found stored session for user:', authData.user?.email);
+          return authData.session || { user: authData.user };
+        } catch (error) {
+          console.warn('🔧 Mock mode: Failed to parse stored auth data:', error);
+          localStorage.removeItem('samia-tarot-auth');
+        }
+      }
+      
       console.log('🔧 Mock mode: No session available');
       return null;
     }
@@ -258,7 +419,12 @@ export const authHelpers = {
   // Sign out
   signOut: async () => {
     if (isDevelopmentMode) {
-      console.log('🔧 Mock mode: Sign out simulation');
+      console.log('🔧 Mock mode: Signing out and clearing localStorage');
+      
+      // Clear stored auth data
+      localStorage.removeItem('samia-tarot-auth');
+      localStorage.removeItem('samia-tarot-profile');
+      
       return { error: null };
     }
     const { error } = await supabase.auth.signOut();

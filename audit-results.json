@@ -1,0 +1,2097 @@
+{
+  "timestamp": "2025-06-18T12:54:56.464Z",
+  "summary": {
+    "totalFiles": 1319,
+    "totalDirectories": 170,
+    "codeFiles": 399,
+    "configFiles": 15,
+    "documentationFiles": 110,
+    "testFiles": 5,
+    "issues": [
+      {
+        "type": "INFO",
+        "message": "Consider using React.StrictMode for development",
+        "location": "src/App.jsx"
+      }
+    ],
+    "recommendations": [
+      "Consider component organization and lazy loading for large component count",
+      "Consider database optimization and indexing strategy",
+      "Increase test coverage for better code quality"
+    ]
+  },
+  "frontend": {
+    "components": [
+      {
+        "path": "src\\components\\Admin\\AIMonitoringTab.jsx",
+        "name": "AIMonitoringTab.jsx",
+        "size": 24920,
+        "lines": 588,
+        "modified": "2025-05-29T20:08:10.225Z"
+      },
+      {
+        "path": "src\\components\\Admin\\AIProvidersPanel.jsx",
+        "name": "AIProvidersPanel.jsx",
+        "size": 21585,
+        "lines": 522,
+        "modified": "2025-05-29T19:11:12.331Z"
+      },
+      {
+        "path": "src\\components\\Admin\\BookingsTab.jsx",
+        "name": "BookingsTab.jsx",
+        "size": 16760,
+        "lines": 380,
+        "modified": "2025-05-27T22:02:57.864Z"
+      },
+      {
+        "path": "src\\components\\Admin\\BroadcastNotifications.jsx",
+        "name": "BroadcastNotifications.jsx",
+        "size": 35836,
+        "lines": 862,
+        "modified": "2025-06-03T15:45:48.333Z"
+      },
+      {
+        "path": "src\\components\\Admin\\CallMonitoringTab.jsx",
+        "name": "CallMonitoringTab.jsx",
+        "size": 22342,
+        "lines": 550,
+        "modified": "2025-05-29T20:02:50.404Z"
+      },
+      {
+        "path": "src\\components\\Admin\\ConfigurationPanel.jsx",
+        "name": "ConfigurationPanel.jsx",
+        "size": 34745,
+        "lines": 807,
+        "modified": "2025-06-05T14:44:35.852Z"
+      },
+      {
+        "path": "src\\components\\Admin\\DatabaseStoragePanel.jsx",
+        "name": "DatabaseStoragePanel.jsx",
+        "size": 21866,
+        "lines": 498,
+        "modified": "2025-06-05T14:45:02.468Z"
+      },
+      {
+        "path": "src\\components\\Admin\\EmergencyAlertsBell.jsx",
+        "name": "EmergencyAlertsBell.jsx",
+        "size": 5196,
+        "lines": 144,
+        "modified": "2025-05-29T19:46:29.638Z"
+      },
+      {
+        "path": "src\\components\\Admin\\EmergencyAlertsTab.jsx",
+        "name": "EmergencyAlertsTab.jsx",
+        "size": 14129,
+        "lines": 373,
+        "modified": "2025-05-29T19:45:58.278Z"
+      },
+      {
+        "path": "src\\components\\Admin\\Enhanced\\Analytics.jsx",
+        "name": "Analytics.jsx",
+        "size": 451,
+        "lines": 17,
+        "modified": "2025-06-03T20:51:31.615Z"
+      },
+      {
+        "path": "src\\components\\Admin\\Enhanced\\ApprovalQueue.jsx",
+        "name": "ApprovalQueue.jsx",
+        "size": 26758,
+        "lines": 690,
+        "modified": "2025-06-05T09:10:16.030Z"
+      },
+      {
+        "path": "src\\components\\Admin\\Enhanced\\BookingsManagement.jsx",
+        "name": "BookingsManagement.jsx",
+        "size": 420,
+        "lines": 17,
+        "modified": "2025-06-03T20:50:22.471Z"
+      },
+      {
+        "path": "src\\components\\Admin\\Enhanced\\DashboardOverview.jsx",
+        "name": "DashboardOverview.jsx",
+        "size": 13939,
+        "lines": 390,
+        "modified": "2025-06-03T20:43:30.993Z"
+      },
+      {
+        "path": "src\\components\\Admin\\Enhanced\\MonitoringAndReports.jsx",
+        "name": "MonitoringAndReports.jsx",
+        "size": 430,
+        "lines": 17,
+        "modified": "2025-06-03T20:51:13.495Z"
+      },
+      {
+        "path": "src\\components\\Admin\\Enhanced\\NotificationsSystem.jsx",
+        "name": "NotificationsSystem.jsx",
+        "size": 36015,
+        "lines": 769,
+        "modified": "2025-06-04T04:51:46.764Z"
+      },
+      {
+        "path": "src\\components\\Admin\\Enhanced\\PaymentsAndWallets.jsx",
+        "name": "PaymentsAndWallets.jsx",
+        "size": 3927,
+        "lines": 121,
+        "modified": "2025-06-16T14:55:50.825Z"
+      },
+      {
+        "path": "src\\components\\Admin\\Enhanced\\ServicesManagement.jsx",
+        "name": "ServicesManagement.jsx",
+        "size": 28068,
+        "lines": 609,
+        "modified": "2025-06-04T07:07:55.895Z"
+      },
+      {
+        "path": "src\\components\\Admin\\Enhanced\\SupportTools.jsx",
+        "name": "SupportTools.jsx",
+        "size": 25620,
+        "lines": 570,
+        "modified": "2025-06-03T21:05:01.659Z"
+      },
+      {
+        "path": "src\\components\\Admin\\Enhanced\\UserManagement.jsx",
+        "name": "UserManagement.jsx",
+        "size": 25302,
+        "lines": 606,
+        "modified": "2025-06-03T20:45:34.996Z"
+      },
+      {
+        "path": "src\\components\\Admin\\FlaggedContentViewer.jsx",
+        "name": "FlaggedContentViewer.jsx",
+        "size": 33520,
+        "lines": 806,
+        "modified": "2025-05-29T20:30:39.941Z"
+      },
+      {
+        "path": "src\\components\\Admin\\LiveMonitoringPanel.jsx",
+        "name": "LiveMonitoringPanel.jsx",
+        "size": 29817,
+        "lines": 781,
+        "modified": "2025-05-29T20:28:33.038Z"
+      },
+      {
+        "path": "src\\components\\Admin\\MonitoringTab.jsx",
+        "name": "MonitoringTab.jsx",
+        "size": 23762,
+        "lines": 559,
+        "modified": "2025-05-27T21:27:14.036Z"
+      },
+      {
+        "path": "src\\components\\Admin\\NotificationEditModal.jsx",
+        "name": "NotificationEditModal.jsx",
+        "size": 15869,
+        "lines": 379,
+        "modified": "2025-06-03T15:45:36.931Z"
+      },
+      {
+        "path": "src\\components\\Admin\\PaymentManagement.jsx",
+        "name": "PaymentManagement.jsx",
+        "size": 14895,
+        "lines": 382,
+        "modified": "2025-05-28T18:06:02.105Z"
+      },
+      {
+        "path": "src\\components\\Admin\\PaymentMethodModal.jsx",
+        "name": "PaymentMethodModal.jsx",
+        "size": 17811,
+        "lines": 441,
+        "modified": "2025-06-16T12:55:28.700Z"
+      },
+      {
+        "path": "src\\components\\Admin\\PaymentMethodsAdmin.jsx",
+        "name": "PaymentMethodsAdmin.jsx",
+        "size": 19775,
+        "lines": 459,
+        "modified": "2025-06-05T14:45:12.591Z"
+      },
+      {
+        "path": "src\\components\\Admin\\PaymentSettingsManager.jsx",
+        "name": "PaymentSettingsManager.jsx",
+        "size": 20682,
+        "lines": 530,
+        "modified": "2025-06-18T08:20:49.354Z"
+      },
+      {
+        "path": "src\\components\\Admin\\PaymentsTab.jsx",
+        "name": "PaymentsTab.jsx",
+        "size": 20113,
+        "lines": 456,
+        "modified": "2025-06-04T13:06:27.218Z"
+      },
+      {
+        "path": "src\\components\\Admin\\RewardsManagement.jsx",
+        "name": "RewardsManagement.jsx",
+        "size": 31508,
+        "lines": 706,
+        "modified": "2025-06-16T14:53:19.130Z"
+      },
+      {
+        "path": "src\\components\\Admin\\RolesTab.jsx",
+        "name": "RolesTab.jsx",
+        "size": 15805,
+        "lines": 368,
+        "modified": "2025-05-27T21:25:48.701Z"
+      },
+      {
+        "path": "src\\components\\Admin\\ServicesTab.jsx",
+        "name": "ServicesTab.jsx",
+        "size": 13896,
+        "lines": 370,
+        "modified": "2025-05-27T21:22:37.073Z"
+      },
+      {
+        "path": "src\\components\\Admin\\SpreadApproval.jsx",
+        "name": "SpreadApproval.jsx",
+        "size": 26661,
+        "lines": 640,
+        "modified": "2025-06-05T09:08:05.736Z"
+      },
+      {
+        "path": "src\\components\\Admin\\SystemSecretsTab.jsx",
+        "name": "SystemSecretsTab.jsx",
+        "size": 32454,
+        "lines": 816,
+        "modified": "2025-06-16T18:17:23.826Z"
+      },
+      {
+        "path": "src\\components\\Admin\\SystemSettingsTab.jsx",
+        "name": "SystemSettingsTab.jsx",
+        "size": 5934,
+        "lines": 144,
+        "modified": "2025-05-29T19:13:37.450Z"
+      },
+      {
+        "path": "src\\components\\Admin\\UsersTab.jsx",
+        "name": "UsersTab.jsx",
+        "size": 14196,
+        "lines": 324,
+        "modified": "2025-05-27T21:21:43.656Z"
+      },
+      {
+        "path": "src\\components\\Admin\\WalletManagement.jsx",
+        "name": "WalletManagement.jsx",
+        "size": 15492,
+        "lines": 441,
+        "modified": "2025-05-27T21:53:52.321Z"
+      },
+      {
+        "path": "src\\components\\Admin\\WorkingHoursApprovalQueue.jsx",
+        "name": "WorkingHoursApprovalQueue.jsx",
+        "size": 26813,
+        "lines": 674,
+        "modified": "2025-06-04T08:36:56.934Z"
+      },
+      {
+        "path": "src\\components\\AI\\AIBusinessIntelligence.jsx",
+        "name": "AIBusinessIntelligence.jsx",
+        "size": 26178,
+        "lines": 707,
+        "modified": "2025-05-28T18:23:27.649Z"
+      },
+      {
+        "path": "src\\components\\Analytics\\AdminAnalyticsDashboard.jsx",
+        "name": "AdminAnalyticsDashboard.jsx",
+        "size": 7946,
+        "lines": 234,
+        "modified": "2025-05-28T18:50:42.491Z"
+      },
+      {
+        "path": "src\\components\\Analytics\\AnalyticsDashboard.jsx",
+        "name": "AnalyticsDashboard.jsx",
+        "size": 18719,
+        "lines": 451,
+        "modified": "2025-05-28T18:10:38.998Z"
+      },
+      {
+        "path": "src\\components\\Analytics\\BookingsTab.jsx",
+        "name": "BookingsTab.jsx",
+        "size": 15336,
+        "lines": 383,
+        "modified": "2025-05-28T18:54:33.658Z"
+      },
+      {
+        "path": "src\\components\\Analytics\\OverviewTab.jsx",
+        "name": "OverviewTab.jsx",
+        "size": 11169,
+        "lines": 289,
+        "modified": "2025-05-28T18:51:29.124Z"
+      },
+      {
+        "path": "src\\components\\Analytics\\QualityTab.jsx",
+        "name": "QualityTab.jsx",
+        "size": 13914,
+        "lines": 328,
+        "modified": "2025-05-28T18:55:30.532Z"
+      },
+      {
+        "path": "src\\components\\Analytics\\ReportsTab.jsx",
+        "name": "ReportsTab.jsx",
+        "size": 14517,
+        "lines": 368,
+        "modified": "2025-05-28T18:56:28.880Z"
+      },
+      {
+        "path": "src\\components\\Analytics\\RevenueTab.jsx",
+        "name": "RevenueTab.jsx",
+        "size": 14463,
+        "lines": 375,
+        "modified": "2025-06-04T13:06:42.322Z"
+      },
+      {
+        "path": "src\\components\\Analytics\\UsersTab.jsx",
+        "name": "UsersTab.jsx",
+        "size": 14412,
+        "lines": 368,
+        "modified": "2025-05-28T18:53:33.161Z"
+      },
+      {
+        "path": "src\\components\\Booking\\ServiceSelector.jsx",
+        "name": "ServiceSelector.jsx",
+        "size": 9777,
+        "lines": 246,
+        "modified": "2025-06-17T16:15:09.031Z"
+      },
+      {
+        "path": "src\\components\\Business\\BusinessDashboard.jsx",
+        "name": "BusinessDashboard.jsx",
+        "size": 36397,
+        "lines": 874,
+        "modified": "2025-05-28T18:18:14.424Z"
+      },
+      {
+        "path": "src\\components\\Button.jsx",
+        "name": "Button.jsx",
+        "size": 4642,
+        "lines": 122,
+        "modified": "2025-05-29T21:04:33.234Z"
+      },
+      {
+        "path": "src\\components\\Call\\AdminCallPanel.jsx",
+        "name": "AdminCallPanel.jsx",
+        "size": 16884,
+        "lines": 446,
+        "modified": "2025-05-28T17:24:51.487Z"
+      },
+      {
+        "path": "src\\components\\Call\\CallControls.jsx",
+        "name": "CallControls.jsx",
+        "size": 3584,
+        "lines": 117,
+        "modified": "2025-05-28T17:21:03.148Z"
+      },
+      {
+        "path": "src\\components\\Call\\CallLogsTab.jsx",
+        "name": "CallLogsTab.jsx",
+        "size": 15960,
+        "lines": 392,
+        "modified": "2025-05-28T17:56:10.626Z"
+      },
+      {
+        "path": "src\\components\\Call\\CallNotification.jsx",
+        "name": "CallNotification.jsx",
+        "size": 9806,
+        "lines": 289,
+        "modified": "2025-05-28T18:38:18.229Z"
+      },
+      {
+        "path": "src\\components\\Call\\CallParticipants.jsx",
+        "name": "CallParticipants.jsx",
+        "size": 4975,
+        "lines": 140,
+        "modified": "2025-05-28T17:21:29.887Z"
+      },
+      {
+        "path": "src\\components\\Call\\CallRoom.jsx",
+        "name": "CallRoom.jsx",
+        "size": 17906,
+        "lines": 605,
+        "modified": "2025-06-16T12:26:45.140Z"
+      },
+      {
+        "path": "src\\components\\Call\\CallTimer.jsx",
+        "name": "CallTimer.jsx",
+        "size": 3324,
+        "lines": 107,
+        "modified": "2025-05-28T17:20:40.165Z"
+      },
+      {
+        "path": "src\\components\\Call\\EmergencyButton.jsx",
+        "name": "EmergencyButton.jsx",
+        "size": 5814,
+        "lines": 163,
+        "modified": "2025-06-03T17:03:45.231Z"
+      },
+      {
+        "path": "src\\components\\Call\\IncomingCallModal.jsx",
+        "name": "IncomingCallModal.jsx",
+        "size": 12495,
+        "lines": 352,
+        "modified": "2025-05-28T18:40:02.064Z"
+      },
+      {
+        "path": "src\\components\\Call\\RecordingManager.jsx",
+        "name": "RecordingManager.jsx",
+        "size": 12228,
+        "lines": 325,
+        "modified": "2025-05-28T17:23:42.859Z"
+      },
+      {
+        "path": "src\\components\\Chat\\AudioRecorder.jsx",
+        "name": "AudioRecorder.jsx",
+        "size": 8968,
+        "lines": 295,
+        "modified": "2025-05-27T22:14:06.046Z"
+      },
+      {
+        "path": "src\\components\\Chat\\ChatDashboard.jsx",
+        "name": "ChatDashboard.jsx",
+        "size": 10474,
+        "lines": 263,
+        "modified": "2025-05-27T22:15:32.029Z"
+      },
+      {
+        "path": "src\\components\\Chat\\ChatList.jsx",
+        "name": "ChatList.jsx",
+        "size": 10807,
+        "lines": 299,
+        "modified": "2025-05-27T22:12:15.726Z"
+      },
+      {
+        "path": "src\\components\\Chat\\ChatThread.jsx",
+        "name": "ChatThread.jsx",
+        "size": 16494,
+        "lines": 514,
+        "modified": "2025-05-27T22:13:24.372Z"
+      },
+      {
+        "path": "src\\components\\Chat\\MessageBubble.jsx",
+        "name": "MessageBubble.jsx",
+        "size": 7925,
+        "lines": 258,
+        "modified": "2025-05-27T22:14:45.182Z"
+      },
+      {
+        "path": "src\\components\\Chat\\VoiceApprovalPanel.jsx",
+        "name": "VoiceApprovalPanel.jsx",
+        "size": 13168,
+        "lines": 339,
+        "modified": "2025-05-27T22:16:25.612Z"
+      },
+      {
+        "path": "src\\components\\Client\\CardSelection.jsx",
+        "name": "CardSelection.jsx",
+        "size": 19705,
+        "lines": 492,
+        "modified": "2025-06-05T09:06:31.200Z"
+      },
+      {
+        "path": "src\\components\\Client\\ClientBookings.jsx",
+        "name": "ClientBookings.jsx",
+        "size": 25096,
+        "lines": 614,
+        "modified": "2025-06-04T05:00:35.982Z"
+      },
+      {
+        "path": "src\\components\\Client\\ClientFeedback.jsx",
+        "name": "ClientFeedback.jsx",
+        "size": 21694,
+        "lines": 532,
+        "modified": "2025-06-04T07:00:53.406Z"
+      },
+      {
+        "path": "src\\components\\Client\\ClientMessages.jsx",
+        "name": "ClientMessages.jsx",
+        "size": 18827,
+        "lines": 458,
+        "modified": "2025-06-04T06:59:31.717Z"
+      },
+      {
+        "path": "src\\components\\Client\\ClientNotifications.jsx",
+        "name": "ClientNotifications.jsx",
+        "size": 16775,
+        "lines": 407,
+        "modified": "2025-06-04T07:05:11.938Z"
+      },
+      {
+        "path": "src\\components\\Client\\ClientOverview.jsx",
+        "name": "ClientOverview.jsx",
+        "size": 19154,
+        "lines": 495,
+        "modified": "2025-06-04T09:05:31.298Z"
+      },
+      {
+        "path": "src\\components\\Client\\ClientProfile.jsx",
+        "name": "ClientProfile.jsx",
+        "size": 26980,
+        "lines": 648,
+        "modified": "2025-06-04T04:59:08.536Z"
+      },
+      {
+        "path": "src\\components\\Client\\ClientSupport.jsx",
+        "name": "ClientSupport.jsx",
+        "size": 26672,
+        "lines": 592,
+        "modified": "2025-06-04T13:08:33.402Z"
+      },
+      {
+        "path": "src\\components\\Client\\ClientWallet.jsx",
+        "name": "ClientWallet.jsx",
+        "size": 37437,
+        "lines": 877,
+        "modified": "2025-06-04T13:24:21.422Z"
+      },
+      {
+        "path": "src\\components\\Client\\SpreadSelection.jsx",
+        "name": "SpreadSelection.jsx",
+        "size": 18780,
+        "lines": 441,
+        "modified": "2025-06-05T09:05:13.732Z"
+      },
+      {
+        "path": "src\\components\\CountryCodeDemo.jsx",
+        "name": "CountryCodeDemo.jsx",
+        "size": 2716,
+        "lines": 74,
+        "modified": "2025-05-28T21:16:33.840Z"
+      },
+      {
+        "path": "src\\components\\Customization\\CustomSpreadCreator.jsx",
+        "name": "CustomSpreadCreator.jsx",
+        "size": 22802,
+        "lines": 592,
+        "modified": "2025-05-28T16:43:45.095Z"
+      },
+      {
+        "path": "src\\components\\Dashboard\\DashboardLayout.jsx",
+        "name": "DashboardLayout.jsx",
+        "size": 9205,
+        "lines": 232,
+        "modified": "2025-05-29T17:01:13.903Z"
+      },
+      {
+        "path": "src\\components\\Dashboard\\PaymentSummary.jsx",
+        "name": "PaymentSummary.jsx",
+        "size": 15021,
+        "lines": 392,
+        "modified": "2025-05-27T21:55:03.319Z"
+      },
+      {
+        "path": "src\\components\\EmergencyCallButton.jsx",
+        "name": "EmergencyCallButton.jsx",
+        "size": 13702,
+        "lines": 340,
+        "modified": "2025-06-04T11:02:52.308Z"
+      },
+      {
+        "path": "src\\components\\ErrorBoundary.jsx",
+        "name": "ErrorBoundary.jsx",
+        "size": 3323,
+        "lines": 101,
+        "modified": "2025-06-17T11:37:57.489Z"
+      },
+      {
+        "path": "src\\components\\Footer.jsx",
+        "name": "Footer.jsx",
+        "size": 8259,
+        "lines": 202,
+        "modified": "2025-05-29T16:35:20.709Z"
+      },
+      {
+        "path": "src\\components\\GDPR\\CookieConsent.jsx",
+        "name": "CookieConsent.jsx",
+        "size": 14244,
+        "lines": 331,
+        "modified": "2025-05-29T16:36:06.502Z"
+      },
+      {
+        "path": "src\\components\\GDPR\\DataManagement.jsx",
+        "name": "DataManagement.jsx",
+        "size": 14585,
+        "lines": 355,
+        "modified": "2025-05-29T05:31:04.746Z"
+      },
+      {
+        "path": "src\\components\\GoogleAuth.jsx",
+        "name": "GoogleAuth.jsx",
+        "size": 5080,
+        "lines": 168,
+        "modified": "2025-05-27T20:42:20.535Z"
+      },
+      {
+        "path": "src\\components\\HeroiconsExample.jsx",
+        "name": "HeroiconsExample.jsx",
+        "size": 7300,
+        "lines": 181,
+        "modified": "2025-05-28T20:53:26.089Z"
+      },
+      {
+        "path": "src\\components\\Integration\\IntegrationManager.jsx",
+        "name": "IntegrationManager.jsx",
+        "size": 22278,
+        "lines": 576,
+        "modified": "2025-05-28T18:32:16.818Z"
+      },
+      {
+        "path": "src\\components\\Layout\\AdminLayout.jsx",
+        "name": "AdminLayout.jsx",
+        "size": 2541,
+        "lines": 57,
+        "modified": "2025-06-04T11:13:07.901Z"
+      },
+      {
+        "path": "src\\components\\Layout\\ClientLayout.jsx",
+        "name": "ClientLayout.jsx",
+        "size": 1783,
+        "lines": 46,
+        "modified": "2025-06-04T11:50:13.389Z"
+      },
+      {
+        "path": "src\\components\\Layout\\MainLayout.jsx",
+        "name": "MainLayout.jsx",
+        "size": 4163,
+        "lines": 167,
+        "modified": "2025-06-06T09:38:58.772Z"
+      },
+      {
+        "path": "src\\components\\Layout\\MonitorLayout.jsx",
+        "name": "MonitorLayout.jsx",
+        "size": 2266,
+        "lines": 52,
+        "modified": "2025-06-04T11:12:42.532Z"
+      },
+      {
+        "path": "src\\components\\Layout\\ReaderLayout.jsx",
+        "name": "ReaderLayout.jsx",
+        "size": 2141,
+        "lines": 52,
+        "modified": "2025-06-04T11:12:32.055Z"
+      },
+      {
+        "path": "src\\components\\Layout\\SuperAdminLayout.jsx",
+        "name": "SuperAdminLayout.jsx",
+        "size": 3984,
+        "lines": 122,
+        "modified": "2025-06-04T14:14:03.374Z"
+      },
+      {
+        "path": "src\\components\\Layout\\UnifiedDashboardLayout.jsx",
+        "name": "UnifiedDashboardLayout.jsx",
+        "size": 12565,
+        "lines": 355,
+        "modified": "2025-06-05T08:18:12.379Z"
+      },
+      {
+        "path": "src\\components\\Layout.jsx",
+        "name": "Layout.jsx",
+        "size": 6776,
+        "lines": 176,
+        "modified": "2025-05-29T21:08:06.617Z"
+      },
+      {
+        "path": "src\\components\\Learning\\LearningDashboard.jsx",
+        "name": "LearningDashboard.jsx",
+        "size": 26968,
+        "lines": 719,
+        "modified": "2025-05-28T16:54:32.170Z"
+      },
+      {
+        "path": "src\\components\\Loader.jsx",
+        "name": "Loader.jsx",
+        "size": 6329,
+        "lines": 194,
+        "modified": "2025-05-29T17:13:01.110Z"
+      },
+      {
+        "path": "src\\components\\Modal.jsx",
+        "name": "Modal.jsx",
+        "size": 4643,
+        "lines": 168,
+        "modified": "2025-05-29T17:12:25.910Z"
+      },
+      {
+        "path": "src\\components\\Monitor\\ApprovalQueueTab.jsx",
+        "name": "ApprovalQueueTab.jsx",
+        "size": 17819,
+        "lines": 431,
+        "modified": "2025-05-27T21:33:06.533Z"
+      },
+      {
+        "path": "src\\components\\Monitor\\MonitorActivityLog.jsx",
+        "name": "MonitorActivityLog.jsx",
+        "size": 13229,
+        "lines": 356,
+        "modified": "2025-06-04T06:49:14.214Z"
+      },
+      {
+        "path": "src\\components\\Monitor\\MonitorApprovalQueue.jsx",
+        "name": "MonitorApprovalQueue.jsx",
+        "size": 26115,
+        "lines": 656,
+        "modified": "2025-06-04T07:30:47.086Z"
+      },
+      {
+        "path": "src\\components\\Monitor\\MonitorLiveSessions.jsx",
+        "name": "MonitorLiveSessions.jsx",
+        "size": 24430,
+        "lines": 595,
+        "modified": "2025-06-04T06:44:54.670Z"
+      },
+      {
+        "path": "src\\components\\Monitor\\MonitorNotifications.jsx",
+        "name": "MonitorNotifications.jsx",
+        "size": 16814,
+        "lines": 415,
+        "modified": "2025-06-04T07:11:43.195Z"
+      },
+      {
+        "path": "src\\components\\Monitor\\MonitorReports.jsx",
+        "name": "MonitorReports.jsx",
+        "size": 29223,
+        "lines": 695,
+        "modified": "2025-06-04T06:48:07.590Z"
+      },
+      {
+        "path": "src\\components\\Monitor\\MonitorSupport.jsx",
+        "name": "MonitorSupport.jsx",
+        "size": 21596,
+        "lines": 489,
+        "modified": "2025-06-04T06:51:31.700Z"
+      },
+      {
+        "path": "src\\components\\Monitor\\ReportsTab.jsx",
+        "name": "ReportsTab.jsx",
+        "size": 25348,
+        "lines": 592,
+        "modified": "2025-05-27T22:04:09.090Z"
+      },
+      {
+        "path": "src\\components\\Monitor\\SurveillanceTab.jsx",
+        "name": "SurveillanceTab.jsx",
+        "size": 22607,
+        "lines": 539,
+        "modified": "2025-05-27T21:34:29.945Z"
+      },
+      {
+        "path": "src\\components\\Navbar.jsx",
+        "name": "Navbar.jsx",
+        "size": 18906,
+        "lines": 424,
+        "modified": "2025-06-04T11:01:39.522Z"
+      },
+      {
+        "path": "src\\components\\OptimizedImage.jsx",
+        "name": "OptimizedImage.jsx",
+        "size": 2679,
+        "lines": 107,
+        "modified": "2025-06-18T07:51:15.661Z"
+      },
+      {
+        "path": "src\\components\\Payment\\PaymentMethodSelector.jsx",
+        "name": "PaymentMethodSelector.jsx",
+        "size": 10397,
+        "lines": 259,
+        "modified": "2025-06-04T12:20:36.573Z"
+      },
+      {
+        "path": "src\\components\\Payment\\SquarePayment.jsx",
+        "name": "SquarePayment.jsx",
+        "size": 7159,
+        "lines": 212,
+        "modified": "2025-05-27T21:48:50.962Z"
+      },
+      {
+        "path": "src\\components\\Payment\\StripePayment.jsx",
+        "name": "StripePayment.jsx",
+        "size": 7275,
+        "lines": 235,
+        "modified": "2025-05-27T21:48:14.719Z"
+      },
+      {
+        "path": "src\\components\\Payment\\StripePaymentForm.jsx",
+        "name": "StripePaymentForm.jsx",
+        "size": 5376,
+        "lines": 164,
+        "modified": "2025-06-17T15:23:17.451Z"
+      },
+      {
+        "path": "src\\components\\Payment\\TransferPayment.jsx",
+        "name": "TransferPayment.jsx",
+        "size": 16050,
+        "lines": 452,
+        "modified": "2025-05-27T22:07:37.102Z"
+      },
+      {
+        "path": "src\\components\\Payment\\USDTPayment.jsx",
+        "name": "USDTPayment.jsx",
+        "size": 12075,
+        "lines": 326,
+        "modified": "2025-05-27T22:06:20.842Z"
+      },
+      {
+        "path": "src\\components\\Payment\\WalletPayment.jsx",
+        "name": "WalletPayment.jsx",
+        "size": 10957,
+        "lines": 284,
+        "modified": "2025-05-27T21:51:45.655Z"
+      },
+      {
+        "path": "src\\components\\ProtectedRoute.jsx",
+        "name": "ProtectedRoute.jsx",
+        "size": 9896,
+        "lines": 248,
+        "modified": "2025-06-04T10:35:47.222Z"
+      },
+      {
+        "path": "src\\components\\PWA\\PWAManager.jsx",
+        "name": "PWAManager.jsx",
+        "size": 17710,
+        "lines": 463,
+        "modified": "2025-06-18T08:21:42.470Z"
+      },
+      {
+        "path": "src\\components\\Reader\\ReaderPendingRequests.jsx",
+        "name": "ReaderPendingRequests.jsx",
+        "size": 28418,
+        "lines": 664,
+        "modified": "2025-06-04T07:32:24.340Z"
+      },
+      {
+        "path": "src\\components\\Reader\\SpreadManager.jsx",
+        "name": "SpreadManager.jsx",
+        "size": 60303,
+        "lines": 1319,
+        "modified": "2025-06-05T13:20:32.269Z"
+      },
+      {
+        "path": "src\\components\\Reader\\SpreadPositionEditor.jsx",
+        "name": "SpreadPositionEditor.jsx",
+        "size": 23955,
+        "lines": 599,
+        "modified": "2025-06-05T16:28:17.847Z"
+      },
+      {
+        "path": "src\\components\\Reader\\WorkingHoursManager.jsx",
+        "name": "WorkingHoursManager.jsx",
+        "size": 39693,
+        "lines": 1036,
+        "modified": "2025-06-04T08:36:28.003Z"
+      },
+      {
+        "path": "src\\components\\ReaderCard.jsx",
+        "name": "ReaderCard.jsx",
+        "size": 6738,
+        "lines": 197,
+        "modified": "2025-05-29T17:12:00.568Z"
+      },
+      {
+        "path": "src\\components\\ReCaptchaComponent.jsx",
+        "name": "ReCaptchaComponent.jsx",
+        "size": 7276,
+        "lines": 241,
+        "modified": "2025-06-18T08:21:25.970Z"
+      },
+      {
+        "path": "src\\components\\Rewards\\RewardsDashboard.jsx",
+        "name": "RewardsDashboard.jsx",
+        "size": 31687,
+        "lines": 706,
+        "modified": "2025-06-16T14:50:47.371Z"
+      },
+      {
+        "path": "src\\components\\RoleDemo.jsx",
+        "name": "RoleDemo.jsx",
+        "size": 10071,
+        "lines": 238,
+        "modified": "2025-06-03T18:19:35.834Z"
+      },
+      {
+        "path": "src\\components\\ServiceCard.jsx",
+        "name": "ServiceCard.jsx",
+        "size": 3122,
+        "lines": 91,
+        "modified": "2025-05-29T17:11:08.103Z"
+      },
+      {
+        "path": "src\\components\\SocialAuth.jsx",
+        "name": "SocialAuth.jsx",
+        "size": 12528,
+        "lines": 336,
+        "modified": "2025-05-28T19:58:38.782Z"
+      },
+      {
+        "path": "src\\components\\SupabaseTest.jsx",
+        "name": "SupabaseTest.jsx",
+        "size": 11701,
+        "lines": 359,
+        "modified": "2025-06-03T18:19:53.968Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\AITarotReading.jsx",
+        "name": "AITarotReading.jsx",
+        "size": 12546,
+        "lines": 320,
+        "modified": "2025-06-17T15:25:50.004Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\EmergencyTarotSession.jsx",
+        "name": "EmergencyTarotSession.jsx",
+        "size": 14119,
+        "lines": 400,
+        "modified": "2025-05-28T16:14:39.151Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\EnhancedReadingResults.jsx",
+        "name": "EnhancedReadingResults.jsx",
+        "size": 18718,
+        "lines": 472,
+        "modified": "2025-06-05T10:58:56.553Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\ReaderTarotView.jsx",
+        "name": "ReaderTarotView.jsx",
+        "size": 22973,
+        "lines": 613,
+        "modified": "2025-05-28T16:13:37.227Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\ReadingResults.jsx",
+        "name": "ReadingResults.jsx",
+        "size": 13787,
+        "lines": 363,
+        "modified": "2025-05-28T15:56:28.758Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\SpreadBasedReading.jsx",
+        "name": "SpreadBasedReading.jsx",
+        "size": 15424,
+        "lines": 409,
+        "modified": "2025-06-05T10:57:14.024Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\SpreadSelector.jsx",
+        "name": "SpreadSelector.jsx",
+        "size": 10116,
+        "lines": 276,
+        "modified": "2025-05-28T15:55:24.263Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\TarotCard.jsx",
+        "name": "TarotCard.jsx",
+        "size": 8214,
+        "lines": 238,
+        "modified": "2025-05-28T15:54:31.869Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\TarotCardPicker.jsx",
+        "name": "TarotCardPicker.jsx",
+        "size": 15979,
+        "lines": 447,
+        "modified": "2025-05-28T16:13:27.227Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\TarotReading.jsx",
+        "name": "TarotReading.jsx",
+        "size": 15718,
+        "lines": 430,
+        "modified": "2025-05-28T15:53:04.788Z"
+      },
+      {
+        "path": "src\\components\\Tarot\\TarotSystem.jsx",
+        "name": "TarotSystem.jsx",
+        "size": 5801,
+        "lines": 169,
+        "modified": "2025-06-05T10:59:15.239Z"
+      },
+      {
+        "path": "src\\components\\UI\\AnimatedBackground.jsx",
+        "name": "AnimatedBackground.jsx",
+        "size": 7100,
+        "lines": 210,
+        "modified": "2025-05-29T21:37:35.770Z"
+      },
+      {
+        "path": "src\\components\\UI\\CosmicBackground.jsx",
+        "name": "CosmicBackground.jsx",
+        "size": 6001,
+        "lines": 195,
+        "modified": "2025-05-28T22:38:53.342Z"
+      },
+      {
+        "path": "src\\components\\UI\\CosmicButton.jsx",
+        "name": "CosmicButton.jsx",
+        "size": 6447,
+        "lines": 169,
+        "modified": "2025-05-29T06:50:35.062Z"
+      },
+      {
+        "path": "src\\components\\UI\\CosmicCard.jsx",
+        "name": "CosmicCard.jsx",
+        "size": 4381,
+        "lines": 130,
+        "modified": "2025-05-29T06:49:48.814Z"
+      },
+      {
+        "path": "src\\components\\UI\\CurrencyDisplay.jsx",
+        "name": "CurrencyDisplay.jsx",
+        "size": 6503,
+        "lines": 249,
+        "modified": "2025-06-17T16:06:37.835Z"
+      },
+      {
+        "path": "src\\components\\UI\\ThemeToggle.jsx",
+        "name": "ThemeToggle.jsx",
+        "size": 5753,
+        "lines": 193,
+        "modified": "2025-05-29T20:47:32.874Z"
+      },
+      {
+        "path": "src\\components\\WhatsAppAuth.jsx",
+        "name": "WhatsAppAuth.jsx",
+        "size": 8777,
+        "lines": 310,
+        "modified": "2025-05-27T20:42:10.315Z"
+      }
+    ],
+    "pages": [
+      {
+        "path": "src\\pages\\About.jsx",
+        "name": "About.jsx",
+        "size": 19449,
+        "lines": 515,
+        "modified": "2025-06-06T09:38:52.127Z"
+      },
+      {
+        "path": "src\\pages\\AuthPage.jsx",
+        "name": "AuthPage.jsx",
+        "size": 31093,
+        "lines": 923,
+        "modified": "2025-05-29T21:28:57.331Z"
+      },
+      {
+        "path": "src\\pages\\BookingPage.jsx",
+        "name": "BookingPage.jsx",
+        "size": 19860,
+        "lines": 482,
+        "modified": "2025-05-29T17:05:34.683Z"
+      },
+      {
+        "path": "src\\pages\\BookingsPage.jsx",
+        "name": "BookingsPage.jsx",
+        "size": 15173,
+        "lines": 378,
+        "modified": "2025-05-29T17:02:59.465Z"
+      },
+      {
+        "path": "src\\pages\\Client\\ClientDashboard.jsx",
+        "name": "ClientDashboard.jsx",
+        "size": 14632,
+        "lines": 358,
+        "modified": "2025-05-28T22:15:05.211Z"
+      },
+      {
+        "path": "src\\pages\\Contact.jsx",
+        "name": "Contact.jsx",
+        "size": 20755,
+        "lines": 536,
+        "modified": "2025-06-06T09:38:34.602Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\AdminDashboard.jsx",
+        "name": "AdminDashboard.jsx",
+        "size": 7105,
+        "lines": 199,
+        "modified": "2025-06-06T09:37:31.691Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\ClientDashboard.jsx",
+        "name": "ClientDashboard.jsx",
+        "size": 7523,
+        "lines": 226,
+        "modified": "2025-06-06T09:37:28.288Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\MonitorDashboard.jsx",
+        "name": "MonitorDashboard.jsx",
+        "size": 6823,
+        "lines": 207,
+        "modified": "2025-06-06T09:37:24.128Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\ReaderDashboard.jsx",
+        "name": "ReaderDashboard.jsx",
+        "size": 79547,
+        "lines": 2014,
+        "modified": "2025-06-16T14:54:05.232Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\SuperAdmin\\AuditLogsTab.jsx",
+        "name": "AuditLogsTab.jsx",
+        "size": 22711,
+        "lines": 573,
+        "modified": "2025-06-03T18:30:01.710Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\SuperAdmin\\DatabaseManagementTab.jsx",
+        "name": "DatabaseManagementTab.jsx",
+        "size": 19439,
+        "lines": 485,
+        "modified": "2025-06-03T19:36:58.437Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\SuperAdmin\\FinancialControlsTab.jsx",
+        "name": "FinancialControlsTab.jsx",
+        "size": 26123,
+        "lines": 620,
+        "modified": "2025-06-03T18:37:41.387Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\SuperAdmin\\ImpersonationPanel.jsx",
+        "name": "ImpersonationPanel.jsx",
+        "size": 19017,
+        "lines": 438,
+        "modified": "2025-06-03T18:27:10.453Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\SuperAdmin\\RealTimeControlsTab.jsx",
+        "name": "RealTimeControlsTab.jsx",
+        "size": 18403,
+        "lines": 448,
+        "modified": "2025-06-03T18:42:28.429Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\SuperAdmin\\SystemSettingsTab.jsx",
+        "name": "SystemSettingsTab.jsx",
+        "size": 20625,
+        "lines": 446,
+        "modified": "2025-06-16T14:55:05.434Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\SuperAdmin\\UserManagementTab.jsx",
+        "name": "UserManagementTab.jsx",
+        "size": 38546,
+        "lines": 866,
+        "modified": "2025-06-04T14:35:27.345Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\SuperAdminDashboard.jsx",
+        "name": "SuperAdminDashboard.jsx",
+        "size": 8917,
+        "lines": 272,
+        "modified": "2025-06-16T17:23:32.645Z"
+      },
+      {
+        "path": "src\\pages\\dashboard\\WalletDashboardPage.jsx",
+        "name": "WalletDashboardPage.jsx",
+        "size": 468,
+        "lines": 18,
+        "modified": "2025-06-04T11:54:14.273Z"
+      },
+      {
+        "path": "src\\pages\\ForgotPassword.jsx",
+        "name": "ForgotPassword.jsx",
+        "size": 32949,
+        "lines": 804,
+        "modified": "2025-06-03T15:50:51.896Z"
+      },
+      {
+        "path": "src\\pages\\Home.jsx",
+        "name": "Home.jsx",
+        "size": 36476,
+        "lines": 826,
+        "modified": "2025-06-06T09:38:28.020Z"
+      },
+      {
+        "path": "src\\pages\\Login.jsx",
+        "name": "Login.jsx",
+        "size": 14731,
+        "lines": 396,
+        "modified": "2025-06-06T09:38:21.744Z"
+      },
+      {
+        "path": "src\\pages\\MessagesPage.jsx",
+        "name": "MessagesPage.jsx",
+        "size": 13339,
+        "lines": 313,
+        "modified": "2025-06-03T17:03:43.764Z"
+      },
+      {
+        "path": "src\\pages\\ProfilePage.jsx",
+        "name": "ProfilePage.jsx",
+        "size": 28178,
+        "lines": 729,
+        "modified": "2025-06-06T09:38:15.414Z"
+      },
+      {
+        "path": "src\\pages\\Reader\\ReaderDashboard.jsx",
+        "name": "ReaderDashboard.jsx",
+        "size": 17381,
+        "lines": 415,
+        "modified": "2025-05-28T22:17:31.815Z"
+      },
+      {
+        "path": "src\\pages\\ReadersPage.jsx",
+        "name": "ReadersPage.jsx",
+        "size": 15159,
+        "lines": 392,
+        "modified": "2025-06-06T09:38:07.542Z"
+      },
+      {
+        "path": "src\\pages\\ServiceDetails.jsx",
+        "name": "ServiceDetails.jsx",
+        "size": 16401,
+        "lines": 378,
+        "modified": "2025-05-29T17:15:12.883Z"
+      },
+      {
+        "path": "src\\pages\\Services.jsx",
+        "name": "Services.jsx",
+        "size": 19637,
+        "lines": 470,
+        "modified": "2025-06-06T09:37:33.601Z"
+      },
+      {
+        "path": "src\\pages\\Signup.jsx",
+        "name": "Signup.jsx",
+        "size": 53929,
+        "lines": 1297,
+        "modified": "2025-06-06T09:38:01.691Z"
+      },
+      {
+        "path": "src\\pages\\ThemeDemo.jsx",
+        "name": "ThemeDemo.jsx",
+        "size": 13678,
+        "lines": 309,
+        "modified": "2025-05-29T21:39:23.600Z"
+      },
+      {
+        "path": "src\\pages\\WalletPage.jsx",
+        "name": "WalletPage.jsx",
+        "size": 14540,
+        "lines": 314,
+        "modified": "2025-06-04T13:07:00.407Z"
+      }
+    ],
+    "services": [
+      {
+        "path": "src\\services\\aiReadingService.js",
+        "name": "aiReadingService.js",
+        "size": 12459,
+        "lines": 384,
+        "modified": "2025-05-28T15:51:46.674Z"
+      },
+      {
+        "path": "src\\services\\aiWatchdogService.js",
+        "name": "aiWatchdogService.js",
+        "size": 48310,
+        "lines": 1530,
+        "modified": "2025-05-29T20:32:50.996Z"
+      },
+      {
+        "path": "src\\services\\api.js",
+        "name": "api.js",
+        "size": 2460,
+        "lines": 89,
+        "modified": "2025-06-17T11:57:16.363Z"
+      },
+      {
+        "path": "src\\services\\configService.js",
+        "name": "configService.js",
+        "size": 10758,
+        "lines": 408,
+        "modified": "2025-05-29T19:15:03.029Z"
+      },
+      {
+        "path": "src\\services\\emergencyAlertsService.js",
+        "name": "emergencyAlertsService.js",
+        "size": 8796,
+        "lines": 299,
+        "modified": "2025-05-29T19:44:05.624Z"
+      },
+      {
+        "path": "src\\services\\monitoringService.js",
+        "name": "monitoringService.js",
+        "size": 21535,
+        "lines": 723,
+        "modified": "2025-05-29T20:01:15.790Z"
+      },
+      {
+        "path": "src\\services\\notificationSchedulerService.js",
+        "name": "notificationSchedulerService.js",
+        "size": 12618,
+        "lines": 426,
+        "modified": "2025-06-03T15:39:35.896Z"
+      },
+      {
+        "path": "src\\services\\openaiService.js",
+        "name": "openaiService.js",
+        "size": 7713,
+        "lines": 254,
+        "modified": "2025-06-17T15:21:45.016Z"
+      },
+      {
+        "path": "src\\services\\paymentMethodService.js",
+        "name": "paymentMethodService.js",
+        "size": 14919,
+        "lines": 469,
+        "modified": "2025-06-04T12:26:36.174Z"
+      },
+      {
+        "path": "src\\services\\recordingService.js",
+        "name": "recordingService.js",
+        "size": 15103,
+        "lines": 519,
+        "modified": "2025-06-04T13:31:06.297Z"
+      },
+      {
+        "path": "src\\services\\sessionLogger.js",
+        "name": "sessionLogger.js",
+        "size": 14959,
+        "lines": 535,
+        "modified": "2025-05-29T20:26:38.375Z"
+      },
+      {
+        "path": "src\\services\\systemSecretsApi.js",
+        "name": "systemSecretsApi.js",
+        "size": 9977,
+        "lines": 315,
+        "modified": "2025-06-17T14:35:19.271Z"
+      },
+      {
+        "path": "src\\services\\ttsService.js",
+        "name": "ttsService.js",
+        "size": 7766,
+        "lines": 270,
+        "modified": "2025-05-28T16:13:02.932Z"
+      },
+      {
+        "path": "src\\services\\webrtcService.js",
+        "name": "webrtcService.js",
+        "size": 4542,
+        "lines": 156,
+        "modified": "2025-06-16T12:26:45.143Z"
+      }
+    ],
+    "hooks": [
+      {
+        "path": "src\\hooks\\useAI.js",
+        "name": "useAI.js",
+        "size": 8863,
+        "lines": 292,
+        "modified": "2025-05-29T19:16:08.221Z"
+      },
+      {
+        "path": "src\\hooks\\useAnalytics.js",
+        "name": "useAnalytics.js",
+        "size": 3199,
+        "lines": 117,
+        "modified": "2025-06-18T07:43:01.604Z"
+      },
+      {
+        "path": "src\\hooks\\usePerformance.js",
+        "name": "usePerformance.js",
+        "size": 1711,
+        "lines": 65,
+        "modified": "2025-06-18T07:51:15.660Z"
+      }
+    ],
+    "utils": [
+      {
+        "path": "src\\utils\\cn.js",
+        "name": "cn.js",
+        "size": 143,
+        "lines": 6,
+        "modified": "2025-05-28T22:11:00.047Z"
+      },
+      {
+        "path": "src\\utils\\countries.js",
+        "name": "countries.js",
+        "size": 19128,
+        "lines": 309,
+        "modified": "2025-05-27T10:14:44.898Z"
+      },
+      {
+        "path": "src\\utils\\countryHelpers.js",
+        "name": "countryHelpers.js",
+        "size": 5688,
+        "lines": 245,
+        "modified": "2025-05-28T21:12:35.906Z"
+      },
+      {
+        "path": "src\\utils\\dashboardStyles.js",
+        "name": "dashboardStyles.js",
+        "size": 4342,
+        "lines": 134,
+        "modified": "2025-05-28T21:06:15.464Z"
+      },
+      {
+        "path": "src\\utils\\formatDate.js",
+        "name": "formatDate.js",
+        "size": 10275,
+        "lines": 377,
+        "modified": "2025-05-29T17:16:01.884Z"
+      },
+      {
+        "path": "src\\utils\\mockData.js",
+        "name": "mockData.js",
+        "size": 9750,
+        "lines": 312,
+        "modified": "2025-05-26T11:29:41.801Z"
+      },
+      {
+        "path": "src\\utils\\monitoring.js",
+        "name": "monitoring.js",
+        "size": 10639,
+        "lines": 361,
+        "modified": "2025-06-07T12:47:27.313Z"
+      },
+      {
+        "path": "src\\utils\\rewardsIntegration.js",
+        "name": "rewardsIntegration.js",
+        "size": 11502,
+        "lines": 355,
+        "modified": "2025-06-16T15:07:13.505Z"
+      },
+      {
+        "path": "src\\utils\\roleHelpers.js",
+        "name": "roleHelpers.js",
+        "size": 4840,
+        "lines": 184,
+        "modified": "2025-06-03T19:32:29.336Z"
+      },
+      {
+        "path": "src\\utils\\stripe.js",
+        "name": "stripe.js",
+        "size": 4296,
+        "lines": 144,
+        "modified": "2025-06-18T08:21:15.291Z"
+      },
+      {
+        "path": "src\\utils\\validation.js",
+        "name": "validation.js",
+        "size": 6338,
+        "lines": 193,
+        "modified": "2025-05-27T22:04:55.237Z"
+      },
+      {
+        "path": "src\\utils\\validations.js",
+        "name": "validations.js",
+        "size": 15252,
+        "lines": 638,
+        "modified": "2025-05-29T17:18:26.152Z"
+      },
+      {
+        "path": "src\\utils\\webrtcTest.js",
+        "name": "webrtcTest.js",
+        "size": 3032,
+        "lines": 93,
+        "modified": "2025-06-16T12:26:45.150Z"
+      },
+      {
+        "path": "src\\utils\\zodiac.js",
+        "name": "zodiac.js",
+        "size": 14215,
+        "lines": 527,
+        "modified": "2025-05-29T17:17:11.179Z"
+      },
+      {
+        "path": "src\\utils\\zodiacHelper.js",
+        "name": "zodiacHelper.js",
+        "size": 4106,
+        "lines": 132,
+        "modified": "2025-05-28T20:30:00.543Z"
+      }
+    ],
+    "styles": [],
+    "issues": [
+      {
+        "type": "INFO",
+        "message": "Consider using React.StrictMode for development",
+        "location": "src/App.jsx"
+      }
+    ]
+  },
+  "backend": {
+    "apis": [],
+    "controllers": [
+      {
+        "path": "src\\api\\controllers\\adminController.js",
+        "name": "adminController.js",
+        "size": 25818,
+        "lines": 938,
+        "modified": "2025-06-07T09:26:01.820Z"
+      },
+      {
+        "path": "src\\api\\controllers\\aiModerationController.js",
+        "name": "aiModerationController.js",
+        "size": 21250,
+        "lines": 659,
+        "modified": "2025-06-07T17:02:16.199Z"
+      },
+      {
+        "path": "src\\api\\controllers\\emergencyController.js",
+        "name": "emergencyController.js",
+        "size": 21786,
+        "lines": 728,
+        "modified": "2025-06-07T16:51:18.064Z"
+      },
+      {
+        "path": "src\\api\\controllers\\mediaController.js",
+        "name": "mediaController.js",
+        "size": 37773,
+        "lines": 1559,
+        "modified": "2025-06-14T11:23:32.964Z"
+      },
+      {
+        "path": "src\\api\\controllers\\monitorController.js",
+        "name": "monitorController.js",
+        "size": 22850,
+        "lines": 718,
+        "modified": "2025-06-07T10:32:22.927Z"
+      },
+      {
+        "path": "src\\api\\controllers\\notificationController.js",
+        "name": "notificationController.js",
+        "size": 24988,
+        "lines": 916,
+        "modified": "2025-06-07T16:07:19.276Z"
+      },
+      {
+        "path": "src\\api\\controllers\\subscriptionController.js",
+        "name": "subscriptionController.js",
+        "size": 22664,
+        "lines": 720,
+        "modified": "2025-06-07T17:10:46.582Z"
+      },
+      {
+        "path": "src\\api\\controllers\\supportController.js",
+        "name": "supportController.js",
+        "size": 19742,
+        "lines": 644,
+        "modified": "2025-06-07T17:05:47.136Z"
+      }
+    ],
+    "services": [
+      {
+        "path": "src\\api\\services\\adminService.js",
+        "name": "adminService.js",
+        "size": 24928,
+        "lines": 877,
+        "modified": "2025-06-06T19:05:30.979Z"
+      },
+      {
+        "path": "src\\api\\services\\auditService.js",
+        "name": "auditService.js",
+        "size": 14453,
+        "lines": 454,
+        "modified": "2025-06-06T19:06:37.015Z"
+      },
+      {
+        "path": "src\\api\\services\\cronService.js",
+        "name": "cronService.js",
+        "size": 1,
+        "lines": 1,
+        "modified": "2025-06-17T16:07:12.830Z"
+      },
+      {
+        "path": "src\\api\\services\\exchangeRateService.js",
+        "name": "exchangeRateService.js",
+        "size": 10699,
+        "lines": 333,
+        "modified": "2025-06-17T16:40:56.380Z"
+      },
+      {
+        "path": "src\\api\\services\\notificationService.js",
+        "name": "notificationService.js",
+        "size": 10539,
+        "lines": 360,
+        "modified": "2025-06-07T13:14:22.744Z"
+      },
+      {
+        "path": "src\\api\\services\\openai.js",
+        "name": "openai.js",
+        "size": 3312,
+        "lines": 101,
+        "modified": "2025-06-17T15:13:35.730Z"
+      },
+      {
+        "path": "src\\api\\services\\socketService.js",
+        "name": "socketService.js",
+        "size": 7322,
+        "lines": 246,
+        "modified": "2025-06-07T15:44:42.009Z"
+      }
+    ],
+    "middleware": [
+      {
+        "path": "src\\api\\middleware\\auth.js",
+        "name": "auth.js",
+        "size": 5338,
+        "lines": 174,
+        "modified": "2025-06-06T08:21:54.506Z"
+      },
+      {
+        "path": "src\\api\\middleware\\paymentMethodsInit.js",
+        "name": "paymentMethodsInit.js",
+        "size": 8726,
+        "lines": 279,
+        "modified": "2025-06-18T11:56:03.394Z"
+      },
+      {
+        "path": "src\\api\\middleware\\validation.js",
+        "name": "validation.js",
+        "size": 6535,
+        "lines": 240,
+        "modified": "2025-06-08T07:11:59.291Z"
+      }
+    ],
+    "routes": [
+      {
+        "path": "src\\api\\routes\\adminRoutes.js",
+        "name": "adminRoutes.js",
+        "size": 15442,
+        "lines": 470,
+        "modified": "2025-06-07T13:16:50.147Z"
+      },
+      {
+        "path": "src\\api\\routes\\aiModerationRoutes.js",
+        "name": "aiModerationRoutes.js",
+        "size": 15823,
+        "lines": 458,
+        "modified": "2025-06-07T10:36:10.112Z"
+      },
+      {
+        "path": "src\\api\\routes\\aiRoutes.js",
+        "name": "aiRoutes.js",
+        "size": 39099,
+        "lines": 1382,
+        "modified": "2025-06-17T15:17:34.413Z"
+      },
+      {
+        "path": "src\\api\\routes\\callRoutes.js",
+        "name": "callRoutes.js",
+        "size": 24759,
+        "lines": 839,
+        "modified": "2025-06-07T19:55:05.255Z"
+      },
+      {
+        "path": "src\\api\\routes\\configRoutes.js",
+        "name": "configRoutes.js",
+        "size": 7249,
+        "lines": 268,
+        "modified": "2025-06-16T18:49:40.809Z"
+      },
+      {
+        "path": "src\\api\\routes\\emergencyRoutes.js",
+        "name": "emergencyRoutes.js",
+        "size": 14527,
+        "lines": 396,
+        "modified": "2025-06-07T16:57:37.484Z"
+      },
+      {
+        "path": "src\\api\\routes\\exchangeRateRoutes.js",
+        "name": "exchangeRateRoutes.js",
+        "size": 2860,
+        "lines": 116,
+        "modified": "2025-06-18T08:53:53.308Z"
+      },
+      {
+        "path": "src\\api\\routes\\mediaRoutes.js",
+        "name": "mediaRoutes.js",
+        "size": 18628,
+        "lines": 596,
+        "modified": "2025-06-07T10:41:08.011Z"
+      },
+      {
+        "path": "src\\api\\routes\\monitorRoutes.js",
+        "name": "monitorRoutes.js",
+        "size": 11220,
+        "lines": 307,
+        "modified": "2025-06-07T10:30:56.626Z"
+      },
+      {
+        "path": "src\\api\\routes\\notificationRoutes.js",
+        "name": "notificationRoutes.js",
+        "size": 13580,
+        "lines": 388,
+        "modified": "2025-06-07T10:34:15.763Z"
+      },
+      {
+        "path": "src\\api\\routes\\paymentSettingsRoutes.js",
+        "name": "paymentSettingsRoutes.js",
+        "size": 13453,
+        "lines": 478,
+        "modified": "2025-06-16T16:19:45.214Z"
+      },
+      {
+        "path": "src\\api\\routes\\paymentsRoutes.js",
+        "name": "paymentsRoutes.js",
+        "size": 31480,
+        "lines": 1120,
+        "modified": "2025-06-17T15:15:34.927Z"
+      },
+      {
+        "path": "src\\api\\routes\\rewardsRoutes.js",
+        "name": "rewardsRoutes.js",
+        "size": 22018,
+        "lines": 790,
+        "modified": "2025-06-16T16:01:00.822Z"
+      },
+      {
+        "path": "src\\api\\routes\\subscriptionRoutes.js",
+        "name": "subscriptionRoutes.js",
+        "size": 18640,
+        "lines": 541,
+        "modified": "2025-06-07T10:40:03.921Z"
+      },
+      {
+        "path": "src\\api\\routes\\supportRoutes.js",
+        "name": "supportRoutes.js",
+        "size": 15782,
+        "lines": 464,
+        "modified": "2025-06-07T10:38:55.302Z"
+      },
+      {
+        "path": "src\\api\\routes\\systemSecretsRoutes.js",
+        "name": "systemSecretsRoutes.js",
+        "size": 29452,
+        "lines": 967,
+        "modified": "2025-06-16T18:39:48.104Z"
+      },
+      {
+        "path": "src\\api\\routes\\webhookRoutes.js",
+        "name": "webhookRoutes.js",
+        "size": 9429,
+        "lines": 312,
+        "modified": "2025-06-17T15:16:16.830Z"
+      }
+    ],
+    "validators": [
+      {
+        "path": "src\\api\\validators\\adminValidators.js",
+        "name": "adminValidators.js",
+        "size": 16367,
+        "lines": 538,
+        "modified": "2025-06-06T19:08:36.354Z"
+      },
+      {
+        "path": "src\\api\\validators\\aiModerationValidators.js",
+        "name": "aiModerationValidators.js",
+        "size": 14413,
+        "lines": 536,
+        "modified": "2025-06-07T17:01:20.218Z"
+      },
+      {
+        "path": "src\\api\\validators\\emergencyValidators.js",
+        "name": "emergencyValidators.js",
+        "size": 14770,
+        "lines": 551,
+        "modified": "2025-06-07T16:59:04.057Z"
+      },
+      {
+        "path": "src\\api\\validators\\mediaValidators.js",
+        "name": "mediaValidators.js",
+        "size": 16040,
+        "lines": 436,
+        "modified": "2025-06-07T18:13:23.218Z"
+      },
+      {
+        "path": "src\\api\\validators\\monitorValidators.js",
+        "name": "monitorValidators.js",
+        "size": 19476,
+        "lines": 636,
+        "modified": "2025-06-07T15:46:33.810Z"
+      },
+      {
+        "path": "src\\api\\validators\\notificationValidators.js",
+        "name": "notificationValidators.js",
+        "size": 10486,
+        "lines": 370,
+        "modified": "2025-06-07T16:06:13.312Z"
+      },
+      {
+        "path": "src\\api\\validators\\subscriptionValidators.js",
+        "name": "subscriptionValidators.js",
+        "size": 9449,
+        "lines": 363,
+        "modified": "2025-06-07T18:07:36.130Z"
+      },
+      {
+        "path": "src\\api\\validators\\supportValidators.js",
+        "name": "supportValidators.js",
+        "size": 12047,
+        "lines": 482,
+        "modified": "2025-06-07T17:04:32.461Z"
+      }
+    ],
+    "issues": []
+  },
+  "database": {
+    "tables": [
+      {
+        "name": "profiles",
+        "status": "accessible"
+      },
+      {
+        "name": "bookings",
+        "status": "accessible"
+      },
+      {
+        "name": "payment_methods",
+        "status": "accessible"
+      },
+      {
+        "name": "payment_settings",
+        "status": "accessible"
+      },
+      {
+        "name": "wallet_transactions",
+        "status": "accessible"
+      },
+      {
+        "name": "payment_receipts",
+        "status": "accessible"
+      },
+      {
+        "name": "chat_sessions",
+        "status": "accessible"
+      },
+      {
+        "name": "chat_messages",
+        "status": "accessible"
+      },
+      {
+        "name": "voice_notes",
+        "status": "accessible"
+      },
+      {
+        "name": "daily_analytics",
+        "status": "accessible"
+      },
+      {
+        "name": "reader_analytics",
+        "status": "accessible"
+      },
+      {
+        "name": "ai_reading_results",
+        "status": "accessible"
+      },
+      {
+        "name": "user_activity_logs",
+        "status": "accessible"
+      },
+      {
+        "name": "emergency_escalations",
+        "status": "accessible"
+      },
+      {
+        "name": "emergency_alerts",
+        "status": "accessible"
+      },
+      {
+        "name": "reader_applications",
+        "status": "accessible"
+      },
+      {
+        "name": "system_settings",
+        "status": "accessible"
+      }
+    ],
+    "relationships": [],
+    "indexes": [],
+    "triggers": [],
+    "policies": [],
+    "issues": []
+  },
+  "configuration": {
+    "packageJson": {
+      "name": "samia-tarot-api",
+      "version": "1.0.0",
+      "dependencies": [
+        "@stripe/react-stripe-js",
+        "@stripe/stripe-js",
+        "@supabase/supabase-js",
+        "@vitejs/plugin-react",
+        "bcryptjs",
+        "clsx",
+        "compression",
+        "cors",
+        "date-fns",
+        "decimal.js",
+        "dotenv",
+        "express",
+        "express-rate-limit",
+        "express-validator",
+        "framer-motion",
+        "helmet",
+        "i18next",
+        "joi",
+        "jsonwebtoken",
+        "lucide-react",
+        "moment-timezone",
+        "morgan",
+        "multer",
+        "nodemailer",
+        "openai",
+        "react",
+        "react-dom",
+        "react-google-recaptcha",
+        "react-i18next",
+        "react-router-dom",
+        "react-tsparticles",
+        "recharts",
+        "redis",
+        "sharp",
+        "socket.io",
+        "socket.io-client",
+        "square",
+        "stripe",
+        "tailwind-merge",
+        "tsparticles-slim",
+        "twilio",
+        "uuid",
+        "validator",
+        "vite",
+        "winston",
+        "web-vitals"
+      ],
+      "devDependencies": [
+        "@babel/preset-env",
+        "@babel/preset-react",
+        "@testing-library/jest-dom",
+        "@testing-library/react",
+        "@testing-library/user-event",
+        "autoprefixer",
+        "eslint",
+        "eslint-config-node",
+        "eslint-plugin-react",
+        "eslint-plugin-react-hooks",
+        "eslint-plugin-react-refresh",
+        "identity-obj-proxy",
+        "jest",
+        "jest-environment-jsdom",
+        "jest-transform-stub",
+        "jsdom",
+        "nodemon",
+        "postcss",
+        "supertest",
+        "swagger-jsdoc",
+        "swagger-ui-express",
+        "tailwindcss",
+        "vitest",
+        "webpack-bundle-analyzer"
+      ],
+      "scripts": [
+        "start",
+        "dev",
+        "backend",
+        "frontend",
+        "frontend:build",
+        "frontend:preview",
+        "api",
+        "build",
+        "test",
+        "test:unit",
+        "test:integration",
+        "test:watch",
+        "test:coverage",
+        "lint",
+        "lint:fix",
+        "docs",
+        "db:migrate",
+        "db:fix-columns",
+        "db:seed",
+        "db:verify",
+        "db:complete-setup",
+        "deploy:check",
+        "deploy:prepare",
+        "security:audit",
+        "qa:full",
+        "qa:quick",
+        "health:check",
+        "launch:ready",
+        "server:health",
+        "cleanup:logs",
+        "backup:db",
+        "analyze",
+        "perf:audit",
+        "build:analyze"
+      ]
+    },
+    "envFiles": [
+      ".env"
+    ],
+    "configFiles": [
+      "babel.config.js",
+      "jest.config.js",
+      "tailwind.config.js",
+      "vite.config.js"
+    ],
+    "buildFiles": [],
+    "issues": []
+  },
+  "security": {
+    "authImplementation": null,
+    "apiSecurity": [],
+    "dataProtection": [],
+    "vulnerabilities": [],
+    "issues": []
+  },
+  "performance": {
+    "bundleSize": null,
+    "loadTimes": [],
+    "optimizations": [],
+    "issues": []
+  },
+  "testing": {
+    "testFiles": [
+      {
+        "path": "src\\__tests__\\api.test.js",
+        "name": "api.test.js",
+        "size": 3978,
+        "lines": 125,
+        "modified": "2025-06-18T07:46:17.046Z"
+      },
+      {
+        "path": "src\\__tests__\\App.test.js",
+        "name": "App.test.js",
+        "size": 1559,
+        "lines": 61,
+        "modified": "2025-06-18T07:46:17.045Z"
+      },
+      {
+        "path": "src\\__tests__\\basic.test.js",
+        "name": "basic.test.js",
+        "size": 369,
+        "lines": 15,
+        "modified": "2025-06-07T14:03:56.615Z"
+      },
+      {
+        "path": "tests\\api\\calls.test.js",
+        "name": "calls.test.js",
+        "size": 20013,
+        "lines": 656,
+        "modified": "2025-06-07T20:02:25.230Z"
+      }
+    ],
+    "coverage": null,
+    "testTypes": [
+      "Jest"
+    ],
+    "issues": []
+  },
+  "documentation": {
+    "readmeFiles": [
+      "README.md",
+      "readme.md"
+    ],
+    "apiDocs": [
+      "ADMIN_API_DOCUMENTATION.md",
+      "ADMIN_API_IMPLEMENTATION_SUMMARY.md",
+      "API_DEVELOPMENT_PROGRESS.md",
+      "API_KEYS_FIX_REPORT.md",
+      "SAMIA_TAROT_NEW_APIS_DOCUMENTATION.md"
+    ],
+    "comments": [],
+    "issues": []
+  }
+}

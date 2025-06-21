@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabaseAdmin } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
 const ConfigContext = createContext();
@@ -24,11 +24,49 @@ export const ConfigProvider = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      const { data: configData, error: configError } = await supabaseAdmin
-        .from('app_config')
-        .select('key, value, section, encrypted');
+      // Use API endpoint for configuration instead of direct database access
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
 
-      if (configError) throw configError;
+      if (!token) {
+        console.log('🔧 Development Mode: Using fallback configuration (no auth token)');
+        // Don't throw error, just use fallback configuration
+        setConfig({
+          ai_default_provider: 'openai',
+          ai_default_model: 'gpt-4',
+          database_type: 'supabase',
+          storage_provider: 'supabase',
+          notifications_enabled: true,
+          app_name: 'Samia Tarot',
+          app_version: '1.0.0',
+          maintenance_mode: false
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Try to fetch from the backend API
+      const response = await fetch('http://localhost:5001/api/config', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Config API error: ${response.status} ${response.statusText}`, errorText);
+        
+        // If we get HTML instead of JSON, it means the API endpoint doesn't exist
+        if (errorText.includes('<!doctype') || errorText.includes('<html')) {
+          throw new Error('Config API endpoint not available - backend server may not be running');
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const responseData = await response.json();
+      const configData = responseData.data || [];
 
       // Transform array to object for easy access
       const configObject = {};
@@ -69,22 +107,28 @@ export const ConfigProvider = ({ children }) => {
   const updateConfig = async (key, value, section = 'general') => {
     try {
       // Only admins can update config
-      if (!profile || profile.role !== 'admin') {
+      if (!profile || !['admin', 'super_admin'].includes(profile.role)) {
         throw new Error('Unauthorized: Admin access required');
       }
 
-      const jsonValue = typeof value === 'string' ? JSON.stringify(value) : JSON.stringify(value);
-
-      const { error } = await supabaseAdmin
-        .from('app_config')
-        .upsert({
+      const response = await fetch('http://localhost:5001/api/config', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
           key,
-          value: jsonValue,
+          value,
           section,
           updated_by: user.id
-        });
+        })
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
 
       // Update local state
       setConfig(prev => ({

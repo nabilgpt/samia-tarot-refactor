@@ -22,8 +22,8 @@ const ReCaptchaComponent = ({
   const [token, setToken] = useState(null);
 
   // reCAPTCHA configuration
-  const RECAPTCHA_SITE_KEY = "6LfwzksrAAAAAJIFtpCaSBXXKni6pFYEGsvYbN06";
-  const RECAPTCHA_SECRET_KEY = "6LfwzksrAAAAAAx_w7utBIM572cyg3bDMj10yVw2";
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6L_placeholder';
+const RECAPTCHA_SECRET_KEY = import.meta.env.VITE_RECAPTCHA_SECRET_KEY || '6L_secret_placeholder';
 
   // Get current language for reCAPTCHA
   const getCurrentLanguage = () => {

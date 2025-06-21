@@ -124,6 +124,40 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
     }
   };
 
+  
+  // Enhanced WebRTC Configuration
+  const getWebRTCConfiguration = () => {
+    const config = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' }
+      ],
+      iceCandidatePoolSize: 10,
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require'
+    };
+
+    // Add TURN servers if configured
+    if (process.env.VITE_TURN_SERVER_URL) {
+      config.iceServers.push({
+        urls: process.env.VITE_TURN_SERVER_URL,
+        username: process.env.VITE_TURN_SERVER_USERNAME,
+        credential: process.env.VITE_TURN_SERVER_CREDENTIAL
+      });
+    }
+
+    // Add Twilio TURN servers if configured
+    if (process.env.TWILIO_ACCOUNT_SID) {
+      // Twilio provides TURN servers - would need to fetch from their API
+      console.log('Twilio WebRTC configuration available');
+    }
+
+    return config;
+  };
+
   const initializePeerJS = async () => {
     try {
       // Create PeerJS instance with configuration
@@ -131,9 +165,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
         host: 'localhost', // Configure your PeerJS server
         port: 9000,
         path: '/peerjs',
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
+        config: getWebRTCConfiguration(),
             { urls: 'stun:stun1.l.google.com:19302' }
           ]
         }

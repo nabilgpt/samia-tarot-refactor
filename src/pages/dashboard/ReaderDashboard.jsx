@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase';
 import { UserAPI } from '../../api/userApi';
 import WorkingHoursManager from '../../components/reader/WorkingHoursManager';
 import SpreadManager from '../../components/Reader/SpreadManager';
+import RewardsDashboard from '../../components/Rewards/RewardsDashboard';
 import { 
   User, 
   Settings, 
@@ -198,6 +199,7 @@ const ReaderDashboard = () => {
     { id: 'calendar', name: t('reader.tabs.calendar'), icon: Calendar },
     { id: 'bookings', name: t('reader.tabs.bookings'), icon: BookOpen },
     { id: 'chat', name: t('reader.tabs.chat'), icon: MessageCircle },
+    { id: 'rewards', name: i18n.language === 'ar' ? 'المكافآت' : 'Rewards', icon: Award },
     { id: 'calls', name: t('reader.tabs.calls'), icon: Phone },
     { id: 'notifications', name: t('reader.tabs.notifications'), icon: Bell },
     { id: 'feedback', name: t('reader.tabs.feedback'), icon: Star }
@@ -338,10 +340,11 @@ const ReaderDashboard = () => {
                 {activeTab === 'working-hours' && <WorkingHoursManager />}
                 {activeTab === 'calendar' && <CalendarTab />}
                 {activeTab === 'bookings' && <BookingsTab />}
-                {activeTab === 'chat' && <ChatTab />}
-                {activeTab === 'calls' && <CallsTab />}
-                {activeTab === 'notifications' && <NotificationsTab />}
-                {activeTab === 'feedback' && <FeedbackTab />}
+                            {activeTab === 'chat' && <ChatTab />}
+            {activeTab === 'rewards' && <RewardsDashboard />}
+            {activeTab === 'calls' && <CallsTab />}
+            {activeTab === 'notifications' && <NotificationsTab />}
+            {activeTab === 'feedback' && <FeedbackTab />}
           </div>
         </div>
           </motion.div>

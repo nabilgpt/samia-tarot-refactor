@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SuperAdminAPI from '../../../api/superAdminApi.js';
+import PaymentSettingsManager from '../../../components/Admin/PaymentSettingsManager.jsx';
+import RewardsManagement from '../../../components/Admin/RewardsManagement.jsx';
 import {
   CogIcon,
   KeyIcon,
@@ -10,6 +12,7 @@ import {
   BellIcon,
   GlobeAltIcon,
   CurrencyDollarIcon,
+  TrophyIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
   XCircleIcon,
@@ -29,6 +32,7 @@ const SystemSettingsTab = () => {
     { id: 'api_keys', name: 'API Keys', icon: KeyIcon },
     { id: 'database', name: 'Database', icon: CircleStackIcon },
     { id: 'payments', name: 'Payments', icon: CurrencyDollarIcon },
+    { id: 'rewards', name: 'Rewards System', icon: TrophyIcon },
     { id: 'notifications', name: 'Notifications', icon: BellIcon },
     { id: 'security', name: 'Security', icon: ShieldCheckIcon },
     { id: 'localization', name: 'Localization', icon: GlobeAltIcon },
@@ -58,7 +62,7 @@ const SystemSettingsTab = () => {
   const updateSetting = async (category, key, value) => {
     try {
       setSaving(true);
-      const result = await SuperAdminAPI.updateSystemSetting(category, key, value);
+      const result = await SuperAdminAPI.updateSystemSetting(key, value, category);
       if (result.success) {
         setSettings(prev => ({
           ...prev,
@@ -68,11 +72,14 @@ const SystemSettingsTab = () => {
           }
         }));
         setMessage('Setting updated successfully');
+        setTimeout(() => setMessage(''), 3000);
       } else {
         setMessage(`Error updating setting: ${result.error}`);
+        setTimeout(() => setMessage(''), 5000);
       }
     } catch (error) {
       setMessage(`Error: ${error.message}`);
+      setTimeout(() => setMessage(''), 5000);
     } finally {
       setSaving(false);
     }
@@ -210,24 +217,30 @@ const SystemSettingsTab = () => {
 
   const renderPaymentsSection = () => (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold text-white mb-4">Payment Settings</h3>
+      {/* Payment Methods Management */}
+      <PaymentSettingsManager />
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">Commission & Fees</h4>
-          <div className="space-y-4">
-            {renderInput('payments', 'platform_commission_rate', settings.payments?.platform_commission_rate, 'Platform Commission (%)', '15', 'number')}
-            {renderInput('payments', 'min_booking_amount', settings.payments?.min_booking_amount, 'Minimum Booking Amount (SAR)', '50', 'number')}
-            {renderInput('payments', 'max_booking_amount', settings.payments?.max_booking_amount, 'Maximum Booking Amount (SAR)', '1000', 'number')}
+      {/* Legacy Payment Settings */}
+      <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-6">
+        <h3 className="text-xl font-bold text-white mb-4">Platform Settings</h3>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-6">
+            <h4 className="text-lg font-bold text-white mb-4">Commission & Fees</h4>
+            <div className="space-y-4">
+              {renderInput('payments', 'platform_commission_rate', settings.payments?.platform_commission_rate, 'Platform Commission (%)', '15', 'number')}
+              {renderInput('payments', 'min_booking_amount', settings.payments?.min_booking_amount, 'Minimum Booking Amount (SAR)', '50', 'number')}
+              {renderInput('payments', 'max_booking_amount', settings.payments?.max_booking_amount, 'Maximum Booking Amount (SAR)', '1000', 'number')}
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-6">
-          <h4 className="text-lg font-bold text-white mb-4">Payment Options</h4>
-          <div className="space-y-4">
-            {renderToggle('payments', 'stripe_enabled', settings.payments?.stripe_enabled, 'Stripe Payments', 'Accept credit/debit cards')}
-            {renderToggle('payments', 'apple_pay_enabled', settings.payments?.apple_pay_enabled, 'Apple Pay', 'Accept Apple Pay payments')}
-            {renderToggle('payments', 'google_pay_enabled', settings.payments?.google_pay_enabled, 'Google Pay', 'Accept Google Pay payments')}
+          <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-6">
+            <h4 className="text-lg font-bold text-white mb-4">Gateway Features</h4>
+            <div className="space-y-4">
+              {renderToggle('payments', 'stripe_enabled', settings.payments?.stripe_enabled, 'Stripe Gateway', 'Enable Stripe payment gateway')}
+              {renderToggle('payments', 'apple_pay_enabled', settings.payments?.apple_pay_enabled, 'Apple Pay', 'Accept Apple Pay payments')}
+              {renderToggle('payments', 'google_pay_enabled', settings.payments?.google_pay_enabled, 'Google Pay', 'Accept Google Pay payments')}
+            </div>
           </div>
         </div>
       </div>
@@ -392,12 +405,15 @@ const SystemSettingsTab = () => {
         >
           {activeSection === 'api_keys' && renderAPIKeysSection()}
           {activeSection === 'payments' && renderPaymentsSection()}
+          {activeSection === 'rewards' && (
+            <RewardsManagement />
+          )}
           {activeSection === 'security' && renderSecuritySection()}
           {activeSection === 'notifications' && renderNotificationsSection()}
           {activeSection === 'system' && renderSystemSection()}
           {activeSection === 'database' && (
             <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-8 text-center">
-              <DatabaseIcon className="w-16 h-16 text-cosmic-300 mx-auto mb-4" />
+              <CircleStackIcon className="w-16 h-16 text-cosmic-300 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-white mb-2">Database Management</h3>
               <p className="text-cosmic-300">Advanced database operations coming soon</p>
             </div>

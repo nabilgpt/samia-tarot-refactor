@@ -159,9 +159,12 @@ const ServiceSelector = ({ onServiceSelect, selectedService }) => {
                   <span className="text-gray-500">
                     {service.duration_minutes} min
                   </span>
-                  <span className="text-2xl font-bold text-purple-600">
-                    ${service.price}
-                  </span>
+                  <div className="text-2xl font-bold text-purple-600">
+                    ${service.price} USD
+                    <div className="text-xs text-gray-500 mt-1" id={`currency-${service.id}`}>
+                      {/* Local currency will be loaded here */}
+                    </div>
+                  </div>
                 </div>
 
                 {/* AI Badge */}

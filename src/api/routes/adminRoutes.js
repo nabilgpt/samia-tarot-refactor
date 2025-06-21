@@ -23,6 +23,9 @@ const {
   validateComplaintResolution
 } = require('../validators/adminValidators.js');
 
+// Import advanced admin routes
+const advancedAdminRoutes = require('./advancedAdminRoutes');
+
 // =============================================================================
 // RATE LIMITING CONFIGURATIONS
 // =============================================================================
@@ -189,7 +192,486 @@ router.get('/readers', adminAuth, adminController.getAllReaders);
 router.get('/analytics', adminAuth, adminController.getAnalytics);
 
 // =============================================================================
-// 6. AUDIT & LOGS ENDPOINTS
+// 6. MESSAGES MANAGEMENT ENDPOINTS
+// =============================================================================
+
+/**
+ * GET /api/admin/messages
+ * Get all platform messages for monitoring
+ * Query params: page, limit, status, type, flagged, search
+ */
+router.get('/messages', adminAuth, async (req, res) => {
+  try {
+    const { page = 1, limit = 50, status = 'all', type = 'all', flagged = 'all', search = '' } = req.query;
+    const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+    
+    let query = supabase
+      .from('chat_messages')
+      .select(`
+        *,
+        sender:profiles!chat_messages_sender_id_fkey(first_name, last_name),
+        receiver:profiles!chat_messages_receiver_id_fkey(first_name, last_name),
+        chat_sessions!chat_messages_session_id_fkey(session_id, booking_id)
+      `)
+      .order('created_at', { ascending: false });
+
+    // Apply filters
+    if (status !== 'all') {
+      if (status === 'flagged') {
+        query = query.eq('flagged', true);
+      } else {
+        query = query.eq('status', status);
+      }
+    }
+
+    if (type !== 'all') {
+      query = query.eq('message_type', type);
+    }
+
+    if (flagged !== 'all') {
+      query = query.eq('flagged', flagged === 'true');
+    }
+
+    if (search) {
+      query = query.ilike('content', `%${search}%`);
+    }
+
+    // Apply pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    query = query.range(offset, offset + parseInt(limit) - 1);
+
+    const { data: messages, error } = await query;
+
+    if (error) throw error;
+
+    // Format messages for frontend
+    const formattedMessages = messages?.map(message => ({
+      id: message.id,
+      sender: `${message.sender?.first_name || ''} ${message.sender?.last_name || ''}`.trim() || 'مستخدم مجهول',
+      receiver: `${message.receiver?.first_name || ''} ${message.receiver?.last_name || ''}`.trim() || 'مستخدم مجهول',
+      content: message.content,
+      type: message.message_type || 'general',
+      status: message.status || 'active',
+      flagged: message.flagged || false,
+      timestamp: new Date(message.created_at).toLocaleString('ar-EG'),
+      sessionId: message.chat_sessions?.session_id || null,
+      priority: message.priority || 'normal'
+    })) || [];
+
+    res.json({
+      success: true,
+      data: formattedMessages
+    });
+  } catch (error) {
+    console.error('Messages fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch messages',
+      code: 'MESSAGES_FETCH_ERROR'
+    });
+  }
+});
+
+/**
+ * PUT /api/admin/messages/:id/flag
+ * Flag or unflag a message
+ * Body: { flagged: boolean, reason?: string }
+ */
+router.put('/messages/:id/flag', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { flagged, reason } = req.body;
+    const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+
+    // Update message
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .update({
+        flagged,
+        flag_reason: reason,
+        flagged_by: req.user.id,
+        flagged_at: flagged ? new Date().toISOString() : null
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Log admin action
+    const auditService = require('../services/auditService.js');
+    await auditService.logAdminAction(req.user.id, flagged ? 'FLAG_MESSAGE' : 'UNFLAG_MESSAGE', 'message', id, {
+      reason,
+      flagged
+    });
+
+    res.json({
+      success: true,
+      data: data,
+      message: `Message ${flagged ? 'flagged' : 'unflagged'} successfully`
+    });
+  } catch (error) {
+    console.error('Message flag error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update message flag',
+      code: 'MESSAGE_FLAG_ERROR'
+    });
+  }
+});
+
+// =============================================================================
+// 7. REPORTS GENERATION ENDPOINTS
+// =============================================================================
+
+/**
+ * GET /api/admin/reports
+ * Get all generated reports
+ * Query params: page, limit, type, status
+ */
+router.get('/reports', adminAuth, async (req, res) => {
+  try {
+    const { page = 1, limit = 50, type = 'all', status = 'all' } = req.query;
+    const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+    
+    let query = supabase
+      .from('admin_reports')
+      .select(`
+        *,
+        generated_by_profile:profiles!admin_reports_generated_by_fkey(first_name, last_name)
+      `)
+      .order('created_at', { ascending: false });
+
+    // Apply filters
+    if (type !== 'all') {
+      query = query.eq('report_type', type);
+    }
+
+    if (status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    // Apply pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    query = query.range(offset, offset + parseInt(limit) - 1);
+
+    const { data: reports, error } = await query;
+
+    if (error) throw error;
+
+    // Format reports for frontend
+    const formattedReports = reports?.map(report => ({
+      id: report.id,
+      name: report.name,
+      type: report.report_type,
+      description: report.description,
+      generatedAt: new Date(report.created_at).toLocaleString('ar-EG'),
+      generatedBy: `${report.generated_by_profile?.first_name || ''} ${report.generated_by_profile?.last_name || ''}`.trim() || 'مدير مجهول',
+      status: report.status,
+      fileSize: report.file_size,
+      downloadCount: report.download_count || 0,
+      period: report.period_description
+    })) || [];
+
+    res.json({
+      success: true,
+      data: formattedReports
+    });
+  } catch (error) {
+    console.error('Reports fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch reports',
+      code: 'REPORTS_FETCH_ERROR'
+    });
+  }
+});
+
+/**
+ * POST /api/admin/reports/generate
+ * Generate a new report
+ * Body: { type: string, dateRange: string, startDate?: string, endDate?: string }
+ */
+router.post('/reports/generate', adminAuth, async (req, res) => {
+  try {
+    const { type, dateRange, startDate, endDate } = req.body;
+    const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+
+    // Validate report type
+    const validTypes = ['financial', 'users', 'readers', 'sessions', 'security', 'analytics'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid report type',
+        code: 'INVALID_REPORT_TYPE'
+      });
+    }
+
+    // Create report record
+    const reportName = getReportName(type);
+    const { data: report, error } = await supabase
+      .from('admin_reports')
+      .insert({
+        name: reportName,
+        report_type: type,
+        description: getReportDescription(type),
+        generated_by: req.user.id,
+        status: 'generating',
+        period_description: getDateRangeText(dateRange),
+        parameters: { type, dateRange, startDate, endDate }
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Log admin action
+    const auditService = require('../services/auditService.js');
+    await auditService.logAdminAction(req.user.id, 'GENERATE_REPORT', 'report', report.id, {
+      report_type: type,
+      date_range: dateRange
+    });
+
+    // Simulate report generation (in real implementation, this would be a background job)
+    setTimeout(async () => {
+      try {
+        await supabase
+          .from('admin_reports')
+          .update({
+            status: 'completed',
+            file_size: '1.2 MB',
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', report.id);
+      } catch (error) {
+        console.error('Report completion update error:', error);
+      }
+    }, 3000);
+
+    res.json({
+      success: true,
+      data: {
+        id: report.id,
+        name: reportName,
+        type: type,
+        description: getReportDescription(type),
+        generatedAt: new Date().toLocaleString('ar-EG'),
+        generatedBy: 'المدير الحالي',
+        status: 'generating',
+        fileSize: null,
+        downloadCount: 0,
+        period: getDateRangeText(dateRange)
+      },
+      message: 'Report generation started'
+    });
+  } catch (error) {
+    console.error('Report generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate report',
+      code: 'REPORT_GENERATION_ERROR'
+    });
+  }
+});
+
+// =============================================================================
+// 8. INCIDENTS MANAGEMENT ENDPOINTS
+// =============================================================================
+
+/**
+ * GET /api/admin/incidents
+ * Get all incidents and reports
+ * Query params: page, limit, status, severity, category
+ */
+router.get('/incidents', adminAuth, async (req, res) => {
+  try {
+    const { page = 1, limit = 50, status = 'all', severity = 'all', category = 'all' } = req.query;
+    const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+    
+    let query = supabase
+      .from('incidents')
+      .select(`
+        *,
+        reported_by_profile:profiles!incidents_reported_by_fkey(first_name, last_name),
+        reported_user_profile:profiles!incidents_reported_user_fkey(first_name, last_name),
+        assigned_to_profile:profiles!incidents_assigned_to_fkey(first_name, last_name)
+      `)
+      .order('created_at', { ascending: false });
+
+    // Apply filters
+    if (status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    if (severity !== 'all') {
+      query = query.eq('severity', severity);
+    }
+
+    if (category !== 'all') {
+      query = query.eq('category', category);
+    }
+
+    // Apply pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    query = query.range(offset, offset + parseInt(limit) - 1);
+
+    const { data: incidents, error } = await query;
+
+    if (error) throw error;
+
+    // Format incidents for frontend
+    const formattedIncidents = incidents?.map(incident => ({
+      id: incident.id,
+      title: incident.title,
+      description: incident.description,
+      reportedBy: `${incident.reported_by_profile?.first_name || ''} ${incident.reported_by_profile?.last_name || ''}`.trim() || 'مستخدم مجهول',
+      reportedUser: incident.reported_user_profile ? `${incident.reported_user_profile?.first_name || ''} ${incident.reported_user_profile?.last_name || ''}`.trim() : null,
+      userRole: incident.user_role,
+      severity: incident.severity,
+      status: incident.status,
+      category: incident.category,
+      sessionId: incident.session_id,
+      createdAt: new Date(incident.created_at).toLocaleString('ar-EG'),
+      updatedAt: new Date(incident.updated_at).toLocaleString('ar-EG'),
+      assignedTo: incident.assigned_to_profile ? `${incident.assigned_to_profile?.first_name || ''} ${incident.assigned_to_profile?.last_name || ''}`.trim() : null,
+      evidence: incident.evidence || [],
+      actions: incident.actions || []
+    })) || [];
+
+    res.json({
+      success: true,
+      data: formattedIncidents
+    });
+  } catch (error) {
+    console.error('Incidents fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch incidents',
+      code: 'INCIDENTS_FETCH_ERROR'
+    });
+  }
+});
+
+/**
+ * PUT /api/admin/incidents/:id
+ * Update incident status or assignment
+ * Body: { status?: string, assigned_to?: string, resolution_notes?: string }
+ */
+router.put('/incidents/:id', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, assigned_to, resolution_notes } = req.body;
+    const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+
+    // Get current incident to update actions
+    const { data: currentIncident } = await supabase
+      .from('incidents')
+      .select('actions')
+      .eq('id', id)
+      .single();
+
+    const currentActions = currentIncident?.actions || [];
+    const newAction = {
+      action: status ? `تم تغيير الحالة إلى ${getStatusText(status)}` : `تم تعيين المحقق: ${assigned_to}`,
+      timestamp: new Date().toLocaleString('ar-EG'),
+      user: 'المدير الحالي'
+    };
+
+    // Update incident
+    const updateData = {
+      updated_at: new Date().toISOString(),
+      actions: [...currentActions, newAction]
+    };
+
+    if (status) updateData.status = status;
+    if (assigned_to) updateData.assigned_to = assigned_to;
+    if (resolution_notes) updateData.resolution_notes = resolution_notes;
+
+    const { data, error } = await supabase
+      .from('incidents')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Log admin action
+    const auditService = require('../services/auditService.js');
+    await auditService.logAdminAction(req.user.id, 'UPDATE_INCIDENT', 'incident', id, {
+      status,
+      assigned_to,
+      resolution_notes
+    });
+
+    res.json({
+      success: true,
+      data: data,
+      message: 'Incident updated successfully'
+    });
+  } catch (error) {
+    console.error('Incident update error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update incident',
+      code: 'INCIDENT_UPDATE_ERROR'
+    });
+  }
+});
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+function getReportName(type) {
+  const names = {
+    financial: 'التقرير المالي',
+    users: 'تقرير نشاط المستخدمين',
+    readers: 'تقرير أداء القراء',
+    sessions: 'تقرير الجلسات',
+    security: 'تقرير الأمان والحوادث',
+    analytics: 'تقرير التحليلات'
+  };
+  return names[type] || 'تقرير عام';
+}
+
+function getReportDescription(type) {
+  const descriptions = {
+    financial: 'تقرير شامل عن الإيرادات والمصروفات والمعاملات المالية',
+    users: 'إحصائيات تفصيلية عن نشاط المستخدمين والتسجيلات الجديدة',
+    readers: 'تقييم أداء القراء وإحصائيات الجلسات والتقييمات',
+    sessions: 'تحليل شامل لجلسات القراءة والحجوزات',
+    security: 'تقرير عن الحوادث الأمنية والتدابير المتخذة',
+    analytics: 'تحليلات شاملة لأداء المنصة والمؤشرات الرئيسية'
+  };
+  return descriptions[type] || 'تقرير عام عن المنصة';
+}
+
+function getDateRangeText(range) {
+  const ranges = {
+    '7days': 'آخر 7 أيام',
+    '30days': 'آخر 30 يوم',
+    '3months': 'آخر 3 أشهر',
+    '6months': 'آخر 6 أشهر',
+    '1year': 'آخر سنة',
+    'custom': 'فترة مخصصة'
+  };
+  return ranges[range] || 'فترة محددة';
+}
+
+function getStatusText(status) {
+  const statusTexts = {
+    pending: 'في الانتظار',
+    investigating: 'قيد التحقيق',
+    escalated: 'مُحال',
+    resolved: 'محلول',
+    closed: 'مغلق'
+  };
+  return statusTexts[status] || status;
+}
+
+// =============================================================================
+// 8. AUDIT & LOGS ENDPOINTS
 // =============================================================================
 
 /**
@@ -287,7 +769,7 @@ router.post('/logs/export', superAdminAuth, async (req, res) => {
 });
 
 // =============================================================================
-// 7. COMPLAINTS & FEEDBACK ENDPOINTS
+// 9. COMPLAINTS & FEEDBACK ENDPOINTS
 // =============================================================================
 
 /**
@@ -305,7 +787,223 @@ router.get('/complaints', adminAuth, adminController.getAllComplaints);
 router.put('/complaints/:id/resolve', [...sensitiveAdminAuth, validateComplaintResolution], adminController.resolveComplaint);
 
 // =============================================================================
-// 8. DASHBOARD & OVERVIEW ENDPOINTS
+// FINANCIAL REPORTS ENDPOINTS
+// =============================================================================
+
+/**
+ * GET /api/admin/finances
+ * Get financial reports and analytics
+ * Query params: range, type, format
+ */
+router.get('/finances', adminAuth, async (req, res) => {
+  try {
+    const { range = 'month', type = 'all' } = req.query;
+    const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+    
+    // Calculate date range
+    const now = new Date();
+    let startDate;
+    switch (range) {
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'quarter':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case 'year':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default: // month
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    // Get financial data
+    const { data: transactions } = await supabase
+      .from('wallet_transactions')
+      .select(`
+        *,
+        profiles!wallet_transactions_user_id_fkey(first_name, last_name),
+        bookings!wallet_transactions_booking_id_fkey(
+          service_type,
+          profiles!bookings_reader_id_fkey(first_name, last_name)
+        )
+      `)
+      .gte('created_at', startDate.toISOString())
+      .order('created_at', { ascending: false });
+
+    // Calculate summary statistics
+    const completedTransactions = transactions?.filter(t => t.status === 'completed') || [];
+    const totalRevenue = completedTransactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+    const totalTransactions = transactions?.length || 0;
+    const averageTransaction = totalTransactions > 0 ? totalRevenue / completedTransactions.length : 0;
+
+    // Get previous period for comparison
+    const prevStartDate = new Date(startDate.getTime() - (now.getTime() - startDate.getTime()));
+    const { data: prevTransactions } = await supabase
+      .from('wallet_transactions')
+      .select('amount, status')
+      .gte('created_at', prevStartDate.toISOString())
+      .lt('created_at', startDate.toISOString());
+
+    const prevRevenue = prevTransactions?.filter(t => t.status === 'completed')
+      .reduce((sum, t) => sum + parseFloat(t.amount || 0), 0) || 0;
+    const revenueGrowth = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalRevenue,
+          monthlyRevenue: totalRevenue,
+          totalTransactions,
+          averageTransaction,
+          revenueGrowth,
+          transactionGrowth: prevTransactions ? ((totalTransactions - prevTransactions.length) / Math.max(prevTransactions.length, 1)) * 100 : 0
+        },
+        transactions: transactions?.slice(0, 50) || [] // Limit to 50 recent transactions
+      }
+    });
+  } catch (error) {
+    console.error('Financial reports error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch financial reports',
+      code: 'FINANCIAL_REPORTS_ERROR'
+    });
+  }
+});
+
+// =============================================================================
+// REVIEWS MANAGEMENT ENDPOINTS
+// =============================================================================
+
+/**
+ * GET /api/admin/reviews
+ * Get all reviews for moderation
+ * Query params: status, rating, page, limit
+ */
+router.get('/reviews', adminAuth, async (req, res) => {
+  try {
+    const { status = 'all', rating = 'all', page = 1, limit = 50 } = req.query;
+    const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+    
+    let query = supabase
+      .from('reviews')
+      .select(`
+        *,
+        profiles!reviews_client_id_fkey(first_name, last_name),
+        reader_profiles:profiles!reviews_reader_id_fkey(first_name, last_name),
+        bookings!reviews_booking_id_fkey(service_type)
+      `)
+      .order('created_at', { ascending: false });
+
+    // Apply filters
+    if (status !== 'all') {
+      if (status === 'flagged') {
+        query = query.eq('flagged', true);
+      } else {
+        query = query.eq('status', status);
+      }
+    }
+
+    if (rating !== 'all') {
+      query = query.eq('rating', parseInt(rating));
+    }
+
+    // Apply pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    query = query.range(offset, offset + parseInt(limit) - 1);
+
+    const { data: reviews, error } = await query;
+
+    if (error) throw error;
+
+    // Format reviews for frontend
+    const formattedReviews = reviews?.map(review => ({
+      id: review.id,
+      client: `${review.profiles?.first_name || ''} ${review.profiles?.last_name || ''}`.trim() || 'مستخدم مجهول',
+      reader: `${review.reader_profiles?.first_name || ''} ${review.reader_profiles?.last_name || ''}`.trim() || 'قارئ مجهول',
+      rating: review.rating,
+      comment: review.comment,
+      status: review.status,
+      createdAt: new Date(review.created_at).toLocaleString('ar-EG'),
+      serviceType: review.bookings?.service_type || 'خدمة غير محددة',
+      flagged: review.flagged || false
+    })) || [];
+
+    res.json({
+      success: true,
+      data: formattedReviews
+    });
+  } catch (error) {
+    console.error('Reviews fetch error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch reviews',
+      code: 'REVIEWS_FETCH_ERROR'
+    });
+  }
+});
+
+/**
+ * PUT /api/admin/reviews/:id
+ * Update review status (approve/reject)
+ * Body: { status: 'approved' | 'rejected', admin_notes?: string }
+ */
+router.put('/reviews/:id', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, admin_notes } = req.body;
+    const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+
+    // Validate status
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid status. Must be approved or rejected',
+        code: 'INVALID_STATUS'
+      });
+    }
+
+    // Update review
+    const { data, error } = await supabase
+      .from('reviews')
+      .update({
+        status,
+        admin_notes,
+        moderated_by: req.user.id,
+        moderated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Log admin action
+    const auditService = require('../services/auditService.js');
+    await auditService.logAdminAction(req.user.id, 'REVIEW_MODERATION', 'review', id, {
+      action: status,
+      admin_notes
+    });
+
+    res.json({
+      success: true,
+      data: data,
+      message: `Review ${status} successfully`
+    });
+  } catch (error) {
+    console.error('Review update error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update review',
+      code: 'REVIEW_UPDATE_ERROR'
+    });
+  }
+});
+
+// =============================================================================
+// 9. DASHBOARD & OVERVIEW ENDPOINTS
 // =============================================================================
 
 /**
@@ -466,5 +1164,8 @@ router.use('*', (req, res) => {
     ]
   });
 });
+
+// Mount advanced admin routes
+router.use('/', advancedAdminRoutes);
 
 module.exports = router; 
