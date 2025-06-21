@@ -1,36 +1,30 @@
-# Dependencies
+# SAMIA TAROT - .gitignore
+# Comprehensive gitignore for React/Node.js/Supabase project
+
+# Environment Variables (CRITICAL - NEVER COMMIT!)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+*.env
+
+# API Keys and Secrets (CRITICAL!)
+config/keys.js
+config/secrets.js
+src/config/keys.js
+src/config/secrets.js
+backend/config/keys.js
+backend/config/secrets.js
+
+# Node.js
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
 lerna-debug.log*
-
-# Build outputs
-dist/
-build/
-out/
-.next/
-.nuxt/
-.cache/
-.parcel-cache/
-
-# Environment variables and secrets
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.*.local
-
-# Google OAuth secrets
-client_secret*.json
-*client_secret*.json
-
-# API keys and configuration files (examples)
-# Uncomment these if they contain secrets:
-# config.json
-# secrets.json
+.pnpm-debug.log*
 
 # Runtime data
 pids
@@ -41,14 +35,44 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov
-
-# nyc test coverage
 .nyc_output
 
-# Dependency directories
+# Build outputs
+build/
+dist/
+out/
+
+# React build
+/build
+/dist
+
+# Next.js
+.next/
+out/
+
+# Nuxt.js
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Vite
+dist
+dist-ssr
+*.local
+
+# Rollup
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# JSPM
 jspm_packages/
 
-# TypeScript cache
+# TypeScript
 *.tsbuildinfo
 
 # Optional npm cache directory
@@ -75,36 +99,22 @@ jspm_packages/
 # Yarn Integrity file
 .yarn-integrity
 
-# Yarn v2
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
-.pnp.*
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
 
-# Logs
-logs
-*.log
+# Temporary folders
+tmp/
+temp/
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
-.grunt
-
-# Bower dependency directory (https://bower.io/)
-bower_components
-
-# node-waf configuration
-.lock-wscript
-
-# Compiled binary addons (https://nodejs.org/api/addons.html)
-build/Release
-
-# Operating System Files
+# OS generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -113,56 +123,151 @@ build/Release
 ehthumbs.db
 Thumbs.db
 
-# IDE and Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Windows
+$RECYCLE.BIN/
+Desktop.ini
 
-# Temporary files
-*.tmp
-*.temp
+# Logs
+logs
+*.log
 
-# Database files
+# Database files (if any local)
 *.sqlite
 *.sqlite3
 *.db
 
-# Supabase
-.supabase/
+# Backup files
+*.backup
+*.bak
+*.tmp
 
-# Vercel
-.vercel
+# Upload directories
+uploads/
+uploads/temp/
+src/uploads/
+public/uploads/
 
-# Local development certificates
-*.pem
+# Test coverage
+coverage/
+.nyc_output/
 
-# Sentry
-.sentryclirc
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.test
+.env.production
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# rollup.js default build output
+dist/
+
+# Uncomment the public line in if your project uses Gatsby
+# https://nextjs.org/blog/next-9-1#public-directory-support
+# https://create-react-app.dev/docs/using-the-public-folder/#docsNav
+# public
 
 # Storybook build outputs
-storybook-static
+.out
+.storybook-out
 
-# Rush
-common/temp/
+# Temporary folders
+tmp/
+temp/
 
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test
+# Editor directories and files
+.vscode/
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# Cypress
-cypress/videos/
-cypress/screenshots/
+# Local History for Visual Studio Code
+.history/
 
-# Jest
-jest_results/
+# Built Visual Studio Code Extensions
+*.vsix
 
-# PWA files
-sw.js
-workbox-*.js
-precache-manifest.*.js
+# SAMIA TAROT Specific
+# Backup files
+backups/
+*.backup
 
-# Lock files (uncomment if you want to ignore them)
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
+# Report files
+reports/
+audit-results.json
+qa-*.json
+
+# Development scripts
+dev-*.js
+test-*.js
+debug-*.js
+
+# Documentation drafts
+*-draft.md
+*-temp.md
+
+# Database scripts (keep structure, ignore data)
+database/data-*.sql
+database/backup-*.sql
+database/restore-*.sql
+
+# API Documentation generated files
+swagger-output.json
+api-docs.json
+
+# SSL certificates (if any)
+*.pem
+*.key
+*.crt
+*.cert
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
