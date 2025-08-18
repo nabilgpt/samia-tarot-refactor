@@ -5,8 +5,8 @@
  * Implements Prompt 1: Feedback Moderation Notifications
  */
 
-const nodemailer = require('nodemailer');
-const twilio = require('twilio');
+import nodemailer from 'nodemailer';
+import twilio from 'twilio';
 
 class FeedbackNotificationService {
   constructor() {
@@ -21,7 +21,7 @@ class FeedbackNotificationService {
   initializeServices() {
     // Initialize Email (SMTP/SendGrid)
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-      this.emailTransporter = nodemailer.createTransporter({
+      this.emailTransporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT || 587,
         secure: false,
@@ -32,7 +32,7 @@ class FeedbackNotificationService {
       });
       console.log('✅ Email service initialized (SMTP)');
     } else if (process.env.SENDGRID_API_KEY) {
-      this.emailTransporter = nodemailer.createTransporter({
+      this.emailTransporter = nodemailer.createTransport({
         service: 'SendGrid',
         auth: {
           user: 'apikey',

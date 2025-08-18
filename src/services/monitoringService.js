@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase.js';
 
 export class MonitoringService {
   static activeWatchingSessions = new Map();
@@ -23,7 +23,7 @@ export class MonitoringService {
         .eq('id', monitorId)
         .single();
 
-      if (monitorError || !['monitor', 'admin'].includes(monitor.role)) {
+      if (monitorError || !['admin', 'super_admin'].includes(monitor.role)) {
         throw new Error('Insufficient permissions to watch calls');
       }
 
@@ -169,7 +169,7 @@ export class MonitoringService {
         .eq('id', monitorId)
         .single();
 
-      if (monitorError || !['monitor', 'admin'].includes(monitor.role)) {
+      if (monitorError || !['admin', 'super_admin'].includes(monitor.role)) {
         throw new Error('Insufficient permissions to stop calls');
       }
 
@@ -249,7 +249,7 @@ export class MonitoringService {
         .eq('id', monitorId)
         .single();
 
-      if (monitorError || !['monitor', 'admin'].includes(monitor.role)) {
+      if (monitorError || !['admin', 'super_admin'].includes(monitor.role)) {
         throw new Error('Insufficient permissions to ban users');
       }
 
@@ -336,7 +336,7 @@ export class MonitoringService {
         .eq('id', monitorId)
         .single();
 
-      if (monitorError || !['monitor', 'admin'].includes(monitor.role)) {
+      if (monitorError || !['admin', 'super_admin'].includes(monitor.role)) {
         throw new Error('Insufficient permissions to flag content');
       }
 
@@ -476,7 +476,7 @@ export class MonitoringService {
         .eq('id', monitorId)
         .single();
 
-      if (monitorError || !['monitor', 'admin'].includes(monitor.role)) {
+      if (monitorError || !['admin', 'super_admin'].includes(monitor.role)) {
         throw new Error('Insufficient permissions to view active calls');
       }
 
@@ -550,7 +550,7 @@ export class MonitoringService {
 
       if (monitorError) throw monitorError;
 
-      if (monitor.role !== 'admin') {
+      if (!['admin', 'super_admin'].includes(monitor.role)) {
         query = query.eq('monitor_id', monitorId);
       }
 
@@ -596,7 +596,7 @@ export class MonitoringService {
         .eq('id', monitorId)
         .single();
 
-      if (monitorError || !['monitor', 'admin'].includes(monitor.role)) {
+      if (monitorError || !['admin', 'super_admin'].includes(monitor.role)) {
         throw new Error('Insufficient permissions to view monitoring stats');
       }
 
@@ -605,7 +605,7 @@ export class MonitoringService {
         .from('monitor_activity_logs')
         .select('activity_type, created_at');
 
-      if (monitor.role !== 'admin') {
+      if (!['admin', 'super_admin'].includes(monitor.role)) {
         activityQuery = activityQuery.eq('monitor_id', monitorId);
       }
 

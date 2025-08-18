@@ -3,9 +3,9 @@
 // =============================================================================
 // Real-time communication service for monitoring and notifications
 
-const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
-const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
+import { supabaseAdmin as supabase } from '../lib/supabase.js';
 
 class SocketService {
   constructor() {

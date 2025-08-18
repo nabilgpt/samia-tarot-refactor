@@ -164,7 +164,7 @@ const PaymentMethodsAdmin = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
             {language === 'ar' ? 'إدارة طرق الدفع' : 'Payment Methods Management'}
           </h2>
           <p className="text-gray-400 mt-1">

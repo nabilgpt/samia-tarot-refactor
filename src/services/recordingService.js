@@ -1,4 +1,4 @@
-import { supabase, safeTableQuery } from '../lib/supabase';
+import { supabase /*, safeTableQuery*/ } from '../lib/supabase.js';
 
 export class RecordingService {
   static mediaRecorder = null;
@@ -225,7 +225,7 @@ export class RecordingService {
       const fileName = `call-recordings/${recordingId}-${Date.now()}.webm`;
       
       // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('recordings')
         .upload(fileName, blob, {
           cacheControl: '3600',
@@ -498,22 +498,4 @@ export class RecordingService {
   }
 }
 
-export default RecordingService; 
-
-// Safe wrapper for call_recordings queries
-const safeCallRecordingsQuery = async (operation, fallbackData = []) => {
-  return await safeTableQuery('call_recordings', operation, fallbackData);
-};
-
-// Add error handling to prevent service crashes
-const handleMissingTable = (error, operation = 'database operation') => {
-  if (error.message?.includes('does not exist') || 
-      error.message?.includes('relation') || 
-      error.code === 'PGRST116' ||
-      error.status === 404) {
-    
-    console.warn(`Recording service: call_recordings table not found during ${operation}. Using fallback.`);
-    return { data: [], error: null, warning: 'Table not found' };
-  }
-  throw error;
-}; 
+export default RecordingService;

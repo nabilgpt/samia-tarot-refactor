@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { UserAPI } from '../../api/userApi.js';
+import api from '../../services/frontendApi.js';
 
 const PaymentSummary = () => {
   const { user, profile } = useAuth();
@@ -19,19 +19,19 @@ const PaymentSummary = () => {
     setLoading(true);
     try {
       // Load wallet data
-      const walletResult = await UserAPI.getUserWallet(user.id);
+      const walletResult = await api.getUserWallet(user.id);
       if (walletResult.success) {
         setWallet(walletResult.data);
       }
 
       // Load recent payments
-      const paymentsResult = await UserAPI.getUserPayments(user.id);
+      const paymentsResult = await api.getUserPayments(user.id);
       if (paymentsResult.success) {
         setRecentPayments(paymentsResult.data.slice(0, 5)); // Last 5 payments
       }
 
       // Load wallet transactions
-      const transactionsResult = await UserAPI.getWalletTransactions(user.id, 10);
+      const transactionsResult = await api.getWalletTransactions(user.id, 10);
       if (transactionsResult.success) {
         setTransactions(transactionsResult.data);
       }

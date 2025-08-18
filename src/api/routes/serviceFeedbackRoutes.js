@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { supabase } = require('../config/supabase');
+const { supabase } = require('../lib/supabase');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { validateRequest, sanitizeInput } = require('../middleware/validation');
 const Joi = require('joi');

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../context/LanguageContext';
 import { 
   Home, 
   Activity,
@@ -18,24 +18,24 @@ import { getDashboardRoleConfig, getDashboardQuickStats } from '../../utils/dash
 import { useUI } from '../../context/UIContext';
 
 const MonitorLayout = ({ children }) => {
-  const { t } = useTranslation();
+  const { currentLanguage, direction, isRtl, getLocalizedText } = useLanguage();
   const { language } = useUI();
 
   const roleConfig = getDashboardRoleConfig('monitor', language);
   const quickStats = getDashboardQuickStats('monitor', language);
 
   const navigation = [
-    { name: language === 'ar' ? 'لوحة المراقبة' : 'Monitor Dashboard', href: '/monitor', icon: Home },
-    { name: language === 'ar' ? 'المراقبة المباشرة' : 'Live Monitoring', href: '/monitor/live', icon: Activity },
-    { name: language === 'ar' ? 'مراقبة الجلسات' : 'Session Monitoring', href: '/monitor/sessions', icon: Eye },
-    { name: language === 'ar' ? 'مراقبة الرسائل' : 'Message Monitoring', href: '/monitor/messages', icon: MessageCircle },
-    { name: language === 'ar' ? 'التقارير' : 'Reports', href: '/monitor/reports', icon: Flag },
-    { name: language === 'ar' ? 'الحوادث' : 'Incidents', href: '/monitor/incidents', icon: AlertTriangle },
-    { name: language === 'ar' ? 'مراجعة المحتوى' : 'Content Review', href: '/monitor/content', icon: FileText },
-    { name: language === 'ar' ? 'مراقبة المستخدمين' : 'User Monitoring', href: '/monitor/users', icon: Users },
-    { name: language === 'ar' ? 'تقييم المراجعات' : 'Review Moderation', href: '/monitor/review-moderation', icon: Star },
-    { name: language === 'ar' ? 'السجلات' : 'Logs', href: '/monitor/logs', icon: Clock },
-    { name: language === 'ar' ? 'الإعدادات' : 'Settings', href: '/monitor/settings', icon: Settings },
+    { name: getLocalizedText('navigation.monitoring'), href: '/monitor', icon: Home },
+    { name: getLocalizedText('navigation.liveMonitoring'), href: '/monitor/live', icon: Activity },
+    { name: getLocalizedText('navigation.sessionMonitoring'), href: '/monitor/sessions', icon: Eye },
+    { name: getLocalizedText('navigation.messageMonitoring'), href: '/monitor/messages', icon: MessageCircle },
+    { name: getLocalizedText('navigation.reports'), href: '/monitor/reports', icon: Flag },
+    { name: getLocalizedText('navigation.incidents'), href: '/monitor/incidents', icon: AlertTriangle },
+    { name: getLocalizedText('navigation.contentReview'), href: '/monitor/content', icon: FileText },
+    { name: getLocalizedText('navigation.userMonitoring'), href: '/monitor/users', icon: Users },
+    { name: getLocalizedText('navigation.reviewModeration'), href: '/monitor/review-moderation', icon: Star },
+    { name: getLocalizedText('navigation.logs'), href: '/monitor/logs', icon: Clock },
+    { name: getLocalizedText('navigation.settings'), href: '/monitor/settings', icon: Settings },
   ];
 
   return (

@@ -936,7 +936,7 @@ router.get('/wallet/transactions', paymentsRateLimit, authenticateToken, async (
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-router.use((error, req, res, _next) => {
+router.use((error, req, res, /* _next */) => {
   console.error('Payments API Error:', error);
   res.status(500).json({
     success: false,

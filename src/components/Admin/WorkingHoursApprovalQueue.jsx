@@ -23,7 +23,7 @@ import {
   Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { WorkingHoursAPI } from '../../api/workingHoursApi';
+import api from '../../services/frontendApi.js';
 
 const WorkingHoursApprovalQueue = () => {
   const { user } = useAuth();
@@ -63,7 +63,7 @@ const WorkingHoursApprovalQueue = () => {
   const loadPendingRequests = useCallback(async () => {
     try {
       setLoading(true);
-      const result = await WorkingHoursAPI.getPendingRequests();
+      const result = await api.getPendingRequests();
       if (result.success) {
         setPendingRequests(result.data);
         setStats(prev => ({ ...prev, pending: result.data.length }));
@@ -80,7 +80,7 @@ const WorkingHoursApprovalQueue = () => {
   const loadAllRequests = useCallback(async () => {
     try {
       setLoading(true);
-      const result = await WorkingHoursAPI.getAllRequests(currentPage, 20, {
+      const result = await api.getAllRequests(currentPage, 20, {
         status: filters.status === 'all' ? undefined : filters.status,
         action_type: filters.action_type === 'all' ? undefined : filters.action_type,
         reader_id: filters.reader_id === 'all' ? undefined : filters.reader_id
@@ -129,7 +129,7 @@ const WorkingHoursApprovalQueue = () => {
       setLoading(true);
       setErrors([]);
 
-      const result = await WorkingHoursAPI.reviewRequest(
+      const result = await api.reviewRequest(
         selectedRequest.id,
         reviewAction,
         reviewReason || null
@@ -161,7 +161,7 @@ const WorkingHoursApprovalQueue = () => {
   const handleViewDetails = async (request) => {
     try {
       setLoading(true);
-      const result = await WorkingHoursAPI.getRequestDetails(request.id);
+      const result = await api.getRequestDetails(request.id);
       
       if (result.success) {
         setSelectedRequest({ ...request, ...result.data });

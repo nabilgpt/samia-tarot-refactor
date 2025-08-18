@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
@@ -8,6 +8,7 @@ import { Eye, EyeOff, Mail, Lock, Sparkles, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
 import Button from '../components/Button';
+import { MonolingualInput, FormButton, FormContainer } from '../components/UI/BilingualFormComponents';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -21,16 +22,25 @@ const Login = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, loading } = useAuth();
+  const { login, loading, isAuthenticated, user, profile, initialized } = useAuth();
   const { showSuccess, showError, language } = useUI();
 
   const from = location.state?.from?.pathname || '/';
 
-  // Particle configuration for cosmic background
+  // Particle configuration for cosmic background (moved before early return)
   const particlesInit = useCallback(async engine => {
     await loadSlim(engine);
   }, []);
 
+  // 🔄 Redirect already authenticated users to their dashboard
+  useEffect(() => {
+    if (initialized && isAuthenticated && user && profile) {
+      const dashboardPath = `/dashboard/${profile.role === 'super_admin' ? 'super-admin' : profile.role}`;
+      navigate(dashboardPath, { replace: true });
+    }
+  }, [initialized, isAuthenticated, user, profile, navigate]);
+
+  // ✨ ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
   const particlesConfig = useMemo(() => ({
     background: {
       color: {
@@ -133,15 +143,15 @@ const Login = () => {
     const newErrors = {};
 
     if (!formData.email) {
-      newErrors.email = language === 'ar' ? 'البريد الإلكتروني مطلوب' : 'Email is required';
+      newErrors.email = t('forms.validation.required');
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = language === 'ar' ? 'البريد الإلكتروني غير صحيح' : 'Invalid email format';
+      newErrors.email = t('forms.validation.email');
     }
 
     if (!formData.password) {
-      newErrors.password = language === 'ar' ? 'كلمة المرور مطلوبة' : 'Password is required';
+      newErrors.password = t('forms.validation.required');
     } else if (formData.password.length < 6) {
-      newErrors.password = language === 'ar' ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters';
+      newErrors.password = t('forms.validation.password');
     }
 
     setErrors(newErrors);
@@ -156,10 +166,13 @@ const Login = () => {
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      showSuccess(language === 'ar' ? 'تم تسجيل الدخول بنجاح' : 'Login successful');
-      navigate(from, { replace: true });
+      showSuccess(t('auth.signin.success'));
+      
+      // Navigate to dashboard instead of 'from' to avoid redirect loops
+      const targetPath = from === '/' || from === '/login' ? '/dashboard' : from;
+      navigate(targetPath, { replace: true });
     } else {
-      showError(result.error || (language === 'ar' ? 'فشل في تسجيل الدخول' : 'Login failed'));
+      showError(result.error || t('auth.signin.error'));
     }
   };
 
@@ -178,6 +191,28 @@ const Login = () => {
       }));
     }
   };
+
+  // Show loading while checking authentication
+  if (!initialized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative mb-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-400"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-purple-400/20"></div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-gray-300 text-lg font-medium">
+              Checking authentication...
+            </p>
+            <p className="text-gray-500 text-sm">
+              Please wait while we verify your login status
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white overflow-hidden" dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}>
@@ -216,10 +251,10 @@ const Login = () => {
               </motion.div>
             </div>
             <h2 className="text-3xl font-bold bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent mb-2">
-              {language === 'ar' ? 'تسجيل الدخول' : 'Welcome Back'}
+              {t('auth.signin.title')}
             </h2>
             <p className="text-gray-300">
-              {language === 'ar' ? 'ادخل إلى حسابك للوصول إلى قراءاتك' : 'Sign in to access your spiritual readings'}
+              {t('auth.signin.subtitle')}
             </p>
           </motion.div>
 
@@ -230,51 +265,25 @@ const Login = () => {
             variants={itemVariants}
           >
             {/* Email Field */}
-            <motion.div className="space-y-2" variants={itemVariants}>
-              <label htmlFor="email" className="block text-sm font-medium text-gold-300">
-                {language === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
-              </label>
-              <div className="relative">
-                <div className={`absolute inset-y-0 flex items-center pointer-events-none z-10 ${
-                  language === 'ar' ? 'right-0 pr-3' : 'left-0 pl-3'
-                }`}>
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`
-                    w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg
-                    text-white placeholder-gray-400
-                    focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400
-                    transition-all duration-300 hover:border-white/30
-                    ${language === 'ar' ? 'pr-10 text-right' : 'pl-10 text-left'}
-                    ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}
-                  `}
-                  placeholder={language === 'ar' ? 'البريد الإلكتروني' : 'Enter your email'}
-                  dir={language === 'ar' ? 'rtl' : 'ltr'}
-                />
-              </div>
-              {errors.email && (
-                <motion.p 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-sm text-red-400 flex items-center gap-1"
-                >
-                  <span className="w-1 h-1 bg-red-400 rounded-full"></span>
-                  {errors.email}
-                </motion.p>
-              )}
+            <motion.div variants={itemVariants}>
+              <MonolingualInput
+                name="email"
+                type="email"
+                labelKey="forms.labels.email"
+                placeholderKey="forms.placeholders.email"
+                value={formData.email}
+                onChange={(value) => handleChange({ target: { name: 'email', value } })}
+                error={errors.email}
+                required
+                className="text-gold-300"
+              />
             </motion.div>
 
             {/* Password Field */}
             <motion.div className="space-y-2" variants={itemVariants}>
-              <label htmlFor="password" className="block text-sm font-medium text-gold-300">
-                {language === 'ar' ? 'كلمة المرور' : 'Password'}
+              <label htmlFor="password" className={`block text-sm font-medium text-gold-300 ${language === 'ar' ? 'text-right' : ''}`}>
+                {t('forms.labels.password')}
+                <span className={`text-red-400 ${language === 'ar' ? 'mr-1' : 'ml-1'}`}>*</span>
               </label>
               <div className="relative">
                 <div className={`absolute inset-y-0 flex items-center pointer-events-none z-10 ${
@@ -290,14 +299,11 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className={`
-                    w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg
-                    text-white placeholder-gray-400
-                    focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400
-                    transition-all duration-300 hover:border-white/30
+                    w-full px-4 py-3 bg-dark-700/50 border border-gold-400/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 transition-all duration-200 backdrop-blur-xl
                     ${language === 'ar' ? 'pr-10 pl-10 text-right' : 'pl-10 pr-10 text-left'}
                     ${errors.password ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''}
                   `}
-                  placeholder={language === 'ar' ? 'كلمة المرور' : 'Enter your password'}
+                  placeholder={t('forms.placeholders.password')}
                   dir={language === 'ar' ? 'rtl' : 'ltr'}
                 />
                 <button
@@ -340,7 +346,7 @@ const Login = () => {
                 <label htmlFor="rememberMe" className={`block text-sm text-gray-300 ${
                   language === 'ar' ? 'mr-2' : 'ml-2'
                 }`}>
-                  {language === 'ar' ? 'تذكرني' : 'Remember me'}
+                  {t('auth.rememberMe')}
                 </label>
               </div>
 
@@ -349,7 +355,7 @@ const Login = () => {
                   to="/forgot-password" 
                   className="font-medium text-gold-400 hover:text-gold-300 transition-colors"
                 >
-                  {language === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot your password?'}
+                  {t('auth.forgotPassword')}
                 </Link>
               </div>
             </motion.div>
@@ -363,10 +369,10 @@ const Login = () => {
                   className="w-full bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-gray-900 font-bold py-3 px-6 shadow-2xl shadow-gold-500/50 border-2 border-gold-400/50"
                 >
                   {loading ? (
-                    language === 'ar' ? 'جاري تسجيل الدخول...' : 'Signing in...'
+                    t('common.loading')
                   ) : (
                     <div className="flex items-center justify-center space-x-2 rtl:space-x-reverse">
-                      <span>{language === 'ar' ? 'تسجيل الدخول' : 'Sign In'}</span>
+                      <span>{t('auth.signin.submit')}</span>
                       <ArrowRight className="w-5 h-5" />
                     </div>
                   )}
@@ -378,12 +384,12 @@ const Login = () => {
           {/* Sign Up Link */}
           <motion.div className="text-center pt-6 border-t border-white/10" variants={itemVariants}>
             <p className="text-gray-400 text-sm">
-              {language === 'ar' ? 'ليس لديك حساب؟' : "Don't have an account?"}{' '}
+              {t('auth.noAccount')}{' '}
               <Link 
                 to="/signup" 
                 className="font-medium text-cosmic-400 hover:text-cosmic-300 transition-colors"
               >
-                {language === 'ar' ? 'إنشاء حساب جديد' : 'Create one now'}
+                {t('auth.signupLink')}
               </Link>
             </p>
           </motion.div>

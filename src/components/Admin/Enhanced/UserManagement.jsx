@@ -21,7 +21,7 @@ import {
   Shield
 } from 'lucide-react';
 import { useUI } from '../../../context/UIContext';
-import { UserAPI } from '../../../api/userApi';
+import api from '../../../services/frontendApi.js';
 
 const UserManagement = () => {
   const { t } = useTranslation();
@@ -73,7 +73,7 @@ const UserManagement = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const response = await UserAPI.getAllUsers();
+      const response = await api.getAllUsers();
       if (response.success) {
         setUsers(response.data);
       } else {
@@ -163,7 +163,7 @@ const UserManagement = () => {
 
   const handleUserStatusToggle = async (userId, currentStatus) => {
     try {
-      const response = await UserAPI.updateUserStatus(userId, !currentStatus);
+      const response = await api.updateUserStatus(userId, !currentStatus);
       if (response.success) {
         setUsers(users.map(user => 
           user.id === userId ? { ...user, is_active: !currentStatus } : user
@@ -189,10 +189,10 @@ const UserManagement = () => {
       let response;
       switch (action) {
         case 'activate':
-          response = await UserAPI.bulkUpdateStatus(selectedUsers, true);
+          response = await api.bulkUpdateStatus(selectedUsers, true);
           break;
         case 'deactivate':
-          response = await UserAPI.bulkUpdateStatus(selectedUsers, false);
+          response = await api.bulkUpdateStatus(selectedUsers, false);
           break;
         case 'export':
           exportUsers();

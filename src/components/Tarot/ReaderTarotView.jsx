@@ -14,7 +14,7 @@ import {
   Download,
   Share2
 } from 'lucide-react';
-import { TarotAPI } from '../../api/tarotApi.js';
+import api from '../../services/frontendApi.js';
 import { aiReadingService } from '../../services/aiReadingService.js';
 import { ttsService } from '../../services/ttsService.js';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -49,7 +49,7 @@ const ReaderTarotView = ({
 
   const loadSession = async () => {
     try {
-      const result = await TarotAPI.getReadingSession(sessionId);
+      const result = await api.getReadingSession(sessionId);
       if (result.success) {
         setSession(result.data);
         setReaderNotes(result.data.notes || '');
@@ -89,7 +89,7 @@ const ReaderTarotView = ({
         setAiReading(result.data);
         
         // Save AI reading to session
-        await TarotAPI.updateReadingSession(sessionId, {
+        await api.updateReadingSession(sessionId, {
           ai_insights: result.data,
           confidence_score: result.data.confidence_score
         });
@@ -155,7 +155,7 @@ const ReaderTarotView = ({
     setError('');
 
     try {
-      const result = await TarotAPI.updateReadingSession(sessionId, {
+      const result = await api.updateReadingSession(sessionId, {
         notes: readerNotes,
         overall_interpretation: interpretation,
         status: interpretation ? 'completed' : 'in_progress'

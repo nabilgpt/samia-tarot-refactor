@@ -49,13 +49,13 @@ class ErrorBoundary extends React.Component {
               The application encountered an unexpected error. Please refresh the page or try again later.
             </p>
             
-            {process.env.NODE_ENV === 'development' && (
+            {import.meta.env.MODE === 'development' && (
               <details className="text-left bg-gray-700 p-4 rounded mb-4">
                 <summary className="text-red-400 cursor-pointer mb-2">Error Details</summary>
                 <pre className="text-xs text-gray-300 overflow-auto">
                   {this.state.error && this.state.error.toString()}
                   <br />
-                  {this.state.errorInfo.componentStack}
+                  {this.state.errorInfo && this.state.errorInfo.componentStack}
                 </pre>
               </details>
             )}

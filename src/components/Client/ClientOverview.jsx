@@ -22,7 +22,7 @@ import {
   Globe
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { ClientAPI } from '../../api/clientApi';
+import api from '../../services/frontendApi.js';
 
 const ClientOverview = () => {
   const { t } = useTranslation();
@@ -82,56 +82,42 @@ const ClientOverview = () => {
     try {
       setLoading(true);
       
-      const response = await ClientAPI.getDashboardStats();
-      if (response.success) {
-        setStats(response.data);
+      const [statsResponse, activityResponse] = await Promise.all([
+        api.getDashboardStats(),
+        api.getRecentActivity()
+      ]);
+      
+      if (statsResponse.success) {
+        setStats(statsResponse.data);
       } else {
-        // Mock data for demonstration
+        console.error('Failed to load stats:', statsResponse.error);
         setStats({
-          wallet_balance: 245.50,
-          active_bookings: 2,
-          completed_bookings: 12,
-          total_bookings: 14,
-          unread_notifications: 3,
-          latest_review: {
-            rating: 5,
-            created_at: '2024-01-20T10:30:00Z'
-          }
+          wallet_balance: 0,
+          active_bookings: 0,
+          completed_bookings: 0,
+          total_bookings: 0,
+          unread_notifications: 0,
+          latest_review: null
         });
       }
 
-      // Mock recent activity
-      setRecentActivity([
-        {
-          id: '1',
-          type: 'booking_confirmed',
-          title: language === 'ar' ? 'تم تأكيد حجزك' : 'Booking Confirmed',
-          description: language === 'ar' ? 'جلسة تاروت مع مدام سامية' : 'Tarot session with Madame Samia',
-          time: '2024-01-20T15:30:00Z',
-          icon: Calendar,
-          color: 'from-green-500 to-emerald-500'
-        },
-        {
-          id: '2',
-          type: 'payment_success',
-          title: language === 'ar' ? 'تم الدفع بنجاح' : 'Payment Successful',
-          description: language === 'ar' ? 'تم إضافة 100 ريال للمحفظة' : '100 SAR added to wallet',
-          time: '2024-01-20T14:15:00Z',
-          icon: CreditCard,
-          color: 'from-blue-500 to-cyan-500'
-        },
-        {
-          id: '3',
-          type: 'review_submitted',
-          title: language === 'ar' ? 'تم إرسال التقييم' : 'Review Submitted',
-          description: language === 'ar' ? 'شكراً لتقييمك الجلسة' : 'Thank you for rating the session',
-          time: '2024-01-20T12:00:00Z',
-          icon: Star,
-          color: 'from-yellow-500 to-orange-500'
-        }
-      ]);
+      if (activityResponse.success) {
+        setRecentActivity(activityResponse.data);
+      } else {
+        console.error('Failed to load activity:', activityResponse.error);
+        setRecentActivity([]);
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      setStats({
+        wallet_balance: 0,
+        active_bookings: 0,
+        completed_bookings: 0,
+        total_bookings: 0,
+        unread_notifications: 0,
+        latest_review: null
+      });
+      setRecentActivity([]);
     } finally {
       setLoading(false);
     }

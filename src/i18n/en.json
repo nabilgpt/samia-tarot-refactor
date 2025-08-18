@@ -68,6 +68,18 @@
       "description": "Read the lines of your palm to reveal your life's journey"
     }
   },
+  "dailyZodiac": {
+    "title": "Daily Zodiac (Abraj)",
+    "subtitle": "Discover what the stars have in store for you today",
+    "loading": "Loading today's cosmic insights...",
+    "error": "Unable to load zodiac readings",
+    "noReading": "No reading available today",
+    "listen": "Listen",
+    "pause": "Pause",
+    "voiceBy": "Voice by",
+    "footer": "Your daily cosmic guidance from Samia",
+    "updatedDaily": "Updated daily at midnight"
+  },
   "auth": {
     "login": {
       "title": "Sign In",
@@ -297,13 +309,19 @@
     "startReading": "Start Reading"
   },
   "footer": {
-    "description": "Your trusted companion in the mystical journey of self-discovery",
+    "description": "Your trusted companion on the spiritual journey of self-discovery",
     "quickLinks": "Quick Links",
     "services": "Services",
     "support": "Support",
     "legal": "Legal",
     "followUs": "Follow Us",
-    "rights": "All rights reserved"
+    "rights": "All rights reserved",
+    "contact": "Contact",
+    "help": "Help",
+    "faq": "FAQ",
+    "cookies": "Cookie Policy",
+    "privacy": "Privacy Policy",
+    "terms": "Terms & Conditions"
   },
   "profile": {
     "title": "Profile",
@@ -355,12 +373,25 @@
     "title": "Digital Wallet",
     "balance": "Current Balance",
     "addFunds": "Add Funds",
-    "transactions": "Transactions"
+    "transactions": "Transactions",
+    "paymentMethods": "Payment Methods",
+    "creditCard": "Credit Card",
+    "cryptocurrency": "Cryptocurrency",
+    "totalDeposits": "Total Deposits",
+    "totalExpenses": "Total Expenses",
+    "transactionCount": "Transaction Count",
+    "enterAmount": "Enter amount",
+    "addFundsButton": "Add Funds",
+    "description": "Description",
+    "date": "Date",
+    "amount": "Amount",
+    "status": "Status",
+    "type": "Type"
   },
   "messages": {
     "title": "Messages",
-    "search": "Search conversations",
-    "selectChat": "Select a chat"
+    "search": "Search in conversations",
+    "selectChat": "Select conversation"
   },
   "bookings": {
     "title": "My Bookings",
@@ -423,7 +454,7 @@
     "button": "Emergency Call",
     "title": "Emergency Call",
     "subtitle": "IMMEDIATE RESPONSE REQUIRED",
-    "description": "You are about to initiate an emergency call. This will:",
+    "description": "Press for immediate assistance during emergencies",
     "features": [
       "Connect you immediately with an available reader",
       "Override the reader's silent mode with a loud siren",
@@ -438,7 +469,16 @@
     },
     "warning": "⚠️ Only use this for genuine emergencies. Misuse may result in account suspension.",
     "tooltip": "Emergency Call",
-    "mobileLabel": "🚨 Emergency Call"
+    "mobileLabel": "🚨 Emergency Call",
+    "call": "Emergency Call",
+    "confirmTitle": "Emergency Call Confirmation",
+    "confirmMessage": "Are you sure you want to make an emergency call? This should only be used for genuine emergencies.",
+    "confirmButton": "Yes, Call Emergency",
+    "cancelButton": "Cancel",
+    "calling": "Calling Emergency Services...",
+    "success": "Emergency call initiated successfully.",
+    "error": "Failed to initiate emergency call. Please try again.",
+    "notAvailable": "Emergency service not available in your area."
   },
   "reader": {
     "title": "Tarot Reader",
@@ -807,7 +847,11 @@
       "status": "Status",
       "createdAt": "Created",
       "updatedAt": "Updated",
-      "actions": "Actions"
+      "actions": "Actions",
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      }
     },
     "realTimeControls": {
       "title": "Real-Time Controls",
@@ -869,6 +913,386 @@
       "deductFunds": "Deduct Funds",
       "userId": "User ID",
       "amount": "Amount (SAR)"
+    },
+    "adminSettings": {
+      "notificationSettings": {
+        "title": "Notification Settings",
+        "description": "Manage notification preferences and alerts",
+        "emailNotifications": "Email Notifications",
+        "emailDescription": "Receive notifications via email",
+        "smsNotifications": "SMS Notifications", 
+        "smsDescription": "Receive notifications via SMS",
+        "pushNotifications": "Push Notifications",
+        "pushDescription": "Receive instant browser notifications",
+        "emergencyAlerts": "Emergency Alerts",
+        "emergencyDescription": "Receive immediate alerts for emergencies",
+        "dailyReports": "Daily Reports",
+        "dailyDescription": "Receive daily activity summary",
+        "weeklyReports": "Weekly Reports",
+        "weeklyDescription": "Receive detailed weekly report"
+      },
+      "displaySettings": {
+        "title": "Display Settings",
+        "description": "Customize user interface appearance"
+      },
+      "securitySettings": {
+        "title": "Security Settings",
+        "description": "Manage security and protection settings",
+        "twoFactor": "Two-Factor Authentication",
+        "twoFactorDescription": "Enable two-factor authentication for additional security",
+        "loginAlerts": "Login Alerts",
+        "loginAlertsDescription": "Receive alerts when logging in from new devices"
+      },
+      "systemSettings": {
+        "title": "System Settings",
+        "description": "Manage system settings and backups",
+        "autoBackup": "Automatic Backup",
+        "autoBackupDescription": "Enable automatic data backup",
+        "autoUpdate": "Automatic Update",
+        "autoUpdateDescription": "Update data automatically in background"
+      }
+    },
+    "incidents": {
+      "assignees": {
+        "adminSara": "Sara Admin",
+        "financeAdmin": "Finance Admin", 
+        "securityTeam": "Security Team"
+      }
+    },
+    "analytics": {
+      "totalUsers": "Total Users",
+      "activeReaders": "Active Readers", 
+      "completedSessions": "Completed Sessions"
+    },
+    "referralSystem": {
+      "codeGenerated": "Code will be generated here",
+      "copyCode": "Copy Code"
+    },
+    "notificationRules": {
+      "dynamicVariables": "Use {{field_name}} for dynamic variables"
+    },
+    "copilot": {
+      "helpful": "Helpful",
+      "notHelpful": "Not Helpful"
+    },
+    "activityFeed": {
+      "updateNow": "Update Now"
+    },
+    "forms": {
+      "search": {
+        "users": "Search users...",
+        "logs": "Search logs...",
+        "reviews": "Search reviews...",
+        "readers": "Search readers...",
+        "messages": "Search messages...",
+        "incidents": "Search incidents...",
+        "reports": "Search reports...",
+        "escalations": "Search escalations...",
+        "content": "Search by user name, content, or reason...",
+        "universal": "Search..."
+      },
+      "placeholders": {
+        "firstName": "Enter first name",
+        "lastName": "Enter last name",
+        "email": "Enter email address",
+        "phone": "Enter phone number",
+        "country": "Select country",
+        "password": "Enter password",
+        "confirmPassword": "Confirm password",
+        "newPassword": "Enter new password (min 8 characters)",
+        "enterAmount": "Enter amount",
+        "enterReason": "Enter reason...",
+        "enterDescription": "Enter description...",
+        "enterTitle": "Enter title...",
+        "enterSubject": "Enter subject...",
+        "enterMessage": "Enter message...",
+        "enterCode": "Enter code",
+        "enterUserId": "Enter user ID",
+        "enterVoiceId": "Enter voice ID",
+        "enterPrompt": "Enter prompt...",
+        "selectOption": "Select option...",
+        "typeMessage": "Type message...",
+        "searchGeneric": "Search...",
+        "question": "What question would you like answered?"
+      },
+      "labels": {
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "displayName": "Display Name",
+        "email": "Email Address",
+        "phone": "Phone Number",
+        "country": "Country",
+        "password": "Password",
+        "confirmPassword": "Confirm Password",
+        "newPassword": "New Password",
+        "amount": "Amount",
+        "reason": "Reason",
+        "description": "Description",
+        "title": "Title",
+        "subject": "Subject",
+        "message": "Message",
+        "code": "Code",
+        "userId": "User ID",
+        "voiceId": "Voice ID",
+        "prompt": "Prompt",
+        "biography": "Biography",
+        "specializations": "Specializations",
+        "languages": "Languages",
+        "workingHours": "Working Hours",
+        "serviceName": "Service Name",
+        "serviceType": "Service Type",
+        "servicePrice": "Service Price",
+        "serviceDuration": "Service Duration",
+        "serviceDescription": "Service Description",
+        "question": "Question (Optional)"
+      },
+      "buttons": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "update": "Update",
+        "delete": "Delete",
+        "add": "Add",
+        "create": "Create",
+        "edit": "Edit",
+        "view": "View",
+        "search": "Search",
+        "filter": "Filter",
+        "export": "Export",
+        "import": "Import",
+        "submit": "Submit",
+        "confirm": "Confirm",
+        "close": "Close",
+        "back": "Back",
+        "next": "Next",
+        "finish": "Finish",
+        "approve": "Approve",
+        "reject": "Reject",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "enable": "Enable",
+        "disable": "Disable",
+        "refresh": "Refresh",
+        "reload": "Reload",
+        "reset": "Reset",
+        "clear": "Clear",
+        "copy": "Copy",
+        "download": "Download",
+        "upload": "Upload",
+        "send": "Send",
+        "login": "Login",
+        "logout": "Logout",
+        "signup": "Sign Up",
+        "signin": "Sign In",
+        "forgotPassword": "Forgot Password",
+        "changePassword": "Change Password",
+        "updateProfile": "Update Profile",
+        "addReader": "Add Reader",
+        "editReader": "Edit Reader",
+        "addService": "Add Service",
+        "editService": "Edit Service",
+        "processRefund": "Process Refund",
+        "adjustWallet": "Adjust Wallet",
+        "sendNotification": "Send Notification",
+        "createBackup": "Create Backup",
+        "forceEndSession": "Force End Session",
+        "sendBroadcast": "Send Broadcast",
+        "generateCode": "Generate Code",
+        "viewDetails": "View Details",
+        "manageUsers": "Manage Users",
+        "manageReaders": "Manage Readers",
+        "manageServices": "Manage Services",
+        "managePayments": "Manage Payments",
+        "manageSettings": "Manage Settings",
+        "systemHealth": "System Health",
+        "auditLogs": "Audit Logs",
+        "realTimeControls": "Real-Time Controls",
+        "databaseManagement": "Database Management",
+        "financialControls": "Financial Controls",
+        "emergencyMode": "Emergency Mode",
+        "maintenanceMode": "Maintenance Mode"
+      },
+      "validation": {
+        "required": "This field is required",
+        "email": "Please enter a valid email address",
+        "phone": "Please enter a valid phone number",
+        "password": "Password must be at least 8 characters",
+        "confirmPassword": "Passwords must match",
+        "minLength": "Must be at least {{min}} characters",
+        "maxLength": "Must be less than {{max}} characters",
+        "numeric": "Must be a valid number",
+        "positive": "Must be a positive number",
+        "invalidCode": "Invalid code",
+        "invalidUserId": "Invalid user ID",
+        "invalidAmount": "Invalid amount",
+        "selectOption": "Please select an option"
+      }
+    },
+    "roles": {
+      "client": "Client",
+      "reader": "Reader", 
+      "admin": "Admin",
+      "monitor": "Monitor",
+      "superAdmin": "Super Admin"
+    },
+    "userManagement": {
+      "filters": {
+        "allRoles": "All Roles",
+        "allStatus": "All Status"
+      },
+      "editUser": "Edit User Profile"
+    },
+    "contact": {
+      "sendMessage": "Send Message",
+      "formDescription": "Fill out the form below and we will contact you as soon as possible",
+      "sending": "Sending...",
+      "sendButton": "Send Message",
+      "success": "Your message has been sent successfully! We will contact you soon",
+      "error": "An error occurred while sending the message. Please try again",
+      "form": {
+        "name": "Name",
+        "namePlaceholder": "Your full name",
+        "email": "Email",
+        "emailPlaceholder": "Your email address",
+        "phone": "Phone",
+        "phonePlaceholder": "Your phone number",
+        "subject": "Subject",
+        "subjectPlaceholder": "Message subject",
+        "message": "Message",
+        "messagePlaceholder": "Write your message here..."
+      }
+    },
+    "admin": {
+      "readers": {
+        "title": "Reader Management",
+        "subtitle": "Manage readers, approve applications, and monitor performance",
+        "addReader": "Add New Reader",
+        "search": "Search readers...",
+        "filter": "Filter by status",
+        "all": "All",
+        "active": "Active",
+        "pending": "Pending",
+        "inactive": "Inactive",
+        "suspended": "Suspended",
+        "stats": {
+          "totalReaders": "Total Readers",
+          "pendingApprovals": "Pending Approvals",
+          "activeReaders": "Active Readers",
+          "totalEarnings": "Total Earnings"
+        },
+        "table": {
+          "reader": "Reader",
+          "specializations": "Specializations",
+          "rating": "Rating",
+          "sessions": "Sessions",
+          "earnings": "Earnings",
+          "status": "Status",
+          "actions": "Actions"
+        },
+        "actions": {
+          "edit": "Edit",
+          "view": "View",
+          "approve": "Approve",
+          "suspend": "Suspend",
+          "activate": "Activate",
+          "deactivate": "Deactivate",
+          "delete": "Delete"
+        },
+        "addModal": {
+          "title": "Add New Reader",
+          "email": "Email",
+          "firstName": "First Name",
+          "lastName": "Last Name",
+          "displayName": "Display Name",
+          "phone": "Phone",
+          "country": "Country",
+          "timezone": "Timezone",
+          "bio": "Bio",
+          "specializations": "Specializations",
+          "languages": "Languages",
+          "cancel": "Cancel",
+          "create": "Create Reader",
+          "creating": "Creating reader...",
+          "emailRequired": "Email is required",
+          "nameRequired": "Name is required"
+        },
+        "editModal": {
+          "title": "Edit Reader",
+          "save": "Save Changes",
+          "saving": "Saving..."
+        },
+        "specializations": {
+          "tarot": "Tarot",
+          "coffee": "Coffee Reading",
+          "dream": "Dream Interpretation", 
+          "numerology": "Numerology",
+          "astrology": "Astrology",
+          "general_reading": "General Reading",
+          "relationship": "Relationship",
+          "career": "Career",
+          "spiritual": "Spiritual"
+        },
+        "languages": {
+          "ar": "Arabic",
+          "en": "English",
+          "fr": "French"
+        }
+      }
     }
+  },
+  "layout": {
+    "logout": "Logout",
+    "online": "Online",
+    "loading": "Loading...",
+    "searchPlaceholder": "Search..."
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "users": "User Management",
+    "readers": "Reader Management",
+    "finances": "Financial Reports",
+    "analytics": "Analytics",
+    "reviews": "Reviews",
+    "messages": "Messages",
+    "reports": "Reports",
+    "incidents": "Incidents",
+    "system": "System",
+    "security": "Security",
+    "profile": "Profile",
+    "settings": "Settings",
+    "monitoring": "Monitor Dashboard",
+    "liveMonitoring": "Live Monitoring",
+    "sessionMonitoring": "Session Monitoring",
+    "messageMonitoring": "Message Monitoring",
+    "contentReview": "Content Review",
+    "userMonitoring": "User Monitoring",
+    "reviewModeration": "Review Moderation",
+    "logs": "Logs",
+    "readerProfile": "Profile",
+    "services": "Services",
+    "tarotSpreads": "Tarot Spreads",
+    "workingHours": "Working Hours",
+    "bookings": "Bookings",
+    "rewards": "Rewards",
+    "earnings": "Earnings",
+    "clientDashboard": "Dashboard",
+    "favoriteReaders": "Favorite Readers",
+    "myReviews": "My Reviews",
+    "wallet": "Wallet",
+    "home": "Home",
+    "chat": "Messages",
+    "feedback": "Reviews"
+  },
+  "descriptions": {
+    "readerDashboard": "Main reader dashboard",
+    "manageProfile": "Manage your profile",
+    "manageServices": "Manage your services",
+    "manageSpreads": "Manage tarot spreads",
+    "manageAvailability": "Manage availability",
+    "manageAppointments": "Manage appointments",
+    "chatWithClients": "Chat with clients",
+    "rewardsSystem": "Rewards system",
+    "trackEarnings": "Track earnings",
+    "clientFeedback": "Client feedback",
+    "performanceAnalytics": "Performance analytics"
   }
 } 

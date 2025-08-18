@@ -6,8 +6,9 @@ import { loadSlim } from 'tsparticles-slim';
 import SuperAdminLayout from '../../components/Layout/SuperAdminLayout.jsx';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
-import SuperAdminAPI from '../../api/superAdminApi.js';
+import api from '../../services/frontendApi.js';
 import ErrorBoundary from '../../components/ErrorBoundary.jsx';
+import DynamicAIManagementTabV2 from '../../components/Admin/DynamicAIManagementTabV2.jsx';
 
 // Tab Components
 import UserManagementTab from './SuperAdmin/UserManagementTab.jsx';
@@ -18,13 +19,16 @@ import DatabaseManagementTab from './SuperAdmin/DatabaseManagementTab.jsx';
 import FinancialControlsTab from './SuperAdmin/FinancialControlsTab.jsx';
 import ImpersonationPanel from './SuperAdmin/ImpersonationPanel.jsx';
 import SystemSecretsTab from '../../components/Admin/SystemSecretsTab.jsx';
+import DailyZodiacManagementTab from './SuperAdmin/DailyZodiacManagementTab.jsx';
+import BilingualSettingsTab from './SuperAdmin/BilingualSettingsTab.jsx';
+import TarotManagementTab from './SuperAdmin/TarotManagementTab.jsx';
 
 const SuperAdminDashboard = () => {
   const { t } = useTranslation();
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading, initialized, isAuthenticated } = useAuth();
   const { language } = useUI();
   const [activeTab, setActiveTab] = useState('users');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({});
   const [systemHealth, setSystemHealth] = useState({});
@@ -108,43 +112,157 @@ const SuperAdminDashboard = () => {
     detectRetina: true,
   }), []);
 
-  // Load dashboard data
+  // 🔄 CRITICAL FIX: Wait for authentication BEFORE loading dashboard data
   useEffect(() => {
     const loadDashboardData = async () => {
+      // 🚨 IMPORTANT: Only load data if user is authenticated and profile is loaded
+      if (!initialized || authLoading || !isAuthenticated || !user || !profile) {
+        console.log('🔄 SuperAdminDashboard: Waiting for authentication...', {
+          initialized,
+          authLoading,
+          isAuthenticated,
+          hasUser: !!user,
+          hasProfile: !!profile,
+          profileRole: profile?.role
+        });
+        return;
+      }
+
+      // 🔒 SECURITY: Verify super admin role before proceeding
+      if (profile.role !== 'super_admin') {
+        console.error('❌ SuperAdminDashboard: Access denied - not super admin:', profile.role);
+        setError('Super Admin access required');
+        return;
+      }
+
       try {
+        console.log('✅ SuperAdminDashboard: Loading dashboard data for super admin...');
         setLoading(true);
         setError(null);
         
-        // Verify super admin access
-        const verification = await SuperAdminAPI.verifySuperAdmin();
-        if (!verification.success) {
-          throw new Error('Super Admin access required');
+        // Verify super admin access with backend
+        const verification = await api.verifySuperAdmin();
+        console.log('🔍 DEBUG: SuperAdmin verification response:', verification);
+        console.log('🔍 DEBUG: verification.success =', verification.success);
+        console.log('🔍 DEBUG: verification type =', typeof verification);
+        
+        // Temporary: check if verification exists and has success property
+        if (!verification || verification.success !== true) {
+          console.log('❌ DEBUG: Verification failed. Full response:', JSON.stringify(verification, null, 2));
+          throw new Error('Super Admin access verification failed');
         }
 
         // Load dashboard stats and system health
         const [statsResult, healthResult] = await Promise.all([
-          SuperAdminAPI.getDatabaseStats(),
-          SuperAdminAPI.getSystemHealth()
+          api.getDatabaseStats(),
+          api.getSystemHealth()
         ]);
 
         if (statsResult.success) {
           setStats(statsResult.data);
+          console.log('✅ SuperAdminDashboard: Stats loaded successfully');
+        } else {
+          console.warn('⚠️ SuperAdminDashboard: Failed to load stats:', statsResult.error);
         }
 
         if (healthResult.success) {
           setSystemHealth(healthResult.data);
+          console.log('✅ SuperAdminDashboard: System health loaded successfully');
+        } else {
+          console.warn('⚠️ SuperAdminDashboard: Failed to load system health:', healthResult.error);
         }
 
       } catch (error) {
-        console.error('Error loading Super Admin dashboard:', error);
+        console.error('❌ SuperAdminDashboard: Error loading dashboard data:', error);
         setError(error.message);
       } finally {
         setLoading(false);
       }
     };
 
+    // 🎯 KEY FIX: Only trigger when authentication is complete
     loadDashboardData();
-  }, []);
+  }, [initialized, authLoading, isAuthenticated, user, profile]); // Dependencies ensure proper timing
+
+  // 🔄 Show loading spinner while authentication is being checked
+  if (authLoading || !initialized) {
+    console.log('🔄 SuperAdminDashboard: Showing auth loading state...');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative mb-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-400"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-purple-400/20"></div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-gray-300 text-lg font-medium">
+              {t('auth.checking')}
+            </p>
+            <p className="text-gray-500 text-sm">
+              Verifying super admin access...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔒 Redirect if not authenticated
+  if (!isAuthenticated || !user) {
+    console.log('❌ SuperAdminDashboard: User not authenticated, should redirect...');
+    return null; // ProtectedRoute will handle redirect
+  }
+
+  // 🔒 Wait for profile to load
+  if (!profile) {
+    console.log('🔄 SuperAdminDashboard: Waiting for profile to load...');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative mb-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-400"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-purple-400/20"></div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-gray-300 text-lg font-medium">
+              Loading profile...
+            </p>
+            <p className="text-gray-500 text-sm">
+              Fetching your permissions...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔒 Access control - verify super admin role
+  if (profile.role !== 'super_admin') {
+    console.error('❌ SuperAdminDashboard: Access denied for role:', profile.role);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8 bg-black/30 backdrop-blur-sm rounded-2xl border border-red-500/20">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="text-red-400 w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            Access Denied
+          </h2>
+          <p className="text-gray-300 mb-6 leading-relaxed">
+            Super Admin access required. Your current role: <span className="text-red-400 font-medium">{profile.role}</span>
+          </p>
+          <button
+            onClick={() => window.history.back()}
+            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -196,6 +314,30 @@ const SuperAdminDashboard = () => {
             <SystemSecretsTab />
           </ErrorBoundary>
         );
+      case 'zodiac':
+        return (
+          <ErrorBoundary>
+            <DailyZodiacManagementTab />
+          </ErrorBoundary>
+        );
+      case 'bilingual':
+        return (
+          <ErrorBoundary>
+            <BilingualSettingsTab />
+          </ErrorBoundary>
+        );
+      case 'tarot':
+        return (
+          <ErrorBoundary>
+            <TarotManagementTab />
+          </ErrorBoundary>
+        );
+      case 'dynamic-ai-v2':
+        return (
+          <ErrorBoundary>
+            <DynamicAIManagementTabV2 />
+          </ErrorBoundary>
+        );
       default:
         return (
           <ErrorBoundary>
@@ -232,11 +374,15 @@ const SuperAdminDashboard = () => {
                 { id: 'users', label: language === 'ar' ? 'إدارة المستخدمين' : 'User Management' },
                 { id: 'system', label: language === 'ar' ? 'إعدادات النظام' : 'System Settings' },
                 { id: 'secrets', label: language === 'ar' ? 'المفاتيح السرية' : 'System Secrets' },
+                { id: 'tarot', label: language === 'ar' ? 'إدارة التاروت' : 'Tarot Management' },
+                { id: 'zodiac', label: language === 'ar' ? 'إدارة الأبراج اليومية' : 'Daily Zodiac Management' },
+                { id: 'bilingual', label: language === 'ar' ? 'إعدادات الترجمة' : 'Bilingual Settings' },
                 { id: 'realtime', label: language === 'ar' ? 'التحكم المباشر' : 'Real-Time Controls' },
                 { id: 'database', label: language === 'ar' ? 'إدارة قاعدة البيانات' : 'Database Management' },
                 { id: 'financial', label: language === 'ar' ? 'التحكم المالي' : 'Financial Controls' },
                 { id: 'audit', label: language === 'ar' ? 'سجلات المراجعة' : 'Audit Logs' },
-                { id: 'impersonation', label: language === 'ar' ? 'انتحال الهوية' : 'User Impersonation' }
+                { id: 'impersonation', label: language === 'ar' ? 'انتحال الهوية' : 'User Impersonation' },
+                { id: 'dynamic-ai-v2', label: language === 'ar' ? 'إدارة الذكاء الديناميكي V2' : 'Dynamic AI Management V2' }
               ].map((tab) => (
                 <button
                   key={tab.id}

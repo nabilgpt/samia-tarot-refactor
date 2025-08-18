@@ -5,7 +5,7 @@ import {
   Edit, Trash2, Eye, Download, Filter, Search,
   BarChart3, PieChart, Target, Clock, ArrowUpRight
 } from 'lucide-react';
-import { BusinessAPI } from '../../api/businessApi.js';
+import api from '../../services/frontendApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const BusinessDashboard = () => {
@@ -29,11 +29,11 @@ const BusinessDashboard = () => {
     setLoading(true);
     try {
       const [profileResult, transactionsResult, clientsResult, packagesResult, insightsResult] = await Promise.all([
-        BusinessAPI.getBusinessProfile(user.id),
-        BusinessAPI.getFinancialTransactions(user.id, { limit: 10 }),
-        BusinessAPI.getClientRelationships(user.id, { limit: 10 }),
-        BusinessAPI.getServicePackages(user.id),
-        BusinessAPI.getBusinessInsights(user.id)
+        api.getBusinessProfile(user.id),
+        api.getFinancialTransactions(user.id, { limit: 10 }),
+        api.getClientRelationships(user.id, { limit: 10 }),
+        api.getServicePackages(user.id),
+        api.getBusinessInsights(user.id)
       ]);
 
       if (profileResult.success) setBusinessProfile(profileResult.data);
@@ -359,7 +359,7 @@ const BusinessProfileTab = ({ profile, onUpdate, formatCurrency }) => {
 
   const handleSave = async () => {
     try {
-      const result = await BusinessAPI.updateBusinessProfile(profile.reader_id, formData);
+      const result = await api.updateBusinessProfile(profile.reader_id, formData);
       if (result.success) {
         setEditing(false);
         onUpdate();

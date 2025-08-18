@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../context/LanguageContext';
 import { 
   StarIcon,
   UsersIcon, 
@@ -15,7 +15,7 @@ import { getDashboardRoleConfig, getDashboardQuickStats } from '../../utils/dash
 import { useUI } from '../../context/UIContext';
 
 const SuperAdminLayout = ({ children, activeTab, setActiveTab }) => {
-  const { t } = useTranslation();
+  const { currentLanguage, direction, isRtl, getLocalizedText } = useLanguage();
   const { language } = useUI();
 
   // Create fallback roleConfig to ensure layout always renders

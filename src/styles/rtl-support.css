@@ -1,0 +1,415 @@
+/*
+=================================================
+SAMIA TAROT RTL SUPPORT CSS
+Comprehensive right-to-left styling for Arabic
+=================================================
+*/
+
+/* RTL Typography and Direction */
+.rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+/* RTL-specific font families */
+.font-arabic {
+  font-family: 'Cairo', 'Amiri', 'Noto Sans Arabic', Arial, sans-serif;
+  font-feature-settings: 'liga' on, 'kern' on;
+}
+
+/* RTL Form Controls */
+.rtl input,
+.rtl textarea,
+.rtl select {
+  text-align: right;
+  direction: rtl;
+}
+
+.rtl input::placeholder,
+.rtl textarea::placeholder {
+  text-align: right;
+  direction: rtl;
+}
+
+/* RTL Flexbox Reversals */
+.rtl .flex-row {
+  flex-direction: row-reverse;
+}
+
+.rtl .flex-row-reverse {
+  flex-direction: row;
+}
+
+/* RTL Margin and Padding Utilities */
+.rtl .ml-auto {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.rtl .mr-auto {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+.rtl .pl-4 {
+  padding-left: 0;
+  padding-right: 1rem;
+}
+
+.rtl .pr-4 {
+  padding-right: 0;
+  padding-left: 1rem;
+}
+
+.rtl .ml-2 {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+.rtl .mr-2 {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+.rtl .ml-4 {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+.rtl .mr-4 {
+  margin-right: 0;
+  margin-left: 1rem;
+}
+
+/* RTL Text Alignment */
+.rtl .text-left {
+  text-align: right;
+}
+
+.rtl .text-right {
+  text-align: left;
+}
+
+/* RTL Float Utilities */
+.rtl .float-left {
+  float: right;
+}
+
+.rtl .float-right {
+  float: left;
+}
+
+/* RTL Border Radius */
+.rtl .rounded-l-lg {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+.rtl .rounded-r-lg {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+}
+
+/* RTL Positioning */
+.rtl .left-0 {
+  left: auto;
+  right: 0;
+}
+
+.rtl .right-0 {
+  right: auto;
+  left: 0;
+}
+
+.rtl .left-4 {
+  left: auto;
+  right: 1rem;
+}
+
+.rtl .right-4 {
+  right: auto;
+  left: 1rem;
+}
+
+/* RTL Transforms */
+.rtl .transform.scale-x-[-1] {
+  transform: scaleX(1);
+}
+
+/* RTL Icons and Arrows */
+.rtl .chevron-left {
+  transform: rotate(180deg);
+}
+
+.rtl .chevron-right {
+  transform: rotate(180deg);
+}
+
+.rtl .arrow-left {
+  transform: rotate(180deg);
+}
+
+.rtl .arrow-right {
+  transform: rotate(180deg);
+}
+
+/* RTL Menu and Dropdown Positioning */
+.rtl .dropdown-menu {
+  left: auto;
+  right: 0;
+}
+
+.rtl .dropdown-menu-right {
+  left: 0;
+  right: auto;
+}
+
+/* RTL Navigation */
+.rtl nav ul {
+  direction: rtl;
+}
+
+.rtl .nav-item {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+.rtl .nav-item:last-child {
+  margin-right: 0;
+}
+
+/* RTL Breadcrumbs */
+.rtl .breadcrumb-item::before {
+  content: '\203A';
+  transform: rotate(180deg);
+}
+
+/* RTL Tables */
+.rtl table {
+  direction: rtl;
+}
+
+.rtl th,
+.rtl td {
+  text-align: right;
+}
+
+.rtl th:first-child,
+.rtl td:first-child {
+  border-right: none;
+  border-left: 1px solid;
+}
+
+/* RTL Modal and Dialog */
+.rtl .modal-header .close {
+  margin-left: 0;
+  margin-right: -1rem;
+}
+
+.rtl .modal-title {
+  text-align: right;
+}
+
+/* RTL Cards and Panels */
+.rtl .card-title {
+  text-align: right;
+}
+
+.rtl .card-text {
+  text-align: right;
+}
+
+/* RTL Tabs */
+.rtl .nav-tabs .nav-link {
+  border-radius: 0.25rem 0.25rem 0 0;
+}
+
+.rtl .nav-tabs .nav-item {
+  margin-left: 0;
+  margin-right: -1px;
+}
+
+/* RTL Progress Bars */
+.rtl .progress-bar {
+  direction: rtl;
+}
+
+/* RTL Alerts */
+.rtl .alert {
+  text-align: right;
+}
+
+.rtl .alert-dismissible .close {
+  left: 0;
+  right: auto;
+}
+
+/* RTL Form Groups */
+.rtl .form-group label {
+  text-align: right;
+}
+
+.rtl .form-check {
+  text-align: right;
+  padding-left: 0;
+  padding-right: 1.25rem;
+}
+
+.rtl .form-check-input {
+  margin-left: 0;
+  margin-right: -1.25rem;
+}
+
+/* RTL Input Groups */
+.rtl .input-group-prepend {
+  order: 2;
+}
+
+.rtl .input-group-append {
+  order: 0;
+}
+
+.rtl .input-group-text {
+  border-radius: 0.25rem 0 0 0.25rem;
+}
+
+/* RTL Cosmic Theme Specific */
+.rtl .cosmic-card {
+  text-align: right;
+}
+
+.rtl .cosmic-button {
+  text-align: center; /* Buttons usually centered */
+}
+
+.rtl .cosmic-input {
+  text-align: right;
+  direction: rtl;
+}
+
+.rtl .cosmic-textarea {
+  text-align: right;
+  direction: rtl;
+}
+
+/* RTL Language Switcher */
+.rtl .language-switcher {
+  direction: ltr; /* Keep flags and language names in original direction */
+}
+
+.rtl .language-option {
+  text-align: right;
+  direction: rtl;
+}
+
+/* RTL Admin Dashboard */
+.rtl .admin-sidebar {
+  right: 0;
+  left: auto;
+}
+
+.rtl .admin-main-content {
+  margin-right: 16rem;
+  margin-left: 0;
+}
+
+/* RTL Chat Messages */
+.rtl .chat-message {
+  text-align: right;
+}
+
+.rtl .chat-message.own {
+  margin-left: 0;
+  margin-right: 20%;
+}
+
+.rtl .chat-message.other {
+  margin-right: 0;
+  margin-left: 20%;
+}
+
+/* RTL Animations - Slide directions */
+.rtl .slide-in-left {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.rtl .slide-in-right {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+/* RTL Scrollbars */
+.rtl ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.rtl ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+/* RTL Media Queries for Responsive Design */
+@media (max-width: 768px) {
+  .rtl .mobile-nav-toggle {
+    left: 1rem;
+    right: auto;
+  }
+  
+  .rtl .mobile-menu {
+    left: 0;
+    right: auto;
+    transform: translateX(-100%);
+  }
+  
+  .rtl .mobile-menu.open {
+    transform: translateX(0);
+  }
+}
+
+/* RTL Print Styles */
+@media print {
+  .rtl {
+    direction: rtl;
+    text-align: right;
+  }
+  
+  .rtl .print-header {
+    text-align: right;
+  }
+  
+  .rtl .print-footer {
+    text-align: right;
+  }
+}
+
+/* RTL Custom Properties for Dynamic Theming */
+.rtl {
+  --text-align: right;
+  --flex-direction: row-reverse;
+  --margin-start: margin-right;
+  --margin-end: margin-left;
+  --padding-start: padding-right;
+  --padding-end: padding-left;
+  --border-start: border-right;
+  --border-end: border-left;
+}
+
+.ltr {
+  --text-align: left;
+  --flex-direction: row;
+  --margin-start: margin-left;
+  --margin-end: margin-right;
+  --padding-start: padding-left;
+  --padding-end: padding-right;
+  --border-start: border-left;
+  --border-end: border-right;
+} 

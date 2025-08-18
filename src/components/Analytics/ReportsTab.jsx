@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AnalyticsAPI } from '../../api/analyticsApi.js';
+import api from '../../services/frontendApi.js';
 import { 
   FileText, 
   Download, 
@@ -23,7 +23,7 @@ const ReportsTab = ({ dateRange, loading, setLoading }) => {
   const loadReports = async () => {
     setLoading(true);
     try {
-      const result = await AnalyticsAPI.getReports(20);
+      const result = await api.getReports(20);
       if (result.success) {
         setReports(result.data);
       }
@@ -37,14 +37,14 @@ const ReportsTab = ({ dateRange, loading, setLoading }) => {
   const handleGenerateReport = async () => {
     setGenerating(true);
     try {
-      const result = await AnalyticsAPI.generateReport(
+      const result = await api.generateReport(
         selectedReportType,
         dateRange.start,
         dateRange.end
       );
       
       if (result.success) {
-        console.log('Report generated successfully');
+        // Report generated successfully
         // Reload reports list
         await loadReports();
       }
@@ -57,9 +57,9 @@ const ReportsTab = ({ dateRange, loading, setLoading }) => {
 
   const handleExportData = async (type) => {
     try {
-      const result = await AnalyticsAPI.exportToCSV(type, dateRange.start, dateRange.end);
+      const result = await api.exportToCSV(type, dateRange.start, dateRange.end);
       if (result.success) {
-        console.log(`${type} data exported successfully`);
+        // Data exported successfully
       }
     } catch (error) {
       console.error(`Error exporting ${type} data:`, error);

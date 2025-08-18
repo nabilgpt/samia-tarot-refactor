@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AnalyticsAPI } from '../../api/analyticsApi.js';
+import api from '../../services/frontendApi.js';
 import { 
   Users, 
   UserPlus, 
@@ -45,13 +45,13 @@ const UsersTab = ({ dateRange, loading, setLoading }) => {
     setLoading(true);
     try {
       // Load user growth stats
-      const growthResult = await AnalyticsAPI.getUserGrowthStats(dateRange.start, dateRange.end, filters);
+      const growthResult = await api.getUserGrowthStats(dateRange.start, dateRange.end, filters);
       if (growthResult.success) {
         setUserGrowthStats(growthResult.data);
       }
 
       // Load users by role
-      const roleResult = await AnalyticsAPI.getUsersByRole();
+      const roleResult = await api.getUsersByRole();
       if (roleResult.success) {
         setUsersByRole(roleResult.data);
       }
@@ -65,9 +65,9 @@ const UsersTab = ({ dateRange, loading, setLoading }) => {
 
   const handleExportCSV = async () => {
     try {
-      const result = await AnalyticsAPI.exportToCSV('users', dateRange.start, dateRange.end, filters);
+      const result = await api.exportToCSV('users', dateRange.start, dateRange.end, filters);
       if (result.success) {
-        console.log('User data exported successfully');
+        // User data exported successfully
       }
     } catch (error) {
       console.error('Error exporting user data:', error);

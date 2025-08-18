@@ -13,7 +13,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { serviceFeedbackAPI } from '../../api/serviceFeedbackApi';
+import api from '../../services/frontendApi.js';
 
 const ServiceFeedbackModal = ({ 
   isOpen, 
@@ -42,7 +42,7 @@ const ServiceFeedbackModal = ({
 
   const loadFeedbackPrompt = async () => {
     try {
-      const response = await serviceFeedbackAPI.getFeedbackPrompt(serviceType);
+      const response = await api.getFeedbackPrompt(serviceType);
       if (response.success && response.data) {
         setFeedbackPrompt(response.data);
       }
@@ -69,7 +69,7 @@ const ServiceFeedbackModal = ({
         is_anonymous: isAnonymous
       };
 
-      const response = await serviceFeedbackAPI.submitFeedback(feedbackData);
+      const response = await api.submitFeedback(feedbackData);
 
       if (response.success) {
         setIsSubmitted(true);

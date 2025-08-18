@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase.js';
-import { UserAPI } from '../../api/userApi.js';
+import api from '../../services/frontendApi.js';
 
 const UsersTab = ({ onUpdate }) => {
   const [users, setUsers] = useState([]);
@@ -47,7 +47,7 @@ const UsersTab = ({ onUpdate }) => {
 
   const updateUserRole = async (userId, newRole) => {
     try {
-      const result = await UserAPI.assignRole(userId, newRole);
+      const result = await api.assignRole(userId, newRole);
       if (result.success) {
         await loadUsers();
         onUpdate?.();

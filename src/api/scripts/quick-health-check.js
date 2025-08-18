@@ -28,7 +28,7 @@ const log = (message, type = 'info') => {
 
 const checkDatabaseConnection = async () => {
   try {
-    const { data, error } = await supabase.from('profiles').select('count').limit(1);
+    const { error } = await supabase.from('profiles').select('count').limit(1);
     if (error) throw error;
     return { success: true, message: 'Database connection successful' };
   } catch (error) {
@@ -50,7 +50,7 @@ const checkRequiredColumns = async () => {
   
   for (const check of checks) {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from(check.table)
         .select(check.column)
         .limit(1);
@@ -113,7 +113,7 @@ const checkRequiredTables = async () => {
 
   for (const table of tables) {
     try {
-      const { data, error } = await supabase.from(table).select('*').limit(1);
+      const { error } = await supabase.from(table).select('*').limit(1);
       if (error) {
         results.push({ table, exists: false, error: error.message });
       } else {

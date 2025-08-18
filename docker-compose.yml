@@ -1,0 +1,284 @@
+version: '3.8'
+
+# 🚀 SAMIA TAROT - Production Docker Compose
+# Complete infrastructure stack with monitoring & security
+
+services:
+  # =====================================
+  # 🌐 Frontend & API Services
+  # =====================================
+  samia-frontend:
+    build:
+      context: .
+      target: production
+      dockerfile: Dockerfile
+      args:
+        BUILD_DATE: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        VCS_REF: ${VCS_REF:-$(git rev-parse --short HEAD)}
+        VERSION: ${VERSION:-latest}
+    container_name: samia-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - VITE_SUPABASE_URL=${SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    networks:
+      - samia-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      - samia-backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`samiatarot.com`)"
+      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+
+  samia-backend:
+    build:
+      context: .
+      target: production
+      dockerfile: Dockerfile
+    container_name: samia-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=info
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./temp-audio:/app/temp-audio
+    networks:
+      - samia-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.samiatarot.com`)"
+      - "traefik.http.services.backend.loadbalancer.server.port=5001"
+
+  # =====================================
+  # 🔄 Reverse Proxy & Load Balancer
+  # =====================================
+  traefik:
+    image: traefik:v3.0
+    container_name: samia-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Traefik dashboard
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@samiatarot.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=INFO"
+      - "--metrics.prometheus=true"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - samia-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.samiatarot.com`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+
+  # =====================================
+  # 📊 Monitoring & Observability
+  # =====================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: samia-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - samia-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: samia-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - samia-network
+    depends_on:
+      - prometheus
+
+  loki:
+    image: grafana/loki:latest
+    container_name: samia-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - samia-network
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: samia-promtail
+    restart: unless-stopped
+    volumes:
+      - ./logs:/var/log/samia
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - samia-network
+    depends_on:
+      - loki
+
+  # =====================================
+  # 🔒 Security & Backup
+  # =====================================
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: samia-fail2ban
+    restart: unless-stopped
+    network_mode: "host"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./logs:/var/log/samia:ro
+      - ./security/fail2ban:/data
+      - /var/log:/var/log:ro
+    environment:
+      - TZ=UTC
+      - F2B_LOG_LEVEL=INFO
+
+  # Database backup service
+  backup:
+    image: postgres:15-alpine
+    container_name: samia-backup
+    restart: unless-stopped
+    environment:
+      - PGPASSWORD=${DB_PASSWORD}
+      - POSTGRES_HOST=${DB_HOST}
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh
+    command: >
+      sh -c "
+        while true; do
+          echo 'Creating database backup...'
+          pg_dump -h $$POSTGRES_HOST -U $$POSTGRES_USER -d $$POSTGRES_DB > /backups/samia-backup-$$(date +%Y%m%d_%H%M%S).sql
+          echo 'Backup completed'
+          # Keep only last 7 days of backups
+          find /backups -name '*.sql' -mtime +7 -delete
+          sleep 86400  # Run daily
+        done
+      "
+    networks:
+      - samia-network
+
+  # =====================================
+  # 🏥 Health Monitoring
+  # =====================================
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: samia-uptime
+    restart: unless-stopped
+    ports:
+      - "3002:3001"
+    volumes:
+      - uptime-data:/app/data
+    networks:
+      - samia-network
+
+  # =====================================
+  # 🔄 Redis Cache (Optional)
+  # =====================================
+  redis:
+    image: redis:7-alpine
+    container_name: samia-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-defaultpass}
+    volumes:
+      - redis-data:/data
+    networks:
+      - samia-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# =====================================
+# 📡 Networks & Volumes
+# =====================================
+networks:
+  samia-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  loki-data:
+    driver: local
+  uptime-data:
+    driver: local
+  redis-data:
+    driver: local
+
+# =====================================
+# 🏷️ Labels & Metadata
+# =====================================
+x-common-labels: &common-labels
+  org.label-schema.schema-version: "1.0"
+  org.label-schema.vendor: "SAMIA TAROT"
+  org.label-schema.description: "Cosmic Platform for Tarot & Astrology Services"
+  maintainer: "SAMIA TAROT <info@samiatarot.com>" 

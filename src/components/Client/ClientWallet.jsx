@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
 import { useAuth } from '../../context/AuthContext';
-import { ClientAPI } from '../../api/clientApi';
+import api from '../../services/frontendApi.js';
 import PaymentMethodService from '../../services/paymentMethodService';
 
 const ClientWallet = () => {
@@ -97,69 +97,27 @@ const ClientWallet = () => {
       setLoading(true);
       
       const [walletResponse, transactionsResponse] = await Promise.all([
-        ClientAPI.getWallet(),
-        ClientAPI.getTransactions()
+        api.getWallet(),
+        api.getTransactions()
       ]);
       
       if (walletResponse.success) {
         setWalletData(walletResponse.data);
       } else {
-        // Mock wallet data
+        console.error('Failed to load wallet data:', walletResponse.error);
         setWalletData({
-          balance: 245.50,
-          total_deposits: 500.00,
-          total_withdrawals: 254.50,
-          pending_amount: 25.00
+          balance: 0,
+          total_deposits: 0,
+          total_withdrawals: 0,
+          pending_amount: 0
         });
       }
 
       if (transactionsResponse.success) {
         setTransactions(transactionsResponse.data);
       } else {
-        // Mock transaction data
-        const mockTransactions = [
-          {
-            id: '1',
-            type: 'deposit',
-            amount: 100.00,
-            status: 'completed',
-            description: 'Wallet top-up via Stripe',
-            description_ar: 'شحن المحفظة عبر سترايب',
-            created_at: '2024-01-20T15:30:00Z',
-            reference: 'TXN_001'
-          },
-          {
-            id: '2',
-            type: 'payment',
-            amount: -75.00,
-            status: 'completed',
-            description: 'Tarot reading session',
-            description_ar: 'جلسة قراءة التاروت',
-            created_at: '2024-01-20T14:00:00Z',
-            reference: 'TXN_002'
-          },
-          {
-            id: '3',
-            type: 'refund',
-            amount: 50.00,
-            status: 'completed',
-            description: 'Cancelled booking refund',
-            description_ar: 'استرداد حجز ملغى',
-            created_at: '2024-01-19T10:15:00Z',
-            reference: 'TXN_003'
-          },
-          {
-            id: '4',
-            type: 'deposit',
-            amount: 200.00,
-            status: 'pending',
-            description: 'USDT cryptocurrency deposit',
-            description_ar: 'إيداع عملة USDT الرقمية',
-            created_at: '2024-01-18T16:45:00Z',
-            reference: 'TXN_004'
-          }
-        ];
-        setTransactions(mockTransactions);
+        console.error('Failed to load transactions:', transactionsResponse.error);
+        setTransactions([]);
       }
     } catch (error) {
       console.error('Error loading wallet data:', error);
@@ -316,7 +274,7 @@ const ClientWallet = () => {
         
       } else if (selectedMethodDetails?.auto_confirm) {
         // For card payments (Stripe/Square), redirect to payment gateway
-        const response = await ClientAPI.addFunds(amount, paymentMethod);
+        const response = await api.addFunds(amount, paymentMethod);
         
         if (response.success) {
           window.location.href = response.data.payment_url;
@@ -344,7 +302,7 @@ const ClientWallet = () => {
 
     try {
       setLoading(true);
-      const response = await ClientAPI.requestRefund(refundBookingId, refundReason);
+      const response = await api.requestRefund(refundBookingId, refundReason);
       
       if (response.success) {
         showSuccess(language === 'ar' ? 'تم إرسال طلب الاسترداد بنجاح' : 'Refund request submitted successfully');
@@ -364,7 +322,7 @@ const ClientWallet = () => {
 
   const exportTransactions = async () => {
     try {
-      const response = await ClientAPI.exportTransactions();
+      const response = await api.exportTransactions();
       if (response.success) {
         // Download CSV file
         const link = document.createElement('a');
@@ -828,7 +786,7 @@ const ClientWallet = () => {
                     type="text"
                     value={refundBookingId}
                     onChange={(e) => setRefundBookingId(e.target.value)}
-                    placeholder={language === 'ar' ? 'أدخل رقم الحجز' : 'Enter booking ID'}
+                                          placeholder={t('support.refundBookingId')}
                     className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors"
                   />
                 </div>
@@ -840,7 +798,7 @@ const ClientWallet = () => {
                   <textarea
                     value={refundReason}
                     onChange={(e) => setRefundReason(e.target.value)}
-                    placeholder={language === 'ar' ? 'اشرح سبب طلب الاسترداد...' : 'Explain why you are requesting a refund...'}
+                                          placeholder={t('support.refundReason')}
                     rows={4}
                     className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-gold-400/50 transition-colors resize-none"
                   />

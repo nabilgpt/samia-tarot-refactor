@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, TrendingDown, Users, Eye, DollarSign, Calendar, Filter, Download } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import AdminLayout from '../../components/Layout/AdminLayout';
 
 const AdminAnalyticsPage = () => {
+  const { t } = useTranslation();
   const [analyticsData, setAnalyticsData] = useState({
     userGrowth: { current: 1250, previous: 1180, change: 5.9 },
     readerGrowth: { current: 45, previous: 42, change: 7.1 },
@@ -27,13 +29,14 @@ const AdminAnalyticsPage = () => {
         setAnalyticsData(data.summary);
         setChartData(data.chartData);
       } else {
-        // Mock chart data
-        setChartData([
-          { name: 'يناير', users: 1100, sessions: 650, revenue: 12000 },
-          { name: 'فبراير', users: 1150, sessions: 720, revenue: 13500 },
-          { name: 'مارس', users: 1200, sessions: 780, revenue: 14200 },
-          { name: 'أبريل', users: 1250, sessions: 890, revenue: 15670 }
-        ]);
+        console.error('Failed to load analytics data:', response.status);
+        setAnalyticsData({
+          userGrowth: { current: 0, change: 0 },
+          readerGrowth: { current: 0, change: 0 },
+          sessionGrowth: { current: 0, change: 0 },
+          revenueGrowth: { current: 0, change: 0 }
+        });
+        setChartData([]);
       }
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -135,21 +138,21 @@ const AdminAnalyticsPage = () => {
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="إجمالي المستخدمين"
+            title={t('admin.analytics.totalUsers')}
             value={analyticsData.userGrowth.current}
             change={analyticsData.userGrowth.change}
             icon={Users}
             color="bg-blue-500"
           />
           <StatCard
-            title="القراء النشطين"
+            title={t('admin.analytics.activeReaders')}
             value={analyticsData.readerGrowth.current}
             change={analyticsData.readerGrowth.change}
             icon={Eye}
             color="bg-purple-500"
           />
           <StatCard
-            title="الجلسات المكتملة"
+            title={t('admin.analytics.completedSessions')}
             value={analyticsData.sessionGrowth.current}
             change={analyticsData.sessionGrowth.change}
             icon={BarChart3}

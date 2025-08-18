@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
-import { SpreadAPI } from '../../api/spreadApi';
+import api from '../../services/frontendApi.js';
 
 const SpreadSelection = ({ 
   bookingId, 
@@ -60,7 +60,7 @@ const SpreadSelection = ({
   const loadAvailableSpreads = async () => {
     setLoading(true);
     try {
-      const result = await SpreadAPI.getAvailableSpreadsForBooking(serviceId, readerId);
+      const result = await api.getAvailableSpreadsForBooking(serviceId, readerId);
       if (result.success) {
         setSpreads(result.data);
       } else {
@@ -75,7 +75,7 @@ const SpreadSelection = ({
 
   const handleSpreadSelect = async (spread) => {
     try {
-      const result = await SpreadAPI.selectSpreadForBooking(bookingId, profile?.id, spread.spread_id);
+      const result = await api.selectSpreadForBooking(bookingId, profile?.id, spread.spread_id);
       if (result.success) {
         showSuccess(
           language === 'ar' 

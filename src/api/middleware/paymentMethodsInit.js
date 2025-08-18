@@ -1,5 +1,5 @@
-const { supabase, supabaseAdmin } = require('../lib/supabase');
-const { populateDefaultPaymentMethods } = require('../scripts/populate-default-payment-methods');
+import { supabaseAdmin } from '../lib/supabase.js';
+import { populateDefaultPaymentMethods } from '../scripts/populate-default-payment-methods.js';
 
 // =====================================================
 // PAYMENT METHODS INITIALIZATION MIDDLEWARE
@@ -245,7 +245,6 @@ async function startupInitialization() {
     
     try {
       const initialized = await initializePaymentMethods();
-      await verifyPaymentMethodsSetup();
       
       global.paymentMethodsStartupComplete = true;
       
@@ -270,7 +269,7 @@ startupInitialization();
 // EXPORTS
 // =====================================================
 
-module.exports = {
+export {
   initializePaymentMethods,
   verifyPaymentMethodsSetup,
   ensurePaymentMethodsMiddleware,

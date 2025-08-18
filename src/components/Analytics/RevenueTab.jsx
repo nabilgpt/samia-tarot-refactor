@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AnalyticsAPI } from '../../api/analyticsApi.js';
+import api from '../../services/frontendApi.js';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -48,19 +48,19 @@ const RevenueTab = ({ dateRange, loading, setLoading }) => {
     setLoading(true);
     try {
       // Load main revenue stats
-      const statsResult = await AnalyticsAPI.getRevenueStats(dateRange.start, dateRange.end, filters);
+      const statsResult = await api.getRevenueStats(dateRange.start, dateRange.end, filters);
       if (statsResult.success) {
         setRevenueStats(statsResult.data);
       }
 
       // Load revenue by payment method
-      const methodResult = await AnalyticsAPI.getRevenueByMethod(dateRange.start, dateRange.end);
+      const methodResult = await api.getRevenueByMethod(dateRange.start, dateRange.end);
       if (methodResult.success) {
         setRevenueByMethod(methodResult.data);
       }
 
       // Load revenue by service type
-      const serviceResult = await AnalyticsAPI.getRevenueByService(dateRange.start, dateRange.end);
+      const serviceResult = await api.getRevenueByService(dateRange.start, dateRange.end);
       if (serviceResult.success) {
         setRevenueByService(serviceResult.data);
       }
@@ -74,9 +74,9 @@ const RevenueTab = ({ dateRange, loading, setLoading }) => {
 
   const handleExportCSV = async () => {
     try {
-      const result = await AnalyticsAPI.exportToCSV('revenue', dateRange.start, dateRange.end, filters);
+      const result = await api.exportToCSV('revenue', dateRange.start, dateRange.end, filters);
       if (result.success) {
-        console.log('Revenue data exported successfully');
+        // Revenue data exported successfully
       }
     } catch (error) {
       console.error('Error exporting revenue data:', error);

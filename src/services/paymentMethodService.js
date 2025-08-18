@@ -8,7 +8,7 @@
  * - Receipt upload requirements
  */
 
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase.js';
 
 // Restricted payment methods - NO OTHERS ALLOWED
 const ALLOWED_PAYMENT_METHODS = [
@@ -157,7 +157,7 @@ class PaymentMethodService {
     // UAE - Stripe
     const stripeCountries = [...euCountries, 'AE'];
     // Square supported
-    const squareCountries = ['US', 'CA', 'AU', 'GB', 'JP'];
+    // const squareCountries = ['US', 'CA', 'AU', 'GB', 'JP'];
     // Lebanon - special methods
     const lebanonMethods = ['omt', 'whish', 'bob'];
 
@@ -433,7 +433,7 @@ class PaymentMethodService {
     try {
       // Upload file to Supabase Storage
       const fileName = `receipt-${paymentId}-${Date.now()}.${receiptFile.name.split('.').pop()}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('receipts')
         .upload(fileName, receiptFile);
 

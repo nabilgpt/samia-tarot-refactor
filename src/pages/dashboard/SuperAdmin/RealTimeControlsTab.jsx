@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import SuperAdminAPI from '../../../api/superAdminApi.js';
+import api from '../../../services/frontendApi.js';
 import {
   EyeIcon,
   PlayIcon,
@@ -45,8 +45,8 @@ const RealTimeControlsTab = () => {
       if (!silent) setLoading(true);
       
       const [sessionsResult, healthResult] = await Promise.all([
-        SuperAdminAPI.getActiveSessions(),
-        SuperAdminAPI.getSystemHealth()
+        api.getActiveSessions(),
+        api.getSystemHealth()
       ]);
 
       if (sessionsResult.success) {
@@ -68,7 +68,7 @@ const RealTimeControlsTab = () => {
   const handleForceEndSession = async () => {
     try {
       setLoading(true);
-      const result = await SuperAdminAPI.forceEndSession(
+      const result = await api.forceEndSession(
         selectedSession.id, 
         'Force ended by super admin via real-time controls'
       );

@@ -232,6 +232,14 @@ app.use('/api/bookings', require('./api/bookings').router);
 app.use('/api/payments', require('./api/payments').router);
 app.use('/api/chat', require('./api/chat').router);
 
+// Configuration Management Routes
+try {
+  app.use('/api/configuration', require('./api/routes/configurationRoutes'));
+  console.log('✅ Configuration management routes loaded successfully');
+} catch (error) {
+  console.warn('⚠️  Configuration management routes not found, skipping...');
+}
+
 // Advanced Admin Routes
 try {
   app.use('/api/admin/advanced', require('./api/routes/advancedAdminRoutesV2'));
@@ -283,7 +291,7 @@ app.use((req, res) => {
   });
 });
 
-app.use((error, req, res, _next) => {
+app.use((error, req, res, /* _next */) => {
   console.error('Server Error:', error);
   res.status(500).json({
     success: false,

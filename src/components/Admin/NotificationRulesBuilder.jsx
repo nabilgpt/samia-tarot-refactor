@@ -19,6 +19,7 @@ import {
   Play,
   Pause
 } from 'lucide-react';
+import { getAdminRoles } from '../../utils/roleHelpers';
 
 const NotificationRulesBuilder = () => {
   const [rules, setRules] = useState([]);
@@ -122,6 +123,26 @@ const NotificationRulesBuilder = () => {
       console.error('Failed to toggle rule status:', error);
     }
   };
+
+  const createDefaultRule = (rule = {}) => ({
+    name: 'قاعدة جديدة',
+    description: '',
+    trigger_conditions: {
+      entity: 'feedback',
+      field: 'rating',
+      operator: '<',
+      value: '3'
+    },
+    actions: [{
+      type: 'email',
+      template: 'تنبيه: {{entity}} جديد يتطلب انتباهك',
+      recipients: getAdminRoles()
+    }],
+    channels: ['email'],
+    priority: 1,
+    is_active: true,
+    ...rule
+  });
 
   return (
     <div className="space-y-6">
@@ -325,13 +346,13 @@ const RuleBuilderModal = ({ rule, onSave, onClose }) => {
     trigger_conditions: {
       entity: 'feedback',
       field: 'rating',
-      operator: '<=',
-      value: 2
+      operator: '<',
+      value: '3'
     },
     actions: [{
       type: 'email',
       template: 'تنبيه: {{entity}} جديد يتطلب انتباهك',
-      recipients: ['admin']
+      recipients: getAdminRoles()
     }],
     channels: ['email'],
     priority: 1,
@@ -554,7 +575,7 @@ const RuleBuilderModal = ({ rule, onSave, onClose }) => {
               value={formData.actions[0]?.template || ''}
               onChange={(e) => updateAction(0, 'template', e.target.value)}
               rows={3}
-              placeholder="استخدم {{field_name}} للمتغيرات الديناميكية"
+                              placeholder={t('admin.notificationRules.dynamicVariables')}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

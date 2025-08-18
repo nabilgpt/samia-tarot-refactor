@@ -1,4 +1,4 @@
-import RewardsAPI from '../api/rewardsApi';
+import api from '../services/frontendApi.js';
 
 /**
  * Rewards Integration Utilities
@@ -16,7 +16,7 @@ class RewardsIntegration {
     try {
       console.log(`Awarding booking points: ${amount} USD for booking ${bookingId}`);
       
-      const result = await RewardsAPI.awardBookingPoints(bookingId, amount);
+      const result = await api.awardBookingPoints(bookingId, amount);
       
       if (result.success) {
         console.log(`Successfully awarded ${result.data.points} points for booking ${bookingId}`);
@@ -48,7 +48,7 @@ class RewardsIntegration {
     try {
       console.log('Awarding welcome bonus to new user');
       
-      const result = await RewardsAPI.awardWelcomeBonus();
+      const result = await api.awardWelcomeBonus();
       
       if (result.success) {
         console.log(`Successfully awarded welcome bonus`);
@@ -84,7 +84,9 @@ class RewardsIntegration {
 
       console.log(`Processing referral code: ${referralCode}`);
       
-      const result = await RewardsAPI.useReferralCode(referralCode.trim());
+      // FIX: ESLint error - useReferralCode is not a React Hook, it's a static API method
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      const result = await api.useReferralCode(referralCode.trim());
       
       if (result.success) {
         console.log(`Successfully processed referral code: ${referralCode}`);
@@ -122,7 +124,7 @@ class RewardsIntegration {
     try {
       console.log('Awarding profile completion bonus');
       
-      const result = await RewardsAPI.earnPoints(
+      const result = await api.earnPoints(
         25, // 25 points for profile completion
         'profile_completion',
         'Bonus for completing your profile',
@@ -160,7 +162,7 @@ class RewardsIntegration {
     try {
       console.log(`Awarding first booking bonus for booking ${bookingId}`);
       
-      const result = await RewardsAPI.earnPoints(
+      const result = await api.earnPoints(
         50, // 50 points for first booking
         bookingId,
         'Bonus for your first tarot reading booking',
@@ -204,7 +206,7 @@ class RewardsIntegration {
       const bonusPoints = rating >= 4 ? 10 : 0;
       const totalPoints = basePoints + bonusPoints;
       
-      const result = await RewardsAPI.earnPoints(
+      const result = await api.earnPoints(
         totalPoints,
         bookingId,
         `Thank you for your ${rating}-star review!`,
@@ -242,7 +244,7 @@ class RewardsIntegration {
     try {
       // This would typically check the user's transaction history
       // to see if they've already received certain bonuses
-      const transactionHistory = await RewardsAPI.getTransactionHistory(1, 100);
+      const transactionHistory = await api.getTransactionHistory(1, 100);
       
       if (!transactionHistory.success) {
         return { eligible: false, reason: 'Could not check eligibility' };
@@ -251,14 +253,15 @@ class RewardsIntegration {
       const transactions = transactionHistory.data.transactions || [];
       
       switch (bonusType) {
-        case 'welcome':
+        case 'welcome': {
           const hasWelcomeBonus = transactions.some(t => t.type === 'welcome_bonus');
           return { 
             eligible: !hasWelcomeBonus, 
             reason: hasWelcomeBonus ? 'Welcome bonus already received' : 'Eligible for welcome bonus' 
           };
+        }
           
-        case 'first_booking':
+        case 'first_booking': {
           const hasFirstBookingBonus = transactions.some(t => 
             t.type === 'booking_bonus' && t.metadata?.first_booking === true
           );
@@ -266,8 +269,9 @@ class RewardsIntegration {
             eligible: !hasFirstBookingBonus, 
             reason: hasFirstBookingBonus ? 'First booking bonus already received' : 'Eligible for first booking bonus' 
           };
+        }
           
-        case 'profile_completion':
+        case 'profile_completion': {
           const hasProfileBonus = transactions.some(t => 
             t.source === 'profile_completion'
           );
@@ -275,6 +279,7 @@ class RewardsIntegration {
             eligible: !hasProfileBonus, 
             reason: hasProfileBonus ? 'Profile completion bonus already received' : 'Eligible for profile completion bonus' 
           };
+        }
           
         default:
           return { eligible: true, reason: 'Unknown bonus type, assuming eligible' };
@@ -290,7 +295,7 @@ class RewardsIntegration {
    */
   static async getCurrentBalance() {
     try {
-      const result = await RewardsAPI.getUserPoints();
+      const result = await api.getUserPoints();
       
       if (result.success) {
         return {

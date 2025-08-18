@@ -13,11 +13,44 @@ import { countries } from '../utils/countries';
 
 const AuthPage = () => {
   const { t } = useTranslation();
-  const { signup, login } = useAuth();
+  const { signup, login, isAuthenticated, user, profile, initialized } = useAuth();
   const { showNotification } = useUI();
   const navigate = useNavigate();
   const location = useLocation();
   const recaptchaRef = useRef();
+
+  // 🔄 Redirect already authenticated users to their dashboard
+  useEffect(() => {
+    if (initialized && isAuthenticated && user && profile) {
+      console.log('🔄 AuthPage: User already authenticated, redirecting to dashboard...');
+      const dashboardPath = `/dashboard/${profile.role === 'super_admin' ? 'super-admin' : profile.role}`;
+      navigate(dashboardPath, { replace: true });
+    }
+  }, [initialized, isAuthenticated, user, profile, navigate]);
+
+  // Show loading while checking authentication
+  if (!initialized) {
+    return (
+      <AnimatedBackground variant="auth" intensity="normal">
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="text-center">
+            <div className="relative mb-6">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-400"></div>
+              <div className="absolute inset-0 rounded-full border-2 border-purple-400/20"></div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-gray-300 text-lg font-medium">
+                Checking authentication...
+              </p>
+              <p className="text-gray-500 text-sm">
+                Please wait while we verify your login status
+              </p>
+            </div>
+          </div>
+        </div>
+      </AnimatedBackground>
+    );
+  }
 
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'mobile'
   const [authMethod, setAuthMethod] = useState('form'); // 'form' | 'social' | 'mobile'

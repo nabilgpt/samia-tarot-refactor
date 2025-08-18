@@ -520,7 +520,7 @@ router.post('/notifications/test', adminAuth, subscriptionController.sendTestNot
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-router.use((error, req, res, next) => {
+router.use((error, req, res, /* next */) => {
   console.error('Subscription API Error:', {
     error: error.message,
     stack: error.stack,

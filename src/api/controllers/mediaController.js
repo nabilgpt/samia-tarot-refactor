@@ -3,11 +3,9 @@
 // =============================================================================
 // Comprehensive media management system with security, processing, and analytics
 
-const fs = require('fs').promises;
-const path = require('path');
+// No imports needed for mock responses
 
-// Import Supabase client (already configured with dotenv)
-const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+// Media Controller - File upload and management
 
 // =============================================================================
 // 1. FILE UPLOAD & MANAGEMENT
@@ -214,7 +212,7 @@ const uploadVoiceNote = async (req, res) => {
 // Get user files
 const getUserFiles = async (req, res) => {
   try {
-    const { type, session_id, page = 1, limit = 20, search, date_from, date_to } = req.query;
+    const { type, session_id, page = 1, limit = 20, /*search, date_from, date_to*/ } = req.query;
     
     // Simulate file retrieval with filters
     const files = [
@@ -1046,7 +1044,7 @@ const getStorageAnalytics = async (req, res) => {
 // Get all files (admin)
 const getAllFiles = async (req, res) => {
   try {
-    const { page = 1, limit = 50, user_id, file_type, status } = req.query;
+    const { page = 1, limit = 50, /*user_id, file_type, status*/ } = req.query;
     
     const files = [
       {

@@ -443,7 +443,7 @@ router.put('/integrations/:integration', adminAuth, supportController.updateSupp
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-router.use((error, req, res, next) => {
+router.use((error, req, res, /* next */) => {
   console.error('Support API Error:', {
     error: error.message,
     stack: error.stack,

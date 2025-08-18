@@ -1,0 +1,315 @@
+name: 🔄 SAMIA TAROT - Emergency Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_target:
+        description: 'Rollback target'
+        required: true
+        type: choice
+        options:
+          - 'previous-release'
+          - 'specific-commit'
+          - 'last-known-good'
+      commit_sha:
+        description: 'Specific commit SHA (if rollback_target is specific-commit)'
+        required: false
+        type: string
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - 'production'
+          - 'staging'
+      reason:
+        description: 'Rollback reason'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  deployments: write
+  actions: read
+
+env:
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # =============================================================================
+  # VALIDATE ROLLBACK REQUEST
+  # =============================================================================
+  validate:
+    name: 🔍 Validate Rollback Request
+    runs-on: ubuntu-latest
+    
+    outputs:
+      target-sha: ${{ steps.resolve.outputs.target-sha }}
+      target-tag: ${{ steps.resolve.outputs.target-tag }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Resolve rollback target
+        id: resolve
+        run: |
+          case "${{ github.event.inputs.rollback_target }}" in
+            "previous-release")
+              TARGET_SHA=$(git tag --sort=-version:refname | head -2 | tail -1 | xargs git rev-list -n 1)
+              TARGET_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+              ;;
+            "specific-commit")
+              TARGET_SHA="${{ github.event.inputs.commit_sha }}"
+              TARGET_TAG="commit-$TARGET_SHA"
+              ;;
+            "last-known-good")
+              # Get last successful deployment from GitHub deployments API
+              TARGET_SHA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                          "https://api.github.com/repos/${{ github.repository }}/deployments" \
+                          | jq -r '.[] | select(.environment == "${{ github.event.inputs.environment }}" and .task == "deploy") | .sha' | head -1)
+              TARGET_TAG="last-known-good"
+              ;;
+          esac
+          
+          echo "target-sha=$TARGET_SHA" >> $GITHUB_OUTPUT
+          echo "target-tag=$TARGET_TAG" >> $GITHUB_OUTPUT
+          
+          echo "🎯 Rollback target: $TARGET_SHA ($TARGET_TAG)"
+
+      - name: ✅ Validate target commit
+        run: |
+          if ! git cat-file -e ${{ steps.resolve.outputs.target-sha }}; then
+            echo "❌ Invalid commit SHA: ${{ steps.resolve.outputs.target-sha }}"
+            exit 1
+          fi
+          
+          echo "✅ Target commit validated: ${{ steps.resolve.outputs.target-sha }}"
+
+  # =============================================================================
+  # BUILD ROLLBACK VERSION
+  # =============================================================================
+  build-rollback:
+    name: 🏗️ Build Rollback Version
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+      - name: 📥 Checkout rollback target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.target-sha }}
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 🔧 Install dependencies
+        run: npm ci
+
+      - name: 🧪 Run critical tests
+        run: npm run test:unit
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: 🏗️ Build rollback version
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_RECAPTCHA_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
+          VITE_OPENAI_API_KEY: ${{ secrets.VITE_OPENAI_API_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+
+      - name: 📦 Upload rollback artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: rollback-build
+          path: dist/
+          retention-days: 7
+
+  # =============================================================================
+  # DATABASE BACKUP BEFORE ROLLBACK
+  # =============================================================================
+  backup-before-rollback:
+    name: 💾 Backup Database Before Rollback
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event.inputs.environment == 'production'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🗄️ Create emergency backup
+        run: |
+          python scripts/backup-database.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_BACKUP_BUCKET_NAME: ${{ secrets.B2_BACKUP_BUCKET_NAME }}
+
+  # =============================================================================
+  # EXECUTE ROLLBACK
+  # =============================================================================
+  rollback-staging:
+    name: 🔄 Rollback Staging
+    runs-on: ubuntu-latest
+    needs: [validate, build-rollback]
+    if: github.event.inputs.environment == 'staging'
+    environment: staging
+    
+    steps:
+      - name: 📥 Download rollback artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: rollback-build
+          path: dist/
+
+      - name: 🌐 Deploy rollback to Staging
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./
+
+      - name: 🧪 Verify rollback
+        run: |
+          sleep 30
+          curl -f https://staging.samia-tarot.com/health || exit 1
+
+  rollback-production:
+    name: 🔄 Rollback Production
+    runs-on: ubuntu-latest
+    needs: [validate, build-rollback, backup-before-rollback]
+    if: github.event.inputs.environment == 'production'
+    environment: production
+    
+    steps:
+      - name: 📥 Download rollback artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: rollback-build
+          path: dist/
+
+      - name: 🌐 Deploy rollback to Production
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./
+
+      - name: 🔄 Invalidate CDN cache
+        run: |
+          curl -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/purge_cache" \
+               -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+               -H "Content-Type: application/json" \
+               --data '{"purge_everything":true}'
+
+      - name: 📊 Create Sentry rollback release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: production
+          version: "rollback-${{ needs.validate.outputs.target-sha }}"
+
+      - name: 🧪 Verify production rollback
+        run: |
+          sleep 60
+          curl -f https://samia-tarot.com/health || exit 1
+
+  # =============================================================================
+  # POST-ROLLBACK VERIFICATION
+  # =============================================================================
+  verify-rollback:
+    name: ✅ Verify Rollback Success
+    runs-on: ubuntu-latest
+    needs: [rollback-staging, rollback-production]
+    if: always() && (needs.rollback-staging.result == 'success' || needs.rollback-production.result == 'success')
+    
+    steps:
+      - name: 🧪 Run health checks
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            URL="https://samia-tarot.com"
+          else
+            URL="https://staging.samia-tarot.com"
+          fi
+          
+          # Health check
+          curl -f "$URL/health" || exit 1
+          
+          # Basic functionality check
+          curl -f "$URL/api/health" || exit 1
+          
+          echo "✅ Rollback verification successful"
+
+  # =============================================================================
+  # NOTIFICATIONS
+  # =============================================================================
+  notify-rollback:
+    name: 📢 Notify Rollback Status
+    runs-on: ubuntu-latest
+    needs: [verify-rollback]
+    if: always()
+    
+    steps:
+      - name: 💬 Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ needs.verify-rollback.result }}
+          channel: '#alerts'
+          text: |
+            🔄 EMERGENCY ROLLBACK EXECUTED
+            
+            **Environment**: ${{ github.event.inputs.environment }}
+            **Target**: ${{ github.event.inputs.rollback_target }}
+            **Commit**: ${{ needs.validate.outputs.target-sha }}
+            **Reason**: ${{ github.event.inputs.reason }}
+            **Status**: ${{ needs.verify-rollback.result }}
+            **Executed by**: ${{ github.actor }}
+            
+            Time: ${{ github.event.created_at }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 📧 Send emergency email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: 587
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "🚨 SAMIA TAROT Emergency Rollback - ${{ github.event.inputs.environment }}"
+          body: |
+            Emergency rollback has been executed:
+            
+            Environment: ${{ github.event.inputs.environment }}
+            Target: ${{ github.event.inputs.rollback_target }}
+            Commit: ${{ needs.validate.outputs.target-sha }}
+            Reason: ${{ github.event.inputs.reason }}
+            Status: ${{ needs.verify-rollback.result }}
+            Executed by: ${{ github.actor }}
+            
+            Time: ${{ github.event.created_at }}
+            
+            Please verify system functionality and investigate the original issue.
+          to: ${{ secrets.ADMIN_EMAIL }}
+          from: alerts@samia-tarot.com 

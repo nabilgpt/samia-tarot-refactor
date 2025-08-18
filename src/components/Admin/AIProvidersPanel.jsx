@@ -30,7 +30,6 @@ const AIProvidersPanel = () => {
   const [formData, setFormData] = useState({
     name: '',
     host_url: '',
-    api_key: '',
     models: [],
     active_model: '',
     is_active: true,
@@ -82,7 +81,7 @@ const AIProvidersPanel = () => {
 
   const handleSaveProvider = async () => {
     try {
-      if (!formData.name || !formData.host_url || !formData.api_key) {
+      if (!formData.name || !formData.host_url) {
         showError(language === 'ar' ? 'يرجى ملء جميع الحقول المطلوبة' : 'Please fill all required fields');
         return;
       }
@@ -163,7 +162,6 @@ const AIProvidersPanel = () => {
     setFormData({
       name: '',
       host_url: '',
-      api_key: '',
       models: [],
       active_model: '',
       is_active: true,
@@ -186,7 +184,6 @@ const AIProvidersPanel = () => {
     setFormData({
       ...formData,
       ...defaultProvider,
-      api_key: ''
     });
     setShowAddForm(true);
   };

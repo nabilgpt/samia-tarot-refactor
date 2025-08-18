@@ -5,8 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
 import SpreadBasedReading from './SpreadBasedReading';
 import EnhancedReadingResults from './EnhancedReadingResults';
-import { SpreadAPI } from '../../api/spreadApi';
-import { TarotAPI } from '../../api/tarotApi';
+import api from '../../services/frontendApi.js';
+import api from '../../services/frontendApi.js';
 
 const TarotSystem = ({ 
   bookingId,
@@ -35,11 +35,11 @@ const TarotSystem = ({
     setIsLoading(true);
     try {
       // Check if there's an existing spread selection
-      const selectionResult = await SpreadAPI.getClientSpreadSelection(bookingId);
+      const selectionResult = await api.getClientSpreadSelection(bookingId);
       
       if (selectionResult.success && selectionResult.data?.is_completed) {
         // There's a completed selection, check for reading results
-        const readingResult = await TarotAPI.getBookingReading(bookingId);
+        const readingResult = await api.getBookingReading(bookingId);
         
         if (readingResult.success && readingResult.data) {
           setReadingData(readingResult.data);
@@ -67,7 +67,7 @@ const TarotSystem = ({
     try {
       // Clear existing session data
       if (bookingId) {
-        await SpreadAPI.clearBookingSession(bookingId);
+        await api.clearBookingSession(bookingId);
       }
       
       // Reset state

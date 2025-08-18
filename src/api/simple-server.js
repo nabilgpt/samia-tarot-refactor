@@ -117,7 +117,7 @@ app.use('*', (req, res) => {
 });
 
 // Error handler
-app.use((error, req, res, next) => {
+app.use((error, req, res, /* next */) => {
   console.error('API Error:', error);
   res.status(500).json({
     success: false,

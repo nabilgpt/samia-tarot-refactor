@@ -26,7 +26,7 @@ const getActiveSessions = async (req, res) => {
       reader_id,
       client_id,
       status = 'active',
-      priority
+      // // const priority = req.body.priority || 'medium';
     } = req.query;
 
     let query = supabase
@@ -151,7 +151,7 @@ const getSessionDetails = async (req, res) => {
 const getSessionConversation = async (req, res) => {
   try {
     const { id } = req.params;
-    const { include_voice, include_video, from_timestamp } = req.query;
+    const { include_voice, /*include_video*/ from_timestamp } = req.query;
 
     // Get chat session
     const { data: chatSession, error: chatError } = await supabase

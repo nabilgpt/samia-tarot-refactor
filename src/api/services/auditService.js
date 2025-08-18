@@ -3,7 +3,11 @@
 // =============================================================================
 // Comprehensive audit logging for all admin actions
 
-const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+// CREDENTIAL SOURCE POLICY COMPLIANCE:
+// - Supabase credentials: ONLY from .env (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)
+// - All other API keys: ONLY from Super Admin Dashboard/Database, NEVER from .env
+
+import { supabaseAdmin as supabase } from '../lib/supabase.js';
 
 // =============================================================================
 // AUDIT LOGGING FUNCTIONS
@@ -18,7 +22,7 @@ const { supabaseAdmin: supabase } = require('../lib/supabase.js');
  * @param {Object} metadata - Additional action details
  * @returns {Object} Created audit log entry
  */
-const logAdminAction = async (adminId, action, resourceType, resourceId, metadata = {}) => {
+export const logAdminAction = async (adminId, action, resourceType, resourceId, metadata = {}) => {
   try {
     const auditEntry = {
       admin_id: adminId,
@@ -58,15 +62,16 @@ const logAdminAction = async (adminId, action, resourceType, resourceId, metadat
  * @param {Object} options - Query options
  * @returns {Object} Audit logs with pagination
  */
-const getAuditLogs = async (options) => {
+export const getAuditLogs = async (options) => {
   const {
     page = 1,
     limit = 50,
-    user_id,
-    action,
+    admin_id,
+    action_type,
     date_from,
     date_to,
-    resource_type
+    resource_type,
+    sort_order = 'desc'
   } = options;
   
   const offset = (page - 1) * limit;
@@ -83,12 +88,12 @@ const getAuditLogs = async (options) => {
       created_at,
       admin:profiles!admin_actions_admin_id_fkey(first_name, last_name, email, role)
     `, { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: sort_order === 'asc' })
     .range(offset, offset + limit - 1);
 
   // Apply filters
-  if (user_id) query = query.eq('admin_id', user_id);
-  if (action) query = query.ilike('action', `%${action}%`);
+  if (admin_id) query = query.eq('admin_id', admin_id);
+  if (action_type) query = query.ilike('action', `%${action_type}%`);
   if (resource_type) query = query.eq('resource_type', resource_type);
   if (date_from) query = query.gte('created_at', date_from);
   if (date_to) query = query.lte('created_at', date_to);
@@ -112,14 +117,6 @@ const getAuditLogs = async (options) => {
       limit,
       total: count,
       pages: Math.ceil(count / limit)
-    },
-    summary: {
-      total_actions: count,
-      unique_admins: [...new Set(data.map(log => log.admin_id))].length,
-      actions_today: data.filter(log => {
-        const today = new Date().toDateString();
-        return new Date(log.created_at).toDateString() === today;
-      }).length
     }
   };
 };
@@ -209,8 +206,8 @@ const getActionCategory = (action) => {
   if (action.includes('READER')) return 'Reader Management';
   if (action.includes('ANALYTICS')) return 'Analytics';
   if (action.includes('AUDIT')) return 'Audit';
-  if (action.includes('COMPLAINT')) return 'Support';
-  return 'System';
+  if (action.includes('COMPLAINT')) return 'Complaint Management';
+  return 'General';
 };
 
 /**
@@ -442,7 +439,11 @@ const exportAuditData = async (options) => {
   };
 };
 
-module.exports = {
+// =============================================================================
+// EXPORTS
+// =============================================================================
+
+const auditService = {
   logAdminAction,
   getAuditLogs,
   getAuditSummary,
@@ -451,4 +452,6 @@ module.exports = {
   getActionDescription,
   getActionSeverity,
   getActionCategory
-}; 
+};
+
+export default auditService; 

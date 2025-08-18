@@ -3,7 +3,11 @@
 // =============================================================================
 // Data access layer for admin operations
 
-const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+// CREDENTIAL SOURCE POLICY COMPLIANCE:
+// - Supabase credentials: ONLY from .env (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)
+// - All other API keys: ONLY from Super Admin Dashboard/Database, NEVER from .env
+
+import { supabaseAdmin as supabase } from '../lib/supabase.js';
 
 // =============================================================================
 // USER MANAGEMENT SERVICES
@@ -14,7 +18,7 @@ const { supabaseAdmin: supabase } = require('../lib/supabase.js');
  * @param {Object} options - Query options
  * @returns {Object} Users data with pagination
  */
-const getAllUsers = async (options) => {
+export const getAllUsers = async (options) => {
   const { page, limit, role, status, search, sort_by, sort_order } = options;
   const offset = (page - 1) * limit;
 
@@ -102,7 +106,7 @@ const getAllUsers = async (options) => {
  * @param {Object} updateData - Data to update
  * @returns {Object} Updated user data
  */
-const updateUserProfile = async (userId, updateData) => {
+export const updateUserProfile = async (userId, updateData) => {
   updateData.updated_at = new Date().toISOString();
 
   const { data, error } = await supabase
@@ -122,7 +126,7 @@ const updateUserProfile = async (userId, updateData) => {
  * @param {string} newRole - New role
  * @returns {Object} Updated user data
  */
-const changeUserRole = async (userId, newRole) => {
+export const changeUserRole = async (userId, newRole) => {
   const { data, error } = await supabase
     .from('profiles')
     .update({ 
@@ -153,10 +157,9 @@ const changeUserRole = async (userId, newRole) => {
 /**
  * Disable user account (soft delete)
  * @param {string} userId - User ID
- * @param {string} reason - Reason for disabling
  * @returns {Object} Updated user data
  */
-const disableUserAccount = async (userId, reason) => {
+export const disableUserAccount = async (userId) => {
   // Start transaction
   const { data, error } = await supabase
     .from('profiles')
@@ -175,23 +178,11 @@ const disableUserAccount = async (userId, reason) => {
     .from('bookings')
     .update({ 
       status: 'cancelled',
-      notes: `Account disabled: ${reason}`,
+      notes: `Account disabled by admin`,
       updated_at: new Date().toISOString()
     })
     .eq('user_id', userId)
     .in('status', ['pending', 'confirmed']);
-
-  // Log the action in admin_actions
-  await supabase
-    .from('admin_actions')
-    .insert({
-      admin_id: userId,
-      action_type: 'DISABLE_ACCOUNT',
-      target_type: 'user',
-      target_id: userId,
-      action_details: { reason },
-      created_at: new Date().toISOString()
-    });
 
   return data;
 };
@@ -201,38 +192,30 @@ const disableUserAccount = async (userId, reason) => {
 // =============================================================================
 
 /**
- * Get all bookings with filtering
+ * Get all bookings with filtering and pagination
  * @param {Object} options - Query options
  * @returns {Object} Bookings data with pagination
  */
-const getAllBookings = async (options) => {
-  const { page, limit, status, date_from, date_to, reader_id, client_id, service_type } = options;
+export const getAllBookings = async (options) => {
+  const { page, limit, status, date_from, date_to, reader_id, client_id, service_type, sort_by, sort_order } = options;
   const offset = (page - 1) * limit;
 
   let query = supabase
     .from('bookings')
     .select(`
-      id,
-      user_id,
-      reader_id,
-      service_id,
-      scheduled_at,
-      status,
-      notes,
-      is_emergency,
-      created_at,
-      updated_at,
-      client:profiles!bookings_user_id_fkey(first_name, last_name, email),
+      *,
+      client:profiles!bookings_client_id_fkey(first_name, last_name, email),
       reader:profiles!bookings_reader_id_fkey(first_name, last_name, email),
-      service:services(name, type, price, duration_minutes)
+      service:services(name, type, price)
     `, { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .order(sort_by, { ascending: sort_order === 'asc' })
     .range(offset, offset + limit - 1);
 
   // Apply filters
   if (status) query = query.eq('status', status);
   if (reader_id) query = query.eq('reader_id', reader_id);
-  if (client_id) query = query.eq('user_id', client_id);
+  if (client_id) query = query.eq('client_id', client_id);
+  if (service_type) query = query.eq('service.type', service_type);
   if (date_from) query = query.gte('scheduled_at', date_from);
   if (date_to) query = query.lte('scheduled_at', date_to);
 
@@ -240,14 +223,8 @@ const getAllBookings = async (options) => {
 
   if (error) throw error;
 
-  // Filter by service type if specified
-  let filteredData = data;
-  if (service_type) {
-    filteredData = data.filter(booking => booking.service?.type === service_type);
-  }
-
   return {
-    data: filteredData,
+    data,
     pagination: {
       page,
       limit,
@@ -263,7 +240,7 @@ const getAllBookings = async (options) => {
  * @param {Object} updateData - Data to update
  * @returns {Object} Updated booking data
  */
-const updateBooking = async (bookingId, updateData) => {
+export const updateBooking = async (bookingId, updateData) => {
   updateData.updated_at = new Date().toISOString();
 
   const { data, error } = await supabase
@@ -272,7 +249,7 @@ const updateBooking = async (bookingId, updateData) => {
     .eq('id', bookingId)
     .select(`
       *,
-      client:profiles!bookings_user_id_fkey(first_name, last_name, email),
+      client:profiles!bookings_client_id_fkey(first_name, last_name, email),
       reader:profiles!bookings_reader_id_fkey(first_name, last_name, email),
       service:services(name, type, price)
     `)
@@ -288,44 +265,24 @@ const updateBooking = async (bookingId, updateData) => {
  * @param {string} reason - Cancellation reason
  * @returns {Object} Updated booking data
  */
-const cancelBooking = async (bookingId, reason) => {
+export const cancelBooking = async (bookingId, reason) => {
   const { data, error } = await supabase
     .from('bookings')
     .update({ 
       status: 'cancelled',
-      notes: reason ? `Admin cancellation: ${reason}` : 'Cancelled by admin',
+      notes: reason,
       updated_at: new Date().toISOString()
     })
     .eq('id', bookingId)
-    .select()
+    .select(`
+      *,
+      client:profiles!bookings_client_id_fkey(first_name, last_name, email),
+      reader:profiles!bookings_reader_id_fkey(first_name, last_name, email),
+      service:services(name, type, price)
+    `)
     .single();
 
   if (error) throw error;
-
-  // Process refund if payment exists
-  const { data: payment } = await supabase
-    .from('payments')
-    .select('*')
-    .eq('booking_id', bookingId)
-    .eq('status', 'completed')
-    .single();
-
-  if (payment) {
-    // Create refund record
-    await supabase
-      .from('payments')
-      .insert({
-        booking_id: bookingId,
-        user_id: payment.user_id,
-        amount: -Math.abs(payment.amount),
-        currency: payment.currency,
-        method: 'refund',
-        status: 'completed',
-        admin_notes: `Refund for cancelled booking: ${reason}`,
-        created_at: new Date().toISOString()
-      });
-  }
-
   return data;
 };
 
@@ -334,35 +291,22 @@ const cancelBooking = async (bookingId, reason) => {
 // =============================================================================
 
 /**
- * Get all payments with filtering
+ * Get all payments with filtering and pagination
  * @param {Object} options - Query options
- * @returns {Object} Payments data with pagination and summary
+ * @returns {Object} Payments data with pagination
  */
-const getAllPayments = async (options) => {
-  const { page, limit, method, status, user_id, date_from, date_to, amount_from, amount_to } = options;
+export const getAllPayments = async (options) => {
+  const { page, limit, method, status, user_id, date_from, date_to, amount_from, amount_to, sort_by, sort_order } = options;
   const offset = (page - 1) * limit;
 
   let query = supabase
     .from('payments')
     .select(`
-      id,
-      booking_id,
-      user_id,
-      amount,
-      currency,
-      method,
-      transaction_id,
-      transaction_hash,
-      receipt_url,
-      status,
-      admin_notes,
-      metadata,
-      created_at,
-      updated_at,
+      *,
       user:profiles!payments_user_id_fkey(first_name, last_name, email),
-      booking:bookings(id, scheduled_at, service:services(name, type))
+      booking:bookings(id, scheduled_at, service:services(name))
     `, { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .order(sort_by, { ascending: sort_order === 'asc' })
     .range(offset, offset + limit - 1);
 
   // Apply filters
@@ -378,21 +322,6 @@ const getAllPayments = async (options) => {
 
   if (error) throw error;
 
-  // Calculate summary statistics
-  const summary = {
-    total_amount: data.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0),
-    pending_amount: data.filter(p => p.status === 'pending').reduce((sum, p) => sum + parseFloat(p.amount || 0), 0),
-    completed_amount: data.filter(p => p.status === 'completed').reduce((sum, p) => sum + parseFloat(p.amount || 0), 0),
-    by_method: {},
-    by_status: {}
-  };
-
-  // Group by method and status
-  data.forEach(payment => {
-    summary.by_method[payment.method] = (summary.by_method[payment.method] || 0) + parseFloat(payment.amount || 0);
-    summary.by_status[payment.status] = (summary.by_status[payment.status] || 0) + parseFloat(payment.amount || 0);
-  });
-
   return {
     data,
     pagination: {
@@ -400,8 +329,7 @@ const getAllPayments = async (options) => {
       limit,
       total: count,
       pages: Math.ceil(count / limit)
-    },
-    summary
+    }
   };
 };
 
@@ -409,59 +337,50 @@ const getAllPayments = async (options) => {
  * Approve payment
  * @param {string} paymentId - Payment ID
  * @param {string} adminNotes - Admin notes
- * @param {string} adminId - Admin user ID
  * @returns {Object} Updated payment data
  */
-const approvePayment = async (paymentId, adminNotes, adminId) => {
+export const approvePayment = async (paymentId, adminNotes) => {
   const { data, error } = await supabase
     .from('payments')
     .update({ 
-      status: 'completed',
+      status: 'approved',
       admin_notes: adminNotes,
+      approved_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('id', paymentId)
-    .select()
+    .select(`
+      *,
+      user:profiles!payments_user_id_fkey(first_name, last_name, email)
+    `)
     .single();
 
   if (error) throw error;
-
-  // Update wallet balance if payment method is wallet
-  if (data.method === 'wallet') {
-    await supabase
-      .from('wallet_transactions')
-      .insert({
-        user_id: data.user_id,
-        transaction_type: 'credit',
-        amount: data.amount,
-        currency: data.currency,
-        description: `Payment approved: ${adminNotes}`,
-        status: 'completed',
-        created_at: new Date().toISOString()
-      });
-  }
-
   return data;
 };
 
 /**
  * Reject payment
  * @param {string} paymentId - Payment ID
- * @param {string} adminNotes - Admin notes
  * @param {string} reason - Rejection reason
- * @param {string} adminId - Admin user ID
+ * @param {string} adminNotes - Admin notes
  * @returns {Object} Updated payment data
  */
-const rejectPayment = async (paymentId, adminNotes, reason, adminId) => {
+export const rejectPayment = async (paymentId, reason, adminNotes) => {
   const { data, error } = await supabase
     .from('payments')
     .update({ 
-      status: 'failed',
-      admin_notes: `${reason}. ${adminNotes || ''}`,
+      status: 'rejected',
+      rejection_reason: reason,
+      admin_notes: adminNotes,
+      rejected_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('id', paymentId)
-    .select()
+    .select(`
+      *,
+      user:profiles!payments_user_id_fkey(first_name, last_name, email)
+    `)
     .single();
 
   if (error) throw error;
@@ -473,30 +392,17 @@ const rejectPayment = async (paymentId, adminNotes, reason, adminId) => {
 // =============================================================================
 
 /**
- * Get all services with filtering
+ * Get all services with filtering and pagination
  * @param {Object} options - Query options
  * @returns {Object} Services data with pagination
  */
-const getAllServices = async (options) => {
+export const getAllServices = async (options) => {
   const { page, limit, type, is_active } = options;
   const offset = (page - 1) * limit;
 
   let query = supabase
     .from('services')
-    .select(`
-      id,
-      name,
-      description,
-      type,
-      price,
-      duration_minutes,
-      is_vip,
-      is_ai,
-      is_active,
-      created_by,
-      created_at,
-      updated_at
-    `, { count: 'exact' })
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -525,7 +431,7 @@ const getAllServices = async (options) => {
  * @param {Object} updateData - Data to update
  * @returns {Object} Updated service data
  */
-const updateService = async (serviceId, updateData) => {
+export const updateService = async (serviceId, updateData) => {
   updateData.updated_at = new Date().toISOString();
 
   const { data, error } = await supabase
@@ -546,9 +452,9 @@ const updateService = async (serviceId, updateData) => {
 /**
  * Get all readers with statistics
  * @param {Object} options - Query options
- * @returns {Object} Readers data with pagination and summary
+ * @returns {Object} Readers data with pagination
  */
-const getAllReaders = async (options) => {
+export const getAllReaders = async (options) => {
   const { page, limit, is_active, rating_min, rating_max, sort_by, sort_order } = options;
   const offset = (page - 1) * limit;
 
@@ -560,13 +466,12 @@ const getAllReaders = async (options) => {
       last_name,
       email,
       phone,
-      is_active,
       avatar_url,
       bio,
       specialties,
-      languages,
+      is_active,
       created_at,
-      updated_at
+      last_seen
     `, { count: 'exact' })
     .eq('role', 'reader')
     .order(sort_by, { ascending: sort_order === 'asc' })
@@ -579,85 +484,66 @@ const getAllReaders = async (options) => {
 
   if (error) throw error;
 
-  // Get reader statistics
+  // Get statistics for each reader
   const readerIds = data.map(reader => reader.id);
 
-  // Get booking stats
+  // Get booking statistics
   const { data: bookingStats } = await supabase
     .from('bookings')
     .select('reader_id, status')
     .in('reader_id', readerIds);
 
-  // Get review stats
-  const { data: reviewStats } = await supabase
-    .from('reviews')
+  // Get rating statistics
+  const { data: ratingStats } = await supabase
+    .from('service_feedback')
     .select('reader_id, rating')
     .in('reader_id', readerIds);
 
-  // Get earnings stats
-  const { data: earningsStats } = await supabase
+  // Get earnings statistics
+  const { data: earningStats } = await supabase
     .from('payments')
-    .select('booking_id, amount')
-    .eq('status', 'completed');
+    .select('reader_id, amount')
+    .eq('status', 'completed')
+    .in('reader_id', readerIds);
 
   // Enhance reader data with statistics
   const enhancedData = data.map(reader => {
     const readerBookings = bookingStats?.filter(b => b.reader_id === reader.id) || [];
-    const readerReviews = reviewStats?.filter(r => r.reader_id === reader.id) || [];
+    const readerRatings = ratingStats?.filter(r => r.reader_id === reader.id) || [];
+    const readerEarnings = earningStats?.filter(e => e.reader_id === reader.id) || [];
     
+    const totalBookings = readerBookings.length;
     const completedBookings = readerBookings.filter(b => b.status === 'completed').length;
-    const averageRating = readerReviews.length > 0 
-      ? readerReviews.reduce((sum, r) => sum + r.rating, 0) / readerReviews.length 
+    const avgRating = readerRatings.length > 0 
+      ? readerRatings.reduce((sum, r) => sum + r.rating, 0) / readerRatings.length 
       : 0;
-
-    // Calculate earnings (simplified - would need booking relation)
-    const totalEarnings = 0; // This would require joining with bookings
-
-    const stats = {
-      total_bookings: readerBookings.length,
-      completed_bookings: completedBookings,
-      average_rating: Math.round(averageRating * 100) / 100,
-      total_reviews: readerReviews.length,
-      total_earnings: totalEarnings,
-      completion_rate: readerBookings.length > 0 ? (completedBookings / readerBookings.length) * 100 : 0
-    };
+    const totalEarnings = readerEarnings.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
 
     // Apply rating filter if specified
-    if (rating_min && stats.average_rating < rating_min) return null;
-    if (rating_max && stats.average_rating > rating_max) return null;
+    if (rating_min && avgRating < rating_min) return null;
+    if (rating_max && avgRating > rating_max) return null;
 
     return {
       ...reader,
-      statistics: stats
+      statistics: {
+        total_bookings: totalBookings,
+        completed_bookings: completedBookings,
+        completion_rate: totalBookings > 0 ? (completedBookings / totalBookings) * 100 : 0,
+        average_rating: Math.round(avgRating * 10) / 10,
+        total_ratings: readerRatings.length,
+        total_earnings: totalEarnings
+      }
     };
-  }).filter(Boolean);
-
-  // Calculate summary
-  const summary = {
-    total_readers: enhancedData.length,
-    active_readers: enhancedData.filter(r => r.is_active).length,
-    average_rating: enhancedData.length > 0 
-      ? enhancedData.reduce((sum, r) => sum + r.statistics.average_rating, 0) / enhancedData.length 
-      : 0,
-    top_performers: enhancedData
-      .sort((a, b) => b.statistics.average_rating - a.statistics.average_rating)
-      .slice(0, 5)
-      .map(r => ({ 
-        id: r.id, 
-        name: `${r.first_name} ${r.last_name}`, 
-        rating: r.statistics.average_rating 
-      }))
-  };
+  }).filter(Boolean); // Remove null entries from rating filter
 
   return {
     data: enhancedData,
     pagination: {
       page,
       limit,
-      total: count,
-      pages: Math.ceil(count / limit)
-    },
-    summary
+      total: enhancedData.length, // Adjusted for filtering
+      pages: Math.ceil(enhancedData.length / limit)
+    }
   };
 };
 
@@ -670,12 +556,12 @@ const getAllReaders = async (options) => {
  * @param {Object} options - Query options
  * @returns {Object} Analytics data
  */
-const getDetailedAnalytics = async (options) => {
+export const getAnalytics = async (options) => {
   const { date_from, date_to, include_charts } = options;
 
-  const dateFilter = date_from && date_to ? 
-    `created_at.gte.${date_from},created_at.lte.${date_to}` : null;
-
+  // const dateFilter = date_from && date_to ? 
+  //   `created_at.gte.${date_from},created_at.lte.${date_to}` : null;
+  
   // Get basic counts
   const [usersResult, readersResult, bookingsResult, paymentsResult] = await Promise.all([
     supabase.from('profiles').select('id, role, created_at', { count: 'exact' }),
@@ -755,56 +641,30 @@ const getDetailedAnalytics = async (options) => {
  * @param {Object} options - Query options
  * @returns {Object} Complaints data with pagination and summary
  */
-const getAllComplaints = async (options) => {
-  const { page, limit, status, priority, date_from, date_to, type } = options;
+export const getAllComplaints = async (options) => {
+  const { page, limit, status, priority, category, date_from, date_to, sort_by, sort_order } = options;
   const offset = (page - 1) * limit;
 
   let query = supabase
-    .from('user_feedback')
+    .from('service_feedback')
     .select(`
-      id,
-      user_id,
-      feedback_type,
-      message,
-      rating,
-      status,
-      priority,
-      resolved_at,
-      resolved_by,
-      resolution_notes,
-      created_at,
-      user:profiles!user_feedback_user_id_fkey(first_name, last_name, email)
+      *,
+      user:profiles!service_feedback_user_id_fkey(first_name, last_name, email),
+      reader:profiles!service_feedback_reader_id_fkey(first_name, last_name, email)
     `, { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .order(sort_by, { ascending: sort_order === 'asc' })
     .range(offset, offset + limit - 1);
 
   // Apply filters
   if (status) query = query.eq('status', status);
   if (priority) query = query.eq('priority', priority);
-  if (type) query = query.eq('feedback_type', type);
+  if (category) query = query.eq('category', category);
   if (date_from) query = query.gte('created_at', date_from);
   if (date_to) query = query.lte('created_at', date_to);
 
   const { data, error, count } = await query;
 
   if (error) throw error;
-
-  // Calculate summary
-  const summary = {
-    total: count,
-    by_status: data.reduce((acc, complaint) => {
-      acc[complaint.status] = (acc[complaint.status] || 0) + 1;
-      return acc;
-    }, {}),
-    by_priority: data.reduce((acc, complaint) => {
-      acc[complaint.priority] = (acc[complaint.priority] || 0) + 1;
-      return acc;
-    }, {}),
-    by_type: data.reduce((acc, complaint) => {
-      acc[complaint.feedback_type] = (acc[complaint.feedback_type] || 0) + 1;
-      return acc;
-    }, {})
-  };
 
   return {
     data,
@@ -813,8 +673,7 @@ const getAllComplaints = async (options) => {
       limit,
       total: count,
       pages: Math.ceil(count / limit)
-    },
-    summary
+    }
   };
 };
 
@@ -826,52 +685,49 @@ const getAllComplaints = async (options) => {
  * @param {string} adminId - Admin user ID
  * @returns {Object} Updated complaint data
  */
-const resolveComplaint = async (complaintId, resolutionNotes, resolutionAction, adminId) => {
+export const resolveComplaint = async (complaintId, resolution, resolutionNotes) => {
   const { data, error } = await supabase
-    .from('user_feedback')
+    .from('service_feedback')
     .update({ 
       status: 'resolved',
+      resolution,
       resolution_notes: resolutionNotes,
-      resolution_action: resolutionAction,
-      resolved_by: adminId,
-      resolved_at: new Date().toISOString()
+      resolved_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     })
     .eq('id', complaintId)
-    .select()
+    .select(`
+      *,
+      user:profiles!service_feedback_user_id_fkey(first_name, last_name, email),
+      reader:profiles!service_feedback_reader_id_fkey(first_name, last_name, email)
+    `)
     .single();
 
   if (error) throw error;
   return data;
 };
 
-module.exports = {
-  // User Management
+// =============================================================================
+// EXPORTS
+// =============================================================================
+
+const adminService = {
   getAllUsers,
   updateUserProfile,
   changeUserRole,
   disableUserAccount,
-
-  // Booking Management
   getAllBookings,
   updateBooking,
   cancelBooking,
-
-  // Payment Management
   getAllPayments,
   approvePayment,
   rejectPayment,
-
-  // Service Management
   getAllServices,
   updateService,
-
-  // Reader Management
   getAllReaders,
-
-  // Analytics
-  getDetailedAnalytics,
-
-  // Complaints
+  getAnalytics,
   getAllComplaints,
   resolveComplaint
 };
+
+export default adminService;

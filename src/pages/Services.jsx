@@ -275,9 +275,9 @@ const Services = () => {
               className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-4xl mx-auto"
               variants={containerVariants}
             >
-              {features.map((feature, index) => (
+              {features.map((feature) => (
                 <motion.div
-                  key={index}
+                  key={feature.title}
                   variants={itemVariants}
                   className="flex flex-col items-center space-y-3 p-6 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-gold-400/50 transition-all duration-300"
                 >
@@ -340,7 +340,7 @@ const Services = () => {
             whileInView="visible"
             viewport={{ once: true }}
           >
-            {services.map((service, index) => (
+            {services.map((service) => (
               <motion.div
                 key={service.id}
                 variants={itemVariants}

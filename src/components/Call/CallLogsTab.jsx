@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { CallAPI } from '../../api/callApi.js';
+import api from '../../services/frontendApi.js';
 import RecordingManager from './RecordingManager.jsx';
 import { 
   Phone, 
@@ -18,6 +18,7 @@ import {
   Shield,
   Crown
 } from 'lucide-react';
+import { hasAdminAccess } from '../../utils/roleHelpers';
 
 const CallLogsTab = ({ className = '' }) => {
   const { user, profile } = useAuth();
@@ -30,7 +31,7 @@ const CallLogsTab = ({ className = '' }) => {
   const [showRecordings, setShowRecordings] = useState(false);
   const [dateRange, setDateRange] = useState('week'); // week, month, all
 
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = hasAdminAccess(profile?.role);
   const isMonitor = profile?.role === 'monitor';
 
   useEffect(() => {
@@ -52,7 +53,7 @@ const CallLogsTab = ({ className = '' }) => {
       }
 
       // Load call sessions
-      const callLogsResult = await CallAPI.getUserCallSessions(null, {
+      const callLogsResult = await api.getUserCallSessions(null, {
         status: filter === 'all' ? null : filter,
         isEmergency: filter === 'emergency' ? true : null,
         limit: 100
@@ -71,7 +72,7 @@ const CallLogsTab = ({ className = '' }) => {
 
       // Load emergency logs
       if (filter === 'emergency' || filter === 'all') {
-        const emergencyResult = await CallAPI.getEmergencyLogs({
+        const emergencyResult = await api.getEmergencyLogs({
           limit: 50
         });
         if (emergencyResult.success) {

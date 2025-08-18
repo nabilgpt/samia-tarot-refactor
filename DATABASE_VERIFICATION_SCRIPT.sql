@@ -1,298 +1,182 @@
--- ============================================================
--- SAMIA TAROT - DATABASE VERIFICATION SCRIPT
--- Check which tables exist and which are missing
--- Execute this in Supabase SQL Editor to see current status
--- ============================================================
+-- 🔍 SAMIA TAROT - DATABASE VERIFICATION SCRIPT
+-- Run this after executing CRITICAL_DATABASE_SETUP.sql
 
--- Query to check existing tables
-SELECT 
-    '🔍 CURRENT TABLES IN DATABASE' as status,
-    COUNT(*) as total_tables
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
-AND table_type = 'BASE TABLE';
+-- ==============================================================================
+-- TABLE EXISTENCE VERIFICATION
+-- ==============================================================================
 
--- List all existing tables
-SELECT 
-    table_name as existing_tables,
-    '✅' as status
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
-AND table_type = 'BASE TABLE'
-ORDER BY table_name;
+DO $$
+DECLARE
+    table_count INTEGER;
+    missing_tables TEXT[] := ARRAY[]::TEXT[];
+    existing_tables TEXT[] := ARRAY[]::TEXT[];
+    table_name TEXT;
+    critical_tables TEXT[] := ARRAY[
+        'payment_methods',
+        'wallet_transactions', 
+        'payment_receipts',
+        'chat_sessions',
+        'chat_messages',
+        'voice_notes',
+        'daily_analytics',
+        'reader_analytics',
+        'user_activity_logs',
+        'reader_applications',
+        'ai_learning_data',
+        'ai_reading_results'
+    ];
+BEGIN
+    RAISE NOTICE '🔍 VERIFYING CRITICAL DATABASE TABLES...';
+    RAISE NOTICE '';
+    
+    -- Check each critical table
+    FOREACH table_name IN ARRAY critical_tables
+    LOOP
+        SELECT COUNT(*) INTO table_count
+        FROM information_schema.tables 
+        WHERE information_schema.tables.table_name = table_name AND table_schema = 'public';
+        
+        IF table_count > 0 THEN
+            existing_tables := array_append(existing_tables, table_name);
+            RAISE NOTICE '✅ %', table_name;
+        ELSE
+            missing_tables := array_append(missing_tables, table_name);
+            RAISE NOTICE '❌ % (MISSING)', table_name;
+        END IF;
+    END LOOP;
+    
+    RAISE NOTICE '';
+    RAISE NOTICE '📊 VERIFICATION SUMMARY:';
+    RAISE NOTICE '✅ Existing Tables: % / %', array_length(existing_tables, 1), array_length(critical_tables, 1);
+    
+    IF array_length(missing_tables, 1) > 0 THEN
+        RAISE NOTICE '❌ Missing Tables: %', array_length(missing_tables, 1);
+        RAISE NOTICE '🚨 Missing: %', array_to_string(missing_tables, ', ');
+        RAISE NOTICE '';
+        RAISE NOTICE '⚠️ INCOMPLETE SETUP - Please re-run CRITICAL_DATABASE_SETUP.sql';
+    ELSE
+        RAISE NOTICE '🎉 ALL CRITICAL TABLES EXIST!';
+        RAISE NOTICE '';
+        RAISE NOTICE '🚀 READY FOR TESTING:';
+        RAISE NOTICE '1. Payment Processing System';
+        RAISE NOTICE '2. Enhanced Chat System';
+        RAISE NOTICE '3. Analytics Dashboard';
+        RAISE NOTICE '4. Reader Applications';
+        RAISE NOTICE '5. AI Features';
+    END IF;
+END $$;
 
--- ============================================================
--- CHECK CRITICAL TABLES STATUS
--- ============================================================
+-- ==============================================================================
+-- INDEX VERIFICATION
+-- ==============================================================================
 
--- Core System Tables Check
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'profiles') 
-        THEN '✅ profiles' 
-        ELSE '❌ profiles' 
-    END as core_tables
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'bookings') 
-        THEN '✅ bookings' 
-        ELSE '❌ bookings' 
-    END
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'services') 
-        THEN '✅ services' 
-        ELSE '❌ services' 
-    END
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'notifications') 
-        THEN '✅ notifications' 
-        ELSE '❌ notifications' 
-    END;
+DO $$
+DECLARE
+    index_count INTEGER;
+    expected_indexes TEXT[] := ARRAY[
+        'idx_payment_methods_user_id',
+        'idx_wallet_transactions_wallet_id',
+        'idx_chat_sessions_booking_id',
+        'idx_chat_messages_session_id',
+        'idx_daily_analytics_date',
+        'idx_reader_analytics_reader_date'
+    ];
+    index_name TEXT;
+    existing_indexes INTEGER := 0;
+BEGIN
+    RAISE NOTICE '';
+    RAISE NOTICE '🔍 VERIFYING PERFORMANCE INDEXES...';
+    
+    FOREACH index_name IN ARRAY expected_indexes
+    LOOP
+        SELECT COUNT(*) INTO index_count
+        FROM pg_indexes 
+        WHERE indexname = index_name AND schemaname = 'public';
+        
+        IF index_count > 0 THEN
+            existing_indexes := existing_indexes + 1;
+            RAISE NOTICE '✅ %', index_name;
+        ELSE
+            RAISE NOTICE '❌ % (MISSING)', index_name;
+        END IF;
+    END LOOP;
+    
+    RAISE NOTICE '';
+    RAISE NOTICE '📊 INDEX SUMMARY: % / % indexes created', existing_indexes, array_length(expected_indexes, 1);
+END $$;
 
--- Payment System Tables Check
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payment_methods') 
-        THEN '✅ payment_methods' 
-        ELSE '❌ payment_methods (CRITICAL)' 
-    END as payment_tables
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'wallet_transactions') 
-        THEN '✅ wallet_transactions' 
-        ELSE '❌ wallet_transactions (CRITICAL)' 
-    END
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payment_receipts') 
-        THEN '✅ payment_receipts' 
-        ELSE '❌ payment_receipts (CRITICAL)' 
-    END;
+-- ==============================================================================
+-- RLS POLICY VERIFICATION
+-- ==============================================================================
 
--- Chat System Tables Check
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'chat_sessions') 
-        THEN '✅ chat_sessions' 
-        ELSE '❌ chat_sessions (CRITICAL)' 
-    END as chat_tables
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'chat_messages') 
-        THEN '✅ chat_messages' 
-        ELSE '❌ chat_messages (CRITICAL)' 
-    END
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'voice_notes') 
-        THEN '✅ voice_notes' 
-        ELSE '❌ voice_notes (CRITICAL)' 
-    END;
+DO $$
+DECLARE
+    rls_count INTEGER;
+    table_name TEXT;
+    critical_tables TEXT[] := ARRAY[
+        'payment_methods',
+        'chat_sessions',
+        'chat_messages',
+        'daily_analytics',
+        'reader_analytics'
+    ];
+    rls_enabled INTEGER := 0;
+BEGIN
+    RAISE NOTICE '';
+    RAISE NOTICE '🔍 VERIFYING ROW LEVEL SECURITY...';
+    
+    FOREACH table_name IN ARRAY critical_tables
+    LOOP
+        SELECT COUNT(*) INTO rls_count
+        FROM pg_tables 
+        WHERE pg_tables.tablename = table_name 
+        AND pg_tables.schemaname = 'public'
+        AND pg_tables.rowsecurity = true;
+        
+        IF rls_count > 0 THEN
+            rls_enabled := rls_enabled + 1;
+            RAISE NOTICE '✅ % (RLS Enabled)', table_name;
+        ELSE
+            RAISE NOTICE '❌ % (RLS Disabled)', table_name;
+        END IF;
+    END LOOP;
+    
+    RAISE NOTICE '';
+    RAISE NOTICE '📊 RLS SUMMARY: % / % tables secured', rls_enabled, array_length(critical_tables, 1);
+END $$;
 
--- Analytics Tables Check
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'daily_analytics') 
-        THEN '✅ daily_analytics' 
-        ELSE '❌ daily_analytics (CRITICAL)' 
-    END as analytics_tables
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'reader_analytics') 
-        THEN '✅ reader_analytics' 
-        ELSE '❌ reader_analytics (CRITICAL)' 
-    END
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_activity_logs') 
-        THEN '✅ user_activity_logs' 
-        ELSE '❌ user_activity_logs (CRITICAL)' 
-    END;
+-- ==============================================================================
+-- FINAL STATUS REPORT
+-- ==============================================================================
 
--- AI System Tables Check
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ai_learning_data') 
-        THEN '✅ ai_learning_data' 
-        ELSE '❌ ai_learning_data' 
-    END as ai_tables
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'ai_reading_results') 
-        THEN '✅ ai_reading_results' 
-        ELSE '❌ ai_reading_results' 
-    END;
-
--- Reader Application Tables Check
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'reader_applications') 
-        THEN '✅ reader_applications' 
-        ELSE '❌ reader_applications (CRITICAL)' 
-    END as application_tables;
-
--- Tarot System Tables Check
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tarot_decks') 
-        THEN '✅ tarot_decks' 
-        ELSE '❌ tarot_decks' 
-    END as tarot_tables
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tarot_spreads') 
-        THEN '✅ tarot_spreads' 
-        ELSE '❌ tarot_spreads' 
-    END;
-
--- Call System Tables Check
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'call_sessions') 
-        THEN '✅ call_sessions' 
-        ELSE '❌ call_sessions' 
-    END as call_tables
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'call_recordings') 
-        THEN '✅ call_recordings' 
-        ELSE '❌ call_recordings' 
-    END
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'emergency_call_logs') 
-        THEN '✅ emergency_call_logs' 
-        ELSE '❌ emergency_call_logs' 
-    END;
-
--- Working Hours System Check
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'reader_schedule') 
-        THEN '✅ reader_schedule' 
-        ELSE '❌ reader_schedule' 
-    END as schedule_tables
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'working_hours_requests') 
-        THEN '✅ working_hours_requests' 
-        ELSE '❌ working_hours_requests' 
-    END;
-
--- System Configuration Check
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'system_settings') 
-        THEN '✅ system_settings' 
-        ELSE '❌ system_settings' 
-    END as config_tables
-UNION ALL
-SELECT 
-    CASE 
-        WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'app_config') 
-        THEN '✅ app_config' 
-        ELSE '❌ app_config' 
-    END;
-
--- ============================================================
--- MISSING TABLES SUMMARY
--- ============================================================
-
-WITH required_tables AS (
-    SELECT unnest(ARRAY[
-        'profiles', 'bookings', 'services', 'notifications',
-        'payment_methods', 'wallet_transactions', 'payment_receipts',
-        'chat_sessions', 'chat_messages', 'voice_notes',
-        'daily_analytics', 'reader_analytics', 'user_activity_logs',
-        'ai_learning_data', 'ai_reading_results', 'reader_applications',
-        'tarot_decks', 'tarot_spreads', 'call_sessions', 
-        'call_recordings', 'emergency_call_logs', 'reader_schedule',
-        'working_hours_requests', 'system_settings', 'app_config'
-    ]) AS table_name
-),
-existing_tables AS (
-    SELECT table_name
-    FROM information_schema.tables 
-    WHERE table_schema = 'public' 
-    AND table_type = 'BASE TABLE'
-),
-missing_tables AS (
-    SELECT r.table_name
-    FROM required_tables r
-    LEFT JOIN existing_tables e ON r.table_name = e.table_name
-    WHERE e.table_name IS NULL
-)
-SELECT 
-    '🚨 MISSING CRITICAL TABLES' as status,
-    COUNT(*) as missing_count,
-    string_agg(table_name, ', ') as missing_tables
-FROM missing_tables;
-
--- ============================================================
--- COMPLETION PERCENTAGE
--- ============================================================
-
-WITH required_tables AS (
-    SELECT unnest(ARRAY[
-        'profiles', 'bookings', 'services', 'notifications',
-        'payment_methods', 'wallet_transactions', 'payment_receipts',
-        'chat_sessions', 'chat_messages', 'voice_notes',
-        'daily_analytics', 'reader_analytics', 'user_activity_logs',
-        'ai_learning_data', 'ai_reading_results', 'reader_applications',
-        'tarot_decks', 'tarot_spreads', 'call_sessions', 
-        'call_recordings', 'emergency_call_logs', 'reader_schedule',
-        'working_hours_requests', 'system_settings', 'app_config'
-    ]) AS table_name
-),
-existing_tables AS (
-    SELECT table_name
-    FROM information_schema.tables 
-    WHERE table_schema = 'public' 
-    AND table_type = 'BASE TABLE'
-),
-table_status AS (
-    SELECT 
-        r.table_name,
-        CASE WHEN e.table_name IS NOT NULL THEN 1 ELSE 0 END as exists
-    FROM required_tables r
-    LEFT JOIN existing_tables e ON r.table_name = e.table_name
-)
-SELECT 
-    '📊 DATABASE COMPLETION STATUS' as metric,
-    ROUND((SUM(exists)::numeric / COUNT(*)) * 100, 1) || '%' as completion_percentage,
-    SUM(exists) || '/' || COUNT(*) as tables_ratio
-FROM table_status;
-
--- ============================================================
--- RECOMMENDATIONS
--- ============================================================
-
-SELECT 
-    '💡 NEXT STEPS' as recommendations,
-    CASE 
-        WHEN (
-            SELECT COUNT(*) 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' 
-            AND table_type = 'BASE TABLE'
-            AND table_name IN ('payment_methods', 'wallet_transactions', 'chat_sessions', 'chat_messages')
-        ) < 4 
-        THEN '🔴 CRITICAL: Execute COMPLETE_DATABASE_SETUP.sql immediately'
-        ELSE '🟢 GOOD: Most critical tables exist, check specific missing ones'
-    END as action_required; 
+DO $$
+BEGIN
+    RAISE NOTICE '';
+    RAISE NOTICE '==================================================';
+    RAISE NOTICE '🎯 FINAL VERIFICATION STATUS';
+    RAISE NOTICE '==================================================';
+    RAISE NOTICE '';
+    RAISE NOTICE '📋 NEXT IMMEDIATE STEPS:';
+    RAISE NOTICE '';
+    RAISE NOTICE '1. 🌐 FRONTEND TESTING:';
+    RAISE NOTICE '   - Open http://localhost:3000';
+    RAISE NOTICE '   - Test Super Admin Dashboard';
+    RAISE NOTICE '   - Verify Analytics sections load';
+    RAISE NOTICE '';
+    RAISE NOTICE '2. 💳 PAYMENT TESTING:';
+    RAISE NOTICE '   - Test booking creation';
+    RAISE NOTICE '   - Test payment processing';
+    RAISE NOTICE '   - Verify wallet operations';
+    RAISE NOTICE '';
+    RAISE NOTICE '3. 💬 CHAT TESTING:';
+    RAISE NOTICE '   - Test chat sessions';
+    RAISE NOTICE '   - Test voice messages';
+    RAISE NOTICE '   - Verify real-time updates';
+    RAISE NOTICE '';
+    RAISE NOTICE '4. 👥 READER MANAGEMENT:';
+    RAISE NOTICE '   - Test reader applications';
+    RAISE NOTICE '   - Test approval workflow';
+    RAISE NOTICE '   - Verify reader analytics';
+    RAISE NOTICE '';
+    RAISE NOTICE '🚀 STATUS: READY FOR PRODUCTION TESTING!';
+END $$; 

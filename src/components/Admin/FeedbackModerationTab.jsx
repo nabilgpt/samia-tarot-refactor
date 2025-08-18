@@ -21,7 +21,7 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { serviceFeedbackAPI } from '../../api/serviceFeedbackApi';
+import api from '../../services/frontendApi.js';
 
 const FeedbackModerationTab = () => {
   const { t } = useTranslation();
@@ -67,7 +67,7 @@ const FeedbackModerationTab = () => {
   const loadFeedback = async () => {
     setLoading(true);
     try {
-      const response = await serviceFeedbackAPI.getAllFeedbackForAdmin(filters);
+      const response = await api.getAllFeedbackForAdmin(filters);
       
       if (response.success) {
         setFeedback(response.data);
@@ -95,7 +95,7 @@ const FeedbackModerationTab = () => {
     if (!selectedFeedback || !moderationAction) return;
 
     try {
-      const response = await serviceFeedbackAPI.moderateFeedback(
+      const response = await api.moderateFeedback(
         selectedFeedback.id, 
         {
           moderation_status: moderationAction,

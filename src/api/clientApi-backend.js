@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from './lib/supabase.js';
 
 export class ClientAPI {
   // ==================== AUTHENTICATION & SECURITY ====================
@@ -159,7 +159,7 @@ export class ClientAPI {
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
 
       // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(fileName, file);
 
@@ -171,15 +171,13 @@ export class ClientAPI {
         .getPublicUrl(fileName);
 
       // Update profile with new avatar URL
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({ 
           avatar_url: publicUrl,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id)
-        .select()
-        .single();
+        .eq('id', user.id);
 
       if (error) throw error;
 

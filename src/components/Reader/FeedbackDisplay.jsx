@@ -14,7 +14,7 @@ import {
   ThumbsUp
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { serviceFeedbackAPI } from '../../api/serviceFeedbackApi';
+import api from '../../services/frontendApi.js';
 
 const FeedbackDisplay = () => {
   const { t } = useTranslation();
@@ -45,8 +45,8 @@ const FeedbackDisplay = () => {
     try {
       // Load feedback and stats in parallel
       const [feedbackResponse, statsResponse] = await Promise.all([
-        serviceFeedbackAPI.getReaderFeedback(filters),
-        serviceFeedbackAPI.getReaderStats()
+        api.getReaderFeedback(filters),
+        api.getReaderStats()
       ]);
 
       if (feedbackResponse.success) {

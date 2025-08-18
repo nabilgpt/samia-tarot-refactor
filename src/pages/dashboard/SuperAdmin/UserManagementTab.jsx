@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import SuperAdminAPI from '../../../api/superAdminApi.js';
+import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
+import { Users, Edit, Trash2, Plus, Shield, CheckCircle, AlertTriangle, Search, Filter } from 'lucide-react';
+import api from '../../../services/frontendApi.js';
+import { useAuth } from '../../../context/AuthContext.jsx';
+import { useLanguage } from '../../../context/LanguageContext.jsx';
+import { SearchInput } from '../../../components/UI/BilingualFormComponents';
 import {
   UsersIcon,
   MagnifyingGlassIcon,
@@ -13,17 +19,25 @@ import {
   ExclamationTriangleIcon,
   CheckIcon,
   XMarkIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  KeyIcon
 } from '@heroicons/react/24/outline';
 
 const UserManagementTab = () => {
+  const { t } = useTranslation();
+  const { language, currentLanguage } = useLanguage();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [editFormData, setEditFormData] = useState({});
+  const [passwordFormData, setPasswordFormData] = useState({
+    newPassword: '',
+    confirmPassword: ''
+  });
   const [filters, setFilters] = useState({
     search: '',
     role: '',
@@ -44,8 +58,14 @@ const UserManagementTab = () => {
       setError(null);
       setMessage('');
       
-      const result = await SuperAdminAPI.getAllUsers(filters);
-      if (result.success) {
+      const result = await api.getAllUsers(filters);
+      console.log('🔍 DEBUG: getAllUsers response:', result);
+      console.log('🔍 DEBUG: result.success =', result.success);
+      console.log('🔍 DEBUG: result type =', typeof result);
+      
+      // More robust success checking
+      const isSuccess = result && (result.success === true || result.success === 'true' || (result.data && !result.error));
+      if (isSuccess) {
         setUsers(result.data || []);
         setError(null);
         
@@ -54,7 +74,8 @@ const UserManagementTab = () => {
           setMessage(`⚠️ ${result.warning} - Basic user data loaded successfully.`);
         }
       } else {
-        throw new Error(result.error || 'Failed to load users');
+        console.log('❌ DEBUG: getAllUsers failed. Full response:', JSON.stringify(result, null, 2));
+        throw new Error(result.error || result.message || 'Failed to load users');
       }
     } catch (error) {
       console.error('Error loading users:', error);
@@ -256,12 +277,9 @@ const UserManagementTab = () => {
       role: user.role || 'client',
       is_active: user.is_active !== false,
       bio: user.bio || '',
-      experience_years: user.experience_years || '',
       specializations: user.specializations || [],
-      languages: user.languages || [],
-      maritalStatus: user.maritalStatus || '',
-      zodiac: user.zodiac || '',
-      status: user.status || 'available'
+      languages: user.languages || []
+      // Removed: maritalStatus, zodiac, status - these columns don't exist in profiles table
     });
     setShowEditModal(true);
   };
@@ -269,7 +287,7 @@ const UserManagementTab = () => {
   const handleUpdateUser = async () => {
     try {
       setLoading(true);
-      const result = await SuperAdminAPI.updateUserProfile(selectedUser.id, editFormData);
+      const result = await api.updateUserProfile(selectedUser.id, editFormData);
       if (result.success) {
         setMessage('User updated successfully');
         setShowEditModal(false);
@@ -286,25 +304,56 @@ const UserManagementTab = () => {
 
   const handleDeleteUser = async () => {
     try {
+      console.log('🔄 UserManagementTab: Starting user deletion for:', selectedUser?.id);
+      console.log('🔄 UserManagementTab: Selected user details:', selectedUser);
+      
       setLoading(true);
-      const result = await SuperAdminAPI.deleteUser(selectedUser.id, 'Admin deletion');
+      
+      // Add confirmation step for permanent deletion
+      const confirmPermanentDelete = window.confirm(
+        `⚠️ PERMANENT DELETION WARNING ⚠️\n\n` +
+        `You are about to PERMANENTLY DELETE:\n` +
+        `• User: ${selectedUser.first_name} ${selectedUser.last_name}\n` +
+        `• Email: ${selectedUser.auth_users?.email || selectedUser.email}\n` +
+        `• Role: ${selectedUser.role}\n\n` +
+        `This action CANNOT be undone!\n` +
+        `The user will be completely removed from the database.\n\n` +
+        `Click OK to PERMANENTLY DELETE or Cancel to abort.`
+      );
+      
+      if (!confirmPermanentDelete) {
+        console.log('🚫 UserManagementTab: User cancelled permanent deletion');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('✅ UserManagementTab: User confirmed permanent deletion, proceeding...');
+      
+      const result = await api.deleteUser(selectedUser.id, 'Admin permanent deletion - confirmed by user');
+      console.log('📥 UserManagementTab: Delete result:', result);
+      
       if (result.success) {
-        setMessage('User deleted successfully');
+        console.log('✅ UserManagementTab: Deletion successful');
+        setMessage(`✅ User ${selectedUser.first_name} ${selectedUser.last_name} has been permanently deleted`);
         setShowDeleteModal(false);
-        await loadUsers();
+        setSelectedUser(null);
+        await loadUsers(); // Reload the user list
       } else {
-        setMessage(`Error deleting user: ${result.error}`);
+        console.error('❌ UserManagementTab: Deletion failed:', result.error);
+        setMessage(`❌ Error deleting user: ${result.error}`);
       }
     } catch (error) {
-      setMessage(`Error: ${error.message}`);
+      console.error('❌ UserManagementTab: Exception during deletion:', error);
+      setMessage(`❌ Error: ${error.message}`);
     } finally {
+      console.log('🔄 UserManagementTab: Setting loading to false');
       setLoading(false);
     }
   };
 
   const handleImpersonateUser = async (userId) => {
     try {
-      const result = await SuperAdminAPI.impersonateUser(userId);
+      const result = await api.impersonateUser(userId);
       if (result.success) {
         setMessage('Impersonation started. Redirecting...');
         // Redirect to the user's dashboard
@@ -314,6 +363,45 @@ const UserManagementTab = () => {
       }
     } catch (error) {
       setMessage(`Error: ${error.message}`);
+    }
+  };
+
+  const handleChangePassword = (user) => {
+    setSelectedUser(user);
+    setPasswordFormData({
+      newPassword: '',
+      confirmPassword: ''
+    });
+    setShowPasswordModal(true);
+  };
+
+  const handlePasswordSubmit = async () => {
+    try {
+      // Validate passwords
+      if (!passwordFormData.newPassword || passwordFormData.newPassword.length < 8) {
+        setMessage('Password must be at least 8 characters long');
+        return;
+      }
+
+      if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+        setMessage('Passwords do not match');
+        return;
+      }
+
+      setLoading(true);
+      const result = await api.changeUserPassword(selectedUser.id, passwordFormData.newPassword);
+      
+      if (result.success) {
+        setMessage(`✅ Password changed successfully for ${selectedUser.first_name} ${selectedUser.last_name}`);
+        setShowPasswordModal(false);
+        setPasswordFormData({ newPassword: '', confirmPassword: '' });
+      } else {
+        setMessage(`❌ Error changing password: ${result.error}`);
+      }
+    } catch (error) {
+      setMessage(`❌ Error: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -430,46 +518,42 @@ const UserManagementTab = () => {
       {/* Filters */}
       <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-cosmic-300 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search users..."
-              value={filters.search}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-cosmic-300 focus:border-purple-400 focus:outline-none"
-            />
-          </div>
+          <SearchInput
+            value={filters.search}
+            onChange={(value) => setFilters(prev => ({ ...prev, search: value }))}
+            placeholderKey="forms.search.users"
+            className="bg-white/10 border-white/20 focus:border-purple-400"
+          />
 
           <select
             value={filters.role}
             onChange={(e) => setFilters(prev => ({ ...prev, role: e.target.value }))}
-            className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+            className={`px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none ${language === 'ar' ? 'text-right' : ''}`}
           >
-            <option value="">All Roles</option>
-            <option value="client">Client</option>
-            <option value="reader">Reader</option>
-            <option value="admin">Admin</option>
-            <option value="monitor">Monitor</option>
-            <option value="super_admin">Super Admin</option>
+            <option value="">{t('userManagement.filters.allRoles')}</option>
+            <option value="client">{t('roles.client')}</option>
+            <option value="reader">{t('roles.reader')}</option>
+            <option value="admin">{t('roles.admin')}</option>
+            <option value="monitor">{t('roles.monitor')}</option>
+            <option value="super_admin">{t('roles.superAdmin')}</option>
           </select>
 
           <input
             type="text"
-            placeholder="Country..."
+            placeholder={t('forms.placeholders.country')}
             value={filters.country}
             onChange={(e) => setFilters(prev => ({ ...prev, country: e.target.value }))}
-            className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-cosmic-300 focus:border-purple-400 focus:outline-none"
+            className={`px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-cosmic-300 focus:border-purple-400 focus:outline-none ${language === 'ar' ? 'text-right' : ''}`}
           />
 
           <select
             value={filters.is_active}
             onChange={(e) => setFilters(prev => ({ ...prev, is_active: e.target.value }))}
-            className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+            className={`px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none ${language === 'ar' ? 'text-right' : ''}`}
           >
-            <option value="">All Status</option>
-            <option value="true">Active</option>
-            <option value="false">Inactive</option>
+            <option value="">{t('userManagement.filters.allStatus')}</option>
+            <option value="true">{t('common.status.active')}</option>
+            <option value="false">{t('common.status.inactive')}</option>
           </select>
 
           <select
@@ -591,6 +675,15 @@ const UserManagementTab = () => {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
+                          onClick={() => handleChangePassword(user)}
+                          className="p-2 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition-colors"
+                          title="Change Password"
+                        >
+                          <KeyIcon className="w-4 h-4" />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
                           onClick={() => {
                             setSelectedUser(user);
                             setShowDeleteModal(true);
@@ -642,7 +735,9 @@ const UserManagementTab = () => {
               className="bg-gradient-to-b from-bg-primary to-bg-secondary border border-white/20 rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-white">Edit User Profile</h3>
+                <h3 className={`text-xl font-bold text-white ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                  {t('userManagement.editUser')}
+                </h3>
                 <button
                   onClick={() => setShowEditModal(false)}
                   className="text-cosmic-300 hover:text-white"
@@ -653,148 +748,131 @@ const UserManagementTab = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-cosmic-300 mb-2">
-                    First Name
+                  <label className={`block text-sm font-medium text-cosmic-300 mb-2 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                    {t('forms.labels.firstName')}
                   </label>
                   <input
                     type="text"
                     value={editFormData.first_name}
                     onChange={(e) => setEditFormData(prev => ({ ...prev, first_name: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+                    placeholder={t('forms.placeholders.firstName')}
+                    className={`w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none placeholder-cosmic-400 ${currentLanguage === 'ar' ? 'text-right' : ''}`}
+                    dir={currentLanguage === 'ar' ? 'rtl' : 'ltr'}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cosmic-300 mb-2">
-                    Last Name
+                  <label className={`block text-sm font-medium text-cosmic-300 mb-2 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                    {t('forms.labels.lastName')}
                   </label>
                   <input
                     type="text"
                     value={editFormData.last_name}
                     onChange={(e) => setEditFormData(prev => ({ ...prev, last_name: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+                    placeholder={t('forms.placeholders.lastName')}
+                    className={`w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none placeholder-cosmic-400 ${currentLanguage === 'ar' ? 'text-right' : ''}`}
+                    dir={currentLanguage === 'ar' ? 'rtl' : 'ltr'}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cosmic-300 mb-2">
-                    Email (Read Only)
+                  <label className={`block text-sm font-medium text-cosmic-300 mb-2 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                    {t('forms.labels.email')} ({currentLanguage === 'ar' ? 'للقراءة فقط' : 'Read Only'})
                   </label>
                   <input
                     type="email"
                     value={editFormData.email}
                     readOnly
-                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-cosmic-300 cursor-not-allowed"
+                    className={`w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-cosmic-300 cursor-not-allowed ${currentLanguage === 'ar' ? 'text-right' : ''}`}
+                    dir={currentLanguage === 'ar' ? 'rtl' : 'ltr'}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cosmic-300 mb-2">
-                    Phone
+                  <label className={`block text-sm font-medium text-cosmic-300 mb-2 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                    {t('forms.labels.phone')}
                   </label>
                   <input
                     type="text"
                     value={editFormData.phone}
                     onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+                    placeholder={t('forms.placeholders.phone')}
+                    className={`w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none placeholder-cosmic-400 ${currentLanguage === 'ar' ? 'text-right' : ''}`}
+                    dir={currentLanguage === 'ar' ? 'rtl' : 'ltr'}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cosmic-300 mb-2">
-                    Country
+                  <label className={`block text-sm font-medium text-cosmic-300 mb-2 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                    {t('forms.labels.country')}
                   </label>
                   <input
                     type="text"
                     value={editFormData.country}
                     onChange={(e) => setEditFormData(prev => ({ ...prev, country: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+                    placeholder={t('forms.placeholders.country')}
+                    className={`w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none placeholder-cosmic-400 ${currentLanguage === 'ar' ? 'text-right' : ''}`}
+                    dir={currentLanguage === 'ar' ? 'rtl' : 'ltr'}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cosmic-300 mb-2">
-                    Role
+                  <label className={`block text-sm font-medium text-cosmic-300 mb-2 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                    {currentLanguage === 'ar' ? 'الدور' : 'Role'}
                   </label>
                   <select
                     value={editFormData.role}
                     onChange={(e) => setEditFormData(prev => ({ ...prev, role: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+                    className={`w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none ${currentLanguage === 'ar' ? 'text-right' : ''}`}
+                    dir={currentLanguage === 'ar' ? 'rtl' : 'ltr'}
                   >
-                    <option value="client">Client</option>
-                    <option value="reader">Reader</option>
-                    <option value="admin">Admin</option>
-                    <option value="monitor">Monitor</option>
-                    <option value="super_admin">Super Admin</option>
+                    <option value="client">{t('roles.client')}</option>
+                    <option value="reader">{t('roles.reader')}</option>
+                    <option value="admin">{t('roles.admin')}</option>
+                    <option value="monitor">{t('roles.monitor')}</option>
+                    <option value="super_admin">{t('roles.superAdmin')}</option>
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-cosmic-300 mb-2">
-                    Marital Status
-                  </label>
-                  <select
-                    value={editFormData.maritalStatus}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, maritalStatus: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none"
-                  >
-                    <option value="">Select Status</option>
-                    <option value="single">Single</option>
-                    <option value="married">Married</option>
-                    <option value="engaged">Engaged</option>
-                    <option value="in_relationship">In a Relationship</option>
-                    <option value="complicated">It&rsquo;s Complicated</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-cosmic-300 mb-2">
-                    Status
-                  </label>
-                  <select
-                    value={editFormData.status}
-                    onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value }))}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none"
-                  >
-                    <option value="available">Available</option>
-                    <option value="busy">Busy</option>
-                    <option value="offline">Offline</option>
-                  </select>
-                </div>
+                {/* Removed Marital Status and Status fields - columns don't exist in profiles table */}
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-cosmic-300 mb-2">
-                    Bio
+                  <label className={`block text-sm font-medium text-cosmic-300 mb-2 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                    {currentLanguage === 'ar' ? 'النبذة الشخصية' : 'Bio'}
                   </label>
                   <textarea
                     value={editFormData.bio}
                     onChange={(e) => setEditFormData(prev => ({ ...prev, bio: e.target.value }))}
                     rows={3}
-                    className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none"
+                    placeholder={currentLanguage === 'ar' ? 'أدخل النبذة الشخصية...' : 'Enter bio...'}
+                    className={`w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-purple-400 focus:outline-none placeholder-cosmic-400 ${currentLanguage === 'ar' ? 'text-right' : ''}`}
+                    dir={currentLanguage === 'ar' ? 'rtl' : 'ltr'}
                   />
                 </div>
 
                 <div>
-                  <label className="flex items-center space-x-2">
+                  <label className={`flex items-center ${currentLanguage === 'ar' ? 'flex-row-reverse space-x-reverse' : ''} space-x-2`}>
                     <input
                       type="checkbox"
                       checked={editFormData.is_active}
                       onChange={(e) => setEditFormData(prev => ({ ...prev, is_active: e.target.checked }))}
                       className="w-4 h-4 text-purple-600 bg-white/10 border-white/20 rounded focus:ring-purple-500"
                     />
-                    <span className="text-sm text-cosmic-300">Account Active</span>
+                    <span className="text-sm text-cosmic-300">
+                      {currentLanguage === 'ar' ? 'الحساب نشط' : 'Account Active'}
+                    </span>
                   </label>
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-4 mt-8">
+              <div className={`flex gap-4 mt-8 ${currentLanguage === 'ar' ? 'flex-row-reverse' : 'justify-end'}`}>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setShowEditModal(false)}
                   className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                 >
-                  Cancel
+                  {t('forms.buttons.cancel')}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -803,7 +881,133 @@ const UserManagementTab = () => {
                   disabled={loading}
                   className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-colors disabled:opacity-50"
                 >
-                  {loading ? 'Updating...' : 'Update User'}
+                  {loading 
+                    ? (currentLanguage === 'ar' ? 'جاري التحديث...' : 'Updating...') 
+                    : t('forms.buttons.update')
+                  }
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Change Password Modal */}
+      <AnimatePresence>
+        {showPasswordModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-gradient-to-b from-bg-primary to-bg-secondary border border-yellow-500/30 rounded-2xl p-6 w-full max-w-md"
+            >
+              <div className={`text-center mb-6 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                <KeyIcon className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">
+                  {t('forms.buttons.changePassword')}
+                </h3>
+                <p className="text-cosmic-300 text-sm">
+                  {currentLanguage === 'ar' 
+                    ? `تغيير كلمة المرور لـ: ${selectedUser?.first_name} ${selectedUser?.last_name}`
+                    : `Change password for: ${selectedUser?.first_name} ${selectedUser?.last_name}`
+                  }
+                </p>
+                <p className="text-cosmic-400 text-xs mt-1">
+                  {selectedUser?.auth_users?.email}
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className={`block text-sm font-medium text-cosmic-300 mb-2 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                    {t('forms.labels.newPassword')}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordFormData.newPassword}
+                    onChange={(e) => setPasswordFormData(prev => ({ ...prev, newPassword: e.target.value }))}
+                    placeholder={t('forms.placeholders.newPassword')}
+                    className={`w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-cosmic-400 focus:border-yellow-400 focus:outline-none ${currentLanguage === 'ar' ? 'text-right' : ''}`}
+                    dir={currentLanguage === 'ar' ? 'rtl' : 'ltr'}
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium text-cosmic-300 mb-2 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                    {t('forms.labels.confirmPassword')}
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordFormData.confirmPassword}
+                    onChange={(e) => setPasswordFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder={t('forms.placeholders.confirmPassword')}
+                    className={`w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-cosmic-400 focus:border-yellow-400 focus:outline-none ${currentLanguage === 'ar' ? 'text-right' : ''}`}
+                    dir={currentLanguage === 'ar' ? 'rtl' : 'ltr'}
+                  />
+                </div>
+
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                  <div className={`flex items-start space-x-2 ${currentLanguage === 'ar' ? 'flex-row-reverse space-x-reverse' : ''}`}>
+                    <ExclamationTriangleIcon className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                    <div className={`text-yellow-300 text-sm ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                      <p className="font-medium mb-1">
+                        {currentLanguage === 'ar' ? 'تنبيه أمني:' : 'Security Notice:'}
+                      </p>
+                      <ul className={`text-xs space-y-1 text-yellow-200 ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
+                        <li>
+                          {currentLanguage === 'ar' 
+                            ? '• كلمة المرور يجب أن تكون على الأقل 8 أحرف'
+                            : '• Password must be at least 8 characters long'
+                          }
+                        </li>
+                        <li>
+                          {currentLanguage === 'ar' 
+                            ? '• المستخدم سيتم تسجيل خروجه من جميع الأجهزة'
+                            : '• User will be logged out from all devices'
+                          }
+                        </li>
+                        <li>
+                          {currentLanguage === 'ar' 
+                            ? '• هذا الإجراء سيتم تسجيله لأغراض التدقيق'
+                            : '• This action will be logged for audit purposes'
+                          }
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`flex gap-4 mt-6 ${currentLanguage === 'ar' ? 'flex-row-reverse' : 'justify-center'}`}>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordFormData({ newPassword: '', confirmPassword: '' });
+                  }}
+                  className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  {t('forms.buttons.cancel')}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handlePasswordSubmit}
+                  disabled={loading || !passwordFormData.newPassword || !passwordFormData.confirmPassword}
+                  className="px-6 py-2 bg-gradient-to-r from-yellow-600 to-orange-600 text-white rounded-lg hover:from-yellow-700 hover:to-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading 
+                    ? (currentLanguage === 'ar' ? 'جاري تغيير كلمة المرور...' : 'Changing...') 
+                    : t('forms.buttons.changePassword')
+                  }
                 </motion.button>
               </div>
             </motion.div>
@@ -826,23 +1030,31 @@ const UserManagementTab = () => {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-gradient-to-b from-bg-primary to-bg-secondary border border-red-500/30 rounded-2xl p-6 w-full max-w-md"
             >
-              <div className="text-center">
+              <div className={`text-center ${currentLanguage === 'ar' ? 'text-right' : ''}`}>
                 <ExclamationTriangleIcon className="w-16 h-16 text-red-400 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-white mb-4">Delete User</h3>
+                <h3 className="text-xl font-bold text-white mb-4">
+                  {currentLanguage === 'ar' ? 'حذف المستخدم' : 'Delete User'}
+                </h3>
                 <p className="text-cosmic-300 mb-6">
-                  Are you sure you want to permanently delete this user? This action cannot be undone.
+                  {currentLanguage === 'ar' 
+                    ? 'هل أنت متأكد من أنك تريد حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.'
+                    : 'Are you sure you want to permanently delete this user? This action cannot be undone.'
+                  }
                 </p>
                 <p className="text-red-400 text-sm mb-6">
-                  User: {selectedUser?.first_name} {selectedUser?.last_name}
+                  {currentLanguage === 'ar' 
+                    ? `المستخدم: ${selectedUser?.first_name} ${selectedUser?.last_name}`
+                    : `User: ${selectedUser?.first_name} ${selectedUser?.last_name}`
+                  }
                 </p>
-                <div className="flex justify-center space-x-4">
+                <div className={`flex gap-4 ${currentLanguage === 'ar' ? 'flex-row-reverse' : 'justify-center'}`}>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowDeleteModal(false)}
                     className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                   >
-                    Cancel
+                    {t('forms.buttons.cancel')}
                   </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -851,7 +1063,10 @@ const UserManagementTab = () => {
                     disabled={loading}
                     className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
                   >
-                    {loading ? 'Deleting...' : 'Delete User'}
+                    {loading 
+                      ? (currentLanguage === 'ar' ? 'جاري الحذف...' : 'Deleting...') 
+                      : (currentLanguage === 'ar' ? 'حذف المستخدم' : 'Delete User')
+                    }
                   </motion.button>
                 </div>
               </div>

@@ -25,8 +25,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
-import { SpreadAPI } from '../../api/spreadApi';
-import { TarotAPI } from '../../api/tarotApi';
+import api from '../../services/frontendApi.js';
+import api from '../../services/frontendApi.js';
 import SpreadSelection from '../Client/SpreadSelection';
 import CardSelection from '../Client/CardSelection';
 import ReadingResults from './ReadingResults';
@@ -70,7 +70,7 @@ const SpreadBasedReading = ({
     if (!bookingId) return;
     
     try {
-      const result = await SpreadAPI.getClientSpreadSelection(bookingId);
+      const result = await api.getClientSpreadSelection(bookingId);
       if (result.success && result.data) {
         const selection = result.data;
         setSpreadSelection(selection);
@@ -112,7 +112,7 @@ const SpreadBasedReading = ({
       step: 'cards'
     };
     
-    SpreadAPI.updateSpreadSelection(selection.id, {
+    api.updateSpreadSelection(selection.id, {
       session_data: sessionUpdate
     });
   };
@@ -121,7 +121,7 @@ const SpreadBasedReading = ({
     setIsProcessing(true);
     try {
       // Update the selection with drawn cards
-      const result = await SpreadAPI.updateSpreadSelection(spreadSelection.id, {
+      const result = await api.updateSpreadSelection(spreadSelection.id, {
         cards_drawn: cards,
         is_completed: true,
         session_data: {
@@ -161,7 +161,7 @@ const SpreadBasedReading = ({
         status: readerId ? 'pending_interpretation' : 'ai_processing'
       };
 
-      const result = await TarotAPI.createReading(readingData);
+      const result = await api.createReading(readingData);
       if (result.success) {
         setReading(result.data);
         

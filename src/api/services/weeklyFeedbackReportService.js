@@ -5,9 +5,7 @@
  * Implements Prompt 2: Weekly Feedback Report Export
  */
 
-const nodemailer = require('nodemailer');
-const fs = require('fs').promises;
-const path = require('path');
+import nodemailer from 'nodemailer';
 
 class WeeklyFeedbackReportService {
   constructor() {
@@ -21,7 +19,7 @@ class WeeklyFeedbackReportService {
    */
   initializeEmailService() {
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-      this.emailTransporter = nodemailer.createTransporter({
+      this.emailTransporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT || 587,
         secure: false,
@@ -32,7 +30,7 @@ class WeeklyFeedbackReportService {
       });
       console.log('✅ Weekly reports email service initialized (SMTP)');
     } else if (process.env.SENDGRID_API_KEY) {
-      this.emailTransporter = nodemailer.createTransporter({
+      this.emailTransporter = nodemailer.createTransport({
         service: 'SendGrid',
         auth: {
           user: 'apikey',

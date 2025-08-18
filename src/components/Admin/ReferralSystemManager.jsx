@@ -470,14 +470,14 @@ const ReferralCodeGenerator = ({ onGenerate }) => {
               type="text"
               value={generatedCode}
               readOnly
-              placeholder="سيتم توليد الرمز هنا"
+                              placeholder={t('admin.referralSystem.codeGenerated')}
               className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-lg bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white"
             />
             {generatedCode && (
               <button
                 onClick={copyToClipboard}
                 className="px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-r-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                title="نسخ الرمز"
+                title={t('admin.referralSystem.copyCode')}
               >
                 📋
               </button>

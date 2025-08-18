@@ -23,11 +23,14 @@ import {
   Gift,
   Calendar,
   CheckCircle,
-  X
+  X,
+  Shield,
+  AlertCircle,
+  Brain
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
-import { TarotAPI } from '../../api/tarotApi';
+import api from '../../services/frontendApi.js';
 
 const EnhancedReadingResults = ({ 
   spread,
@@ -50,6 +53,36 @@ const EnhancedReadingResults = ({
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [savedToProfile, setSavedToProfile] = useState(false);
 
+  // Role-based access control
+  const isReader = profile?.role === 'reader';
+  const isAdmin = ['admin', 'super_admin'].includes(profile?.role);
+  const canAccessAIContent = isReader || isAdmin;
+
+  // AI content protection logging
+  useEffect(() => {
+    if (reading?.confidence_score || reading?.ai_insights || aiInsights) {
+      // Log AI content access attempt
+      const logAIAccess = async () => {
+        try {
+                     await fetch('/api/ai-audit/log-access', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              component: 'EnhancedReadingResults',
+              user_role: profile?.role,
+              ai_fields_present: ['confidence_score', 'ai_insights', 'aiInsights'],
+              access_granted: canAccessAIContent,
+              timestamp: new Date().toISOString()
+            })
+          });
+        } catch (error) {
+          console.error('Failed to log AI access:', error);
+        }
+      };
+      logAIAccess();
+    }
+  }, [reading, aiInsights, profile?.role, canAccessAIContent]);
+
   const categories = {
     general: { name: 'General Guidance', name_ar: 'إرشاد عام', icon: Star, color: 'cosmic-purple' },
     love: { name: 'Love & Relationships', name_ar: 'الحب والعلاقات', icon: Heart, color: 'cosmic-pink' },
@@ -63,16 +96,16 @@ const EnhancedReadingResults = ({
   const CategoryIcon = categoryInfo.icon;
 
   useEffect(() => {
-    // If AI reading and no reader, generate AI insights
-    if (!readerId && reading && !reading.ai_insights) {
+    // Only generate AI insights for authorized users
+    if (!readerId && reading && !reading.ai_insights && canAccessAIContent) {
       generateAIInsights();
     }
-  }, [reading, readerId]);
+  }, [reading, readerId, canAccessAIContent]);
 
   const generateAIInsights = async () => {
     setIsGeneratingAI(true);
     try {
-      const result = await TarotAPI.generateAIInterpretation(reading.id, {
+      const result = await api.generateAIInterpretation(reading.id, {
         spread,
         cards,
         question,
@@ -91,7 +124,7 @@ const EnhancedReadingResults = ({
 
   const handleSaveReading = async () => {
     try {
-      const result = await TarotAPI.saveReadingToProfile(reading.id);
+      const result = await api.saveReadingToProfile(reading.id);
       if (result.success) {
         setSavedToProfile(true);
         showSuccess(
@@ -316,63 +349,106 @@ const EnhancedReadingResults = ({
         </div>
       )}
 
-      {/* AI insights */}
-      {aiInsights && (
+      {/* AI insights - ONLY for authorized users */}
+      {canAccessAIContent && aiInsights && (
         <div className="space-y-4">
+          {/* CRITICAL: Reader warning overlay */}
+          <div className="bg-red-900/30 border-2 border-red-500/50 rounded-xl p-4 mb-4">
+            <div className="flex items-center gap-2 text-red-300 mb-2">
+              <Shield className="w-5 h-5" />
+              <span className="font-bold">⚠️ ASSISTANT DRAFT – NOT FOR CLIENT DELIVERY</span>
+            </div>
+            <p className="text-red-200 text-sm">
+              This AI-generated content is for reader reference only. Do not share with clients.
+            </p>
+          </div>
+
           <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-            <Sparkles className="w-5 h-5" />
-            {language === 'ar' ? 'رؤى ذكية' : 'AI Insights'}
+            <Brain className="w-5 h-5 text-purple-400" />
+            {language === 'ar' ? 'رؤى ذكية (للقارئ فقط)' : 'AI Insights (Reader Only)'}
           </h4>
           
-          {aiInsights.overall_message && (
-            <div className="p-4 bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-500/20 rounded-xl">
-              <h5 className="font-semibold text-purple-300 mb-2">
-                {language === 'ar' ? 'الرسالة الأساسية' : 'Core Message'}
-              </h5>
-              <p className="text-gray-300">{aiInsights.overall_message}</p>
-            </div>
-          )}
+          {/* Copy-protected AI content */}
+          <div
+            onCopy={(e) => e.preventDefault()}
+            onContextMenu={(e) => e.preventDefault()}
+            onSelectStart={(e) => e.preventDefault()}
+            style={{ 
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none',
+              WebkitTouchCallout: 'none'
+            }}
+          >
+            {aiInsights.overall_message && (
+              <div className="p-4 bg-gradient-to-r from-purple-900/20 to-pink-900/20 border border-purple-500/20 rounded-xl relative">
+                <div className="absolute top-2 right-2 text-xs text-red-400 font-bold">AI-DRAFT</div>
+                <h5 className="font-semibold text-purple-300 mb-2">
+                  {language === 'ar' ? 'الرسالة الأساسية' : 'Core Message'}
+                </h5>
+                <p className="text-gray-300">{aiInsights.overall_message}</p>
+              </div>
+            )}
 
-          {aiInsights.key_themes && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {aiInsights.key_themes.map((theme, index) => (
-                <div key={index} className="p-4 bg-dark-700/30 rounded-xl border border-white/10">
-                  <h6 className="font-semibold text-gold-300 mb-2">{theme.title}</h6>
-                  <p className="text-gray-300 text-sm">{theme.description}</p>
-                </div>
-              ))}
-            </div>
-          )}
+            {aiInsights.key_themes && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {aiInsights.key_themes.map((theme, index) => (
+                  <div key={index} className="p-4 bg-dark-700/30 rounded-xl border border-white/10 relative">
+                    <div className="absolute top-2 right-2 text-xs text-red-400 font-bold">AI-DRAFT</div>
+                    <h6 className="font-semibold text-gold-300 mb-2">{theme.title}</h6>
+                    <p className="text-gray-300 text-sm">{theme.description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {aiInsights.guidance && (
-            <div className="p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-500/20 rounded-xl">
-              <h5 className="font-semibold text-green-300 mb-2 flex items-center gap-2">
-                <Target className="w-4 h-4" />
-                {language === 'ar' ? 'التوجيه المقترح' : 'Recommended Guidance'}
-              </h5>
-              <p className="text-gray-300">{aiInsights.guidance}</p>
-            </div>
-          )}
+            {aiInsights.guidance && (
+              <div className="p-4 bg-gradient-to-r from-green-900/20 to-emerald-900/20 border border-green-500/20 rounded-xl relative">
+                <div className="absolute top-2 right-2 text-xs text-red-400 font-bold">AI-DRAFT</div>
+                <h5 className="font-semibold text-green-300 mb-2 flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  {language === 'ar' ? 'التوجيه المقترح' : 'Recommended Guidance'}
+                </h5>
+                <p className="text-gray-300">{aiInsights.guidance}</p>
+              </div>
+            )}
 
-          {aiInsights.confidence_score && (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <CheckCircle className="w-4 h-4" />
-              {language === 'ar' ? 'درجة الثقة:' : 'Confidence Score:'} {(aiInsights.confidence_score * 100).toFixed(0)}%
-            </div>
-          )}
+            {aiInsights.confidence_score && (
+              <div className="flex items-center gap-2 text-sm text-gray-400 relative">
+                <div className="absolute -top-2 right-2 text-xs text-red-400 font-bold">AI-DRAFT</div>
+                <CheckCircle className="w-4 h-4" />
+                {language === 'ar' ? 'درجة الثقة:' : 'Confidence Score:'} {(aiInsights.confidence_score * 100).toFixed(0)}%
+                <span className="text-red-400 text-xs font-bold ml-2">READER ONLY</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Generate AI button if no AI yet and no reader */}
-      {!readerId && !aiInsights && !isGeneratingAI && (
+      {/* Unauthorized access warning */}
+      {!canAccessAIContent && (aiInsights || reading?.ai_insights) && (
+        <div className="bg-yellow-900/30 border border-yellow-500/50 rounded-xl p-4">
+          <div className="flex items-center gap-2 text-yellow-300">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-semibold">Access Restricted</span>
+          </div>
+          <p className="text-yellow-200 text-sm mt-1">
+            AI insights are only available to authorized readers. Your access attempt has been logged.
+          </p>
+        </div>
+      )}
+
+      {/* Generate AI button - ONLY for authorized users */}
+      {!readerId && !aiInsights && !isGeneratingAI && canAccessAIContent && (
         <motion.button
           onClick={generateAIInsights}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300"
         >
-          <Sparkles className="w-5 h-5" />
-          {language === 'ar' ? 'إنشاء رؤى ذكية' : 'Generate AI Insights'}
+          <Brain className="w-5 h-5" />
+          {language === 'ar' ? 'إنشاء رؤى ذكية (للقارئ)' : 'Generate AI Insights (Reader Only)'}
         </motion.button>
       )}
 

@@ -89,7 +89,13 @@ const MainLayout = ({ children, showNavbar = true, showParticles = true, classNa
   }), []);
 
   return (
-    <div className={`min-h-screen bg-gray-900 text-white overflow-x-hidden ${className}`}>
+    <div className={`
+      min-h-screen max-h-screen h-screen
+      bg-gray-900 text-white 
+      overflow-hidden
+      flex flex-col
+      ${className}
+    `}>
       {/* Cosmic Background */}
       <CosmicBackground />
       
@@ -103,17 +109,30 @@ const MainLayout = ({ children, showNavbar = true, showParticles = true, classNa
         />
       )}
 
-      {/* Navigation */}
-      {showNavbar && <Navbar />}
+      {/* Navigation - Fixed height */}
+      {showNavbar && (
+        <div className="relative z-20 flex-shrink-0">
+          <Navbar />
+        </div>
+      )}
 
-      {/* Main Content */}
+      {/* Main Content Container - Fills remaining height with proper overflow */}
       <motion.main
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="relative z-10"
+        className="
+          relative z-10 
+          flex-1 
+          min-h-0
+          overflow-y-auto overflow-x-hidden
+          scrollbar-thin scrollbar-track-gray-900 scrollbar-thumb-purple-600/50
+          hover:scrollbar-thumb-purple-500/70
+        "
       >
-        {children}
+        <div className="min-h-full w-full">
+          {children}
+        </div>
       </motion.main>
 
       {/* Floating Cosmic Elements */}

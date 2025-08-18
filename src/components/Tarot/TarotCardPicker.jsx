@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Shuffle, Sparkles, Eye, RotateCcw } from 'lucide-react';
-import { TarotAPI } from '../../api/tarotApi.js';
+import api from '../../services/frontendApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const TarotCardPicker = ({ 
@@ -28,7 +28,7 @@ const TarotCardPicker = ({
 
   const loadTarotDeck = async () => {
     try {
-      const result = await TarotAPI.getTarotDeck();
+      const result = await api.getTarotDeck();
       if (result.success) {
         setCards(result.data);
       } else {
@@ -85,7 +85,7 @@ const TarotCardPicker = ({
 
   const saveCardSelection = async (selection) => {
     try {
-      const result = await TarotAPI.saveCardSelection(sessionId, {
+      const result = await api.saveCardSelection(sessionId, {
         booking_id: bookingId,
         cards_drawn: selection,
         spread_id: spreadConfig.id

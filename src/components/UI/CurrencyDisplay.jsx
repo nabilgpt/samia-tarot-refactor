@@ -162,7 +162,7 @@ const CurrencyDisplay = ({
       )}
       
       {/* Stale rate warning (only for developers/admins) */}
-      {displayData.isStale && process.env.NODE_ENV === 'development' && (
+      {displayData.isStale && import.meta.env.MODE === 'development' && (
         <div className="text-xs text-yellow-400 opacity-50 mt-1">
           ⚠️ Exchange rate may be outdated
         </div>

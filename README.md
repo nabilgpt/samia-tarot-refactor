@@ -1,4 +1,6 @@
-# 🔮 SAMIA TAROT - Enterprise Tarot Platform
+# 🌟 SAMIA TAROT - Mystical Tarot Reading Platform
+
+> 🚨 **CRITICAL SECURITY NOTICE**: Before working on ANY feature, read [`ENVIRONMENT_SECURITY_POLICY.md`](./ENVIRONMENT_SECURITY_POLICY.md) for mandatory credentials management rules.
 
 [![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)](https://github.com/your-username/samia-tarot)
 [![Database](https://img.shields.io/badge/Database-180%2B%20Tables-blue)](https://github.com/your-username/samia-tarot)

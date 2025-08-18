@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { CallAPI } from '../../api/callApi.js';
+import api from '../../services/frontendApi.js';
 import { 
   AlertTriangle, 
   Phone, 
@@ -115,7 +115,7 @@ const CallNotification = ({ notification, onAccept, onDecline, onDismiss }) => {
   const handleEscalation = async () => {
     try {
       // Mark as escalated and notify admin
-      await CallAPI.createCallEscalation({
+      await api.createCallEscalation({
         call_session_id: notification.call_session_id,
         escalated_from: notification.call_session?.reader_id,
         escalated_to: null, // Will be auto-assigned to admin

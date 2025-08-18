@@ -21,9 +21,10 @@ const { supabaseAdmin: supabase } = require('./lib/supabase.js');
 // =============================================================================
 
 // Admin-specific rate limits
+// Increased limits to accommodate bilingual system initialization
 const adminRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // limit each IP to 200 admin requests per windowMs
+  windowMs: 10 * 60 * 1000, // 10 minutes (reduced window)
+  max: 500, // limit each IP to 500 admin requests per windowMs (increased for bilingual system)
   message: {
     error: 'حد أقصى من طلبات الإدارة تم الوصول إليه، يرجى المحاولة لاحقاً',
     code: 'ADMIN_RATE_LIMIT_EXCEEDED'
@@ -332,7 +333,7 @@ router.get('/applications', [authenticateToken, requireRole(['admin', 'super_adm
       .select(`
         id,
         application_type,
-        experience_years,
+        // experience_years, // Column doesn't exist yet
         specializations,
         status,
         created_at,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { AnalyticsAPI } from '../../api/analyticsApi.js';
+import api from '../../services/frontendApi.js';
+import { hasAdminOrMonitorAccess } from '../../utils/roleHelpers.js';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -26,7 +27,7 @@ import QualityTab from './QualityTab.jsx';
 import ReportsTab from './ReportsTab.jsx';
 
 const AdminAnalyticsDashboard = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState({
@@ -36,11 +37,11 @@ const AdminAnalyticsDashboard = () => {
 
   // Check if user has admin access
   useEffect(() => {
-    if (user && !['admin', 'monitor'].includes(user.role)) {
-      // Redirect or show access denied
-      console.warn('Access denied: User does not have admin privileges');
+    const finalRole = profile?.role || user?.role;
+    if (user && !['admin', 'super_admin', 'monitor'].includes(finalRole)) {
+      // Access denied - handled in render
     }
-  }, [user]);
+  }, [user, profile]);
 
   const tabs = [
     {
@@ -117,7 +118,9 @@ const AdminAnalyticsDashboard = () => {
     }
   };
 
-  if (!user || !['admin', 'monitor'].includes(user.role)) {
+  const userRole = profile?.role || user?.role;
+  
+  if (!user || !['admin', 'super_admin', 'monitor'].includes(userRole)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
@@ -145,13 +148,6 @@ const AdminAnalyticsDashboard = () => {
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-              <p className="text-gray-600 mt-1">
-                Comprehensive platform analytics and reporting
-              </p>
-            </div>
-            
             <div className="flex items-center space-x-4">
               {/* Date Range Selector */}
               <div className="flex items-center space-x-2">

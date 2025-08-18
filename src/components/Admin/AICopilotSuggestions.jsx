@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Brain, 
   Lightbulb, 
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 
 const AICopilotSuggestions = ({ contextType, entityId, className = '' }) => {
+  const { t } = useTranslation();
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -276,14 +278,14 @@ const AICopilotSuggestions = ({ contextType, entityId, className = '' }) => {
                         <button
                           onClick={() => provideFeedback(suggestion, 5, 'مفيد')}
                           className="p-1 text-green-600 hover:text-green-700 transition-colors"
-                          title="مفيد"
+                          title={t('admin.copilot.helpful')}
                         >
                           <ThumbsUp className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => provideFeedback(suggestion, 1, 'غير مفيد')}
                           className="p-1 text-red-600 hover:text-red-700 transition-colors"
-                          title="غير مفيد"
+                          title={t('admin.copilot.notHelpful')}
                         >
                           <ThumbsDown className="w-4 h-4" />
                         </button>

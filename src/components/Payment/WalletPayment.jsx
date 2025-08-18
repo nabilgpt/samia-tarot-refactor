@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { UserAPI } from '../../api/userApi.js';
+import api from '../../services/frontendApi.js';
 
 const WalletPayment = ({ service, amount, onPaymentSuccess, onPaymentError, onBack, bookingId }) => {
   const { user, profile } = useAuth();
@@ -16,7 +16,7 @@ const WalletPayment = ({ service, amount, onPaymentSuccess, onPaymentError, onBa
 
   const loadWalletData = async () => {
     try {
-      const result = await UserAPI.getUserWallet(user.id);
+      const result = await api.getUserWallet(user.id);
       if (result.success) {
         setWallet(result.data);
       } else {
@@ -39,7 +39,7 @@ const WalletPayment = ({ service, amount, onPaymentSuccess, onPaymentError, onBa
     setError(null);
 
     try {
-      const result = await UserAPI.processWalletPayment(
+      const result = await api.processWalletPayment(
         user.id,
         amount,
         bookingId,

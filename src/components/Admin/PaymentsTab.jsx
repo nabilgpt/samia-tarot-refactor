@@ -114,16 +114,6 @@ const PaymentsTab = ({ onUpdate }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Payments Management</h3>
-        <button
-          onClick={loadPayments}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-        >
-          Refresh
-        </button>
-      </div>
-
       {/* Payment Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">

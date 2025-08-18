@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
-import { SpreadAPI } from '../../api/spreadApi';
+import api from '../../services/frontendApi.js';
 
 const CardSelection = ({ 
   spreadSelection,
@@ -132,7 +132,7 @@ const CardSelection = ({
     }
 
     try {
-      const result = await SpreadAPI.updateSpreadSelection(spreadSelection.id, {
+      const result = await api.updateSpreadSelection(spreadSelection.id, {
         cards_drawn: selectedCards,
         is_completed: true,
         session_data: {

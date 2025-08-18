@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   KeyIcon,
   EyeIcon,
@@ -15,9 +15,15 @@ import {
   ExclamationTriangleIcon,
   ClockIcon,
   ShieldCheckIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  DocumentArrowDownIcon,
+  DocumentArrowUpIcon,
+  Cog6ToothIcon,
+  FolderIcon,
+  FolderPlusIcon,
+  TagIcon
 } from '@heroicons/react/24/outline';
-import { systemSecretsApi } from '../../services/systemSecretsApi';
+import systemSecretsApi from '../../services/systemSecretsApi';
 
 const SystemSecretsTab = () => {
   const [secrets, setSecrets] = useState([]);
@@ -33,33 +39,99 @@ const SystemSecretsTab = () => {
   const [selectedSecret, setSelectedSecret] = useState(null);
   const [showValues, setShowValues] = useState({});
   const [showAuditLogs, setShowAuditLogs] = useState(false);
+  const [providerData, setProviderData] = useState([]); // For dynamic providers
+  const [availableProviders, setAvailableProviders] = useState([]); // For cascading dropdown
 
-  // Form state
+  // Form state for the modal - UPDATED for dynamic categories with foreign keys
   const [formData, setFormData] = useState({
-    config_key: '',
-    config_value: '',
-    category: 'general',
-    description: '',
+    provider_id: '', // For UI purposes - not sent to backend
+    secret_key: '',  // Required by backend (was config_key)
+    secret_category_id: '', // Required by backend (Foreign Key)
+    secret_subcategory_id: '', // Optional by backend (Foreign Key)
+    secret_value: '', // Required by backend (was config_value)
+    display_name: '', // Required by backend
+    description: '', // Optional
+    provider_name: '', // Optional - extracted from selected provider
+    is_active: true, // Optional - defaults to true
+    environment: 'all', // Optional - defaults to 'all'
+  });
+
+  // NEW STATE FOR DYNAMIC CATEGORIES & SUBCATEGORIES
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [availableSubcategories, setAvailableSubcategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [loadingSubcategories, setLoadingSubcategories] = useState(false);
+
+  // NEW STATE FOR INLINE CATEGORY/SUBCATEGORY MANAGEMENT
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showSubcategoryModal, setShowSubcategoryModal] = useState(false);
+  const [categoryModalType, setCategoryModalType] = useState('create'); // 'create', 'edit'
+  const [subcategoryModalType, setSubcategoryModalType] = useState('create'); // 'create', 'edit'
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingSubcategory, setEditingSubcategory] = useState(null);
+
+  // Category form state
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    display_name_en: '',
+    display_name_ar: '',
+    description_en: '',
+    description_ar: '',
+    sort_order: 0,
+    is_active: true
+  });
+
+  // Subcategory form state
+  const [subcategoryForm, setSubcategoryForm] = useState({
+    category_id: '',
+    name: '',
+    display_name_en: '',
+    display_name_ar: '',
+    description_en: '',
+    description_ar: '',
+    display_order: 999,
     is_active: true
   });
 
   // Load data on component mount
   useEffect(() => {
     loadSecrets();
-    loadCategories();
+    loadProviders();
+    loadCategories(); // Load categories for dynamic dropdowns
+    console.log("Dynamic categories system initialized");
   }, [selectedCategory, searchTerm, showActiveOnly]);
 
   const loadSecrets = async () => {
     try {
       setLoading(true);
-      const params = {
-        category: selectedCategory !== 'all' ? selectedCategory : undefined,
-        search: searchTerm || undefined,
-        active_only: showActiveOnly
-      };
       
-      const response = await systemSecretsApi.getSecrets(params);
-      setSecrets(response.data);
+      // Task 2: Call without params to fetch all secrets unconditionally for debugging.
+      const response = await systemSecretsApi.getSecrets();
+      console.log("API RAW RESPONSE (no params)", response.data || response);
+      
+      const rawSecretsData = response.data.secrets;
+      let secretsArray = [];
+      if (rawSecretsData && typeof rawSecretsData === 'object' && !Array.isArray(rawSecretsData)) {
+        secretsArray = Object.values(rawSecretsData).flat();
+      } else if (Array.isArray(rawSecretsData)) {
+        secretsArray = rawSecretsData;
+      }
+      console.log("Collected secretsArray:", secretsArray);
+      
+      const sanitized = secretsArray.filter(item => item && item.id);
+
+      const normalizedAndSanitized = sanitized.map(s => ({
+        id: s.id,
+        config_key: s.config_key || s.secret_key || s.display_name || 'Missing Key',
+        category: s.category || s.secret_category || 'uncategorized',
+        config_value_masked: s.config_value_masked || '••••••••',
+        is_active: s.is_active !== undefined ? s.is_active : false,
+        last_updated: s.last_updated || s.updated_at || s.created_at || '-',
+        description: s.description || '-'
+      }));
+      
+      setSecrets(normalizedAndSanitized);
+
       setError(null);
     } catch (err) {
       setError('Failed to load system secrets');
@@ -69,12 +141,13 @@ const SystemSecretsTab = () => {
     }
   };
 
-  const loadCategories = async () => {
+  const loadProviders = async () => {
     try {
-      const response = await systemSecretsApi.getCategories();
-      setCategories(response.data);
+      // Fetches all provider definitions, including their default keys
+      const response = await systemSecretsApi.getProviders(); // Assuming this endpoint exists
+      setProviderData(response.data || []);
     } catch (err) {
-      console.error('Load categories error:', err);
+      console.error('Load provider data error:', err);
     }
   };
 
@@ -87,44 +160,142 @@ const SystemSecretsTab = () => {
     }
   };
 
+  // NEW FUNCTIONS FOR DYNAMIC CATEGORY/SUBCATEGORY MANAGEMENT
+
+  const loadCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const response = await systemSecretsApi.getCategories();
+      
+      if (response.success) {
+        setAvailableCategories(response.data || []);
+      } else {
+        throw new Error('Failed to load categories');
+      }
+    } catch (err) {
+      console.error('Load categories error:', err);
+      setError('Failed to load categories');
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const loadSubcategories = async (categoryId) => {
+    if (!categoryId) {
+      setAvailableSubcategories([]);
+      return;
+    }
+
+    try {
+      setLoadingSubcategories(true);
+      const response = await systemSecretsApi.getSubcategories(categoryId);
+      
+      if (response.success) {
+        setAvailableSubcategories(response.data || []);
+      } else {
+        throw new Error('Failed to load subcategories');
+      }
+    } catch (err) {
+      console.error('Load subcategories error:', err);
+      setError('Failed to load subcategories');
+    } finally {
+      setLoadingSubcategories(false);
+    }
+  };
+
+  const handleCategoryChange = (e) => {
+    const categoryId = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      secret_category_id: categoryId,
+      secret_subcategory_id: '' // Reset subcategory when category changes
+    }));
+    
+    // Load subcategories for the selected category
+    loadSubcategories(categoryId);
+  };
+
+  const handleSubcategoryChange = (e) => {
+    const subcategoryId = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      secret_subcategory_id: subcategoryId
+    }));
+  };
+
   const handleCreateSecret = () => {
     setModalType('create');
     setFormData({
-      config_key: '',
-      config_value: '',
-      category: 'general',
-      description: '',
-      is_active: true
+      provider_id: '', // For UI purposes - not sent to backend
+      secret_key: '',  // Required by backend
+      secret_category_id: '', // Required by backend (Foreign Key)
+      secret_subcategory_id: '', // Optional by backend (Foreign Key)
+      secret_value: '', // Required by backend
+      display_name: '', // Required by backend
+      description: '', // Optional
+      provider_name: '', // Optional
+      is_active: true, // Optional
+      environment: 'all', // Optional
     });
+    
+    // Reset subcategories when creating new secret
+    setAvailableSubcategories([]);
     setShowModal(true);
-  };
+    };
 
   const handleEditSecret = async (secret) => {
+    // **Guard Clause**
+    if (!secret || !secret.id) {
+      setError('Cannot edit a secret without a valid ID.');
+      return;
+    }
     try {
       // Get full secret details including actual value
       const response = await systemSecretsApi.getSecret(secret.id);
-      setSelectedSecret(response.data);
+      const secretData = response.data;
+      
+      setSelectedSecret(secretData);
       setFormData({
-        config_key: response.data.config_key,
-        config_value: response.data.config_value,
-        category: response.data.category,
-        description: response.data.description || '',
-        is_active: response.data.is_active
+        provider_id: secretData.provider_id || '', // For UI purposes
+        secret_key: secretData.secret_key,  // From backend
+        secret_category_id: secretData.secret_category_id || '', // From backend (Foreign Key)
+        secret_subcategory_id: secretData.secret_subcategory_id || '', // From backend (Foreign Key)
+        secret_value: secretData.secret_value, // From backend (decrypted)
+        display_name: secretData.display_name, // From backend
+        description: secretData.description || '',
+        provider_name: secretData.provider_name || '',
+        is_active: secretData.is_active,
+        environment: secretData.environment || 'all',
       });
+      
+      // Load subcategories for the selected category if it exists
+      if (secretData.secret_category_id) {
+        loadSubcategories(secretData.secret_category_id);
+      }
       setModalType('edit');
       setShowModal(true);
     } catch (err) {
       setError('Failed to load secret details');
-    }
+            }
   };
 
   const handleDeleteSecret = (secret) => {
+    // **Guard Clause**
+    if (!secret || !secret.id) {
+      setError('Cannot delete a secret without a valid ID.');
+      return;
+    }
     setSelectedSecret(secret);
     setModalType('delete');
     setShowModal(true);
   };
 
   const handleViewSecret = async (secret) => {
+    // **Guard Clause**
+    if (!secret || !secret.id) {
+      setError('Cannot view a secret without a valid ID.');
+      return;
+    }
     try {
       const response = await systemSecretsApi.getSecret(secret.id);
       setSelectedSecret(response.data);
@@ -133,14 +304,26 @@ const SystemSecretsTab = () => {
     } catch (err) {
       setError('Failed to load secret details');
     }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    };
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
     
     try {
       if (modalType === 'create') {
-        await systemSecretsApi.createSecret(formData);
+        // Prepare data for backend - using foreign key fields
+        const backendData = {
+          secret_key: formData.secret_key,
+          secret_category_id: formData.secret_category_id,
+          secret_subcategory_id: formData.secret_subcategory_id || null,
+          secret_value: formData.secret_value,
+          display_name: formData.display_name,
+          description: formData.description,
+          provider_name: formData.provider_name,
+          environment: formData.environment || 'all',
+          is_active: formData.is_active !== undefined ? formData.is_active : true
+        };
+        await systemSecretsApi.createSecret(backendData);
       } else if (modalType === 'edit') {
         await systemSecretsApi.updateSecret(selectedSecret.id, formData);
       } else if (modalType === 'delete') {
@@ -150,13 +333,39 @@ const SystemSecretsTab = () => {
       setShowModal(false);
       loadSecrets();
       setError(null);
-    } catch (err) {
+        } catch (err) {
       setError(err.response?.data?.message || 'Operation failed');
+        }
+    };
+
+  const handleProviderChange = (e) => {
+    const providerId = e.target.value;
+    const selectedProvider = providerData.find(p => p.id === providerId);
+    
+    if (selectedProvider) {
+      setFormData(prev => ({
+        ...prev,
+        provider_id: providerId, // For UI selection only
+        secret_key: selectedProvider.configuration_key || '', // Backend expects secret_key
+        provider_name: selectedProvider.name || '', // Backend expects provider_name
+        display_name: `${selectedProvider.name} API Key` || '', // Backend expects display_name
+        // Note: Category and subcategory are now selected separately via dropdowns
+      }));
+    } else {
+      // Reset form when no provider selected
+      setFormData(prev => ({ 
+        ...prev, 
+        provider_id: '', 
+        secret_key: '', 
+        provider_name: '',
+        display_name: ''
+        // Note: Keep category/subcategory selections intact
+      }));
     }
   };
 
   const handleExport = async () => {
-    try {
+        try {
       const response = await systemSecretsApi.exportSecrets({
         include_values: true,
         categories: selectedCategory !== 'all' ? [selectedCategory] : []
@@ -174,19 +383,24 @@ const SystemSecretsTab = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err) {
+        } catch (err) {
       setError('Export failed');
-    }
-  };
-
-  const handleTestConnection = async (secret) => {
-    try {
-      const response = await systemSecretsApi.testConnection(secret.id);
+        }
+    };
+    
+    const handleTestConnection = async (secret) => {
+      // **Guard Clause**
+      if (!secret || !secret.id) {
+        setError('Cannot test a secret without a valid ID.');
+        return;
+      }
+      try {
+        const response = await systemSecretsApi.testConnection(secret.id);
       alert(`Connection test: ${response.data.message}`);
-    } catch (err) {
-      alert(`Connection test failed: ${err.response?.data?.message || 'Unknown error'}`);
-    }
-  };
+      } catch (err) {
+        alert(`Connection test failed: ${err.response?.data?.message || 'Unknown error'}`);
+      }
+    };
 
   const handleBulkExport = async () => {
     try {
@@ -312,14 +526,23 @@ const SystemSecretsTab = () => {
   };
 
   const filteredSecrets = secrets.filter(secret => {
+    const key = secret.config_key || '';
+    const desc = secret.description || '';
+
     const matchesCategory = selectedCategory === 'all' || secret.category === selectedCategory;
     const matchesSearch = !searchTerm || 
-      secret.config_key.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      secret.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      key.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      desc.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesActive = !showActiveOnly || secret.is_active;
     
     return matchesCategory && matchesSearch && matchesActive;
-  });
+        });
+  
+  // **Temporary Debug Log**
+  useEffect(() => {
+    // console.log('--- Inspecting Filtered Secrets ---');
+    // console.log('Filtered secrets for render:', filteredSecrets);
+  }, [filteredSecrets]);
 
   if (loading) {
     return (
@@ -372,11 +595,11 @@ const SystemSecretsTab = () => {
             <ArrowDownTrayIcon className="h-5 w-5" />
             Bulk Export
           </button>
-          <button
+                <button 
             onClick={handleCreateSecret}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
-          >
-            <PlusIcon className="h-5 w-5" />
+                >
+                    <PlusIcon className="h-5 w-5" />
             Add Secret
           </button>
         </div>
@@ -392,7 +615,7 @@ const SystemSecretsTab = () => {
             className="ml-auto text-red-400 hover:text-red-300"
           >
             <XCircleIcon className="h-5 w-5" />
-          </button>
+                </button>
         </div>
       )}
 
@@ -411,23 +634,23 @@ const SystemSecretsTab = () => {
                 className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
-          </div>
+                </div>
 
           {/* Category Filter */}
           <div className="min-w-48">
-            <select
+                <select 
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="all">All Categories</option>
-              {categories.map(category => (
-                <option key={category.name} value={category.name}>
+              {categories.map((category, idx) => (
+                <option key={`category-filter-${category.name || idx}`} value={category.name}>
                   {getCategoryIcon(category.name)} {category.label} ({category.count})
-                </option>
-              ))}
-            </select>
-          </div>
+                        </option>
+                    ))}
+                </select>
+            </div>
 
           {/* Active Only Toggle */}
           <label className="flex items-center gap-2 text-white">
@@ -443,11 +666,11 @@ const SystemSecretsTab = () => {
       </div>
 
       {/* Secrets List */}
-      <div className="bg-gray-800/50 rounded-lg overflow-hidden">
+            <div className="bg-gray-800/50 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-700/50">
-              <tr>
+                <table className="w-full">
+                    <thead className="bg-gray-700/50">
+                        <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                   Configuration
                 </th>
@@ -466,32 +689,30 @@ const SystemSecretsTab = () => {
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">
                   Actions
                 </th>
-              </tr>
-            </thead>
+                        </tr>
+                    </thead>
             <tbody className="divide-y divide-gray-700">
-              {filteredSecrets.map((secret) => (
-                <tr key={secret.id} className="hover:bg-gray-700/30 transition-colors">
+              {filteredSecrets.map((secret, idx) => (
+                <tr key={secret.id || secret.config_key || idx} className="hover:bg-gray-700/30 transition-colors">
                   <td className="px-6 py-4">
                     <div>
                       <div className="flex items-center gap-2">
                         <KeyIcon className="h-4 w-4 text-purple-400" />
-                        <span className="text-white font-medium">{secret.config_key}</span>
+                        <span className="text-white font-medium">{secret.config_key || '-'}</span>
                       </div>
-                      {secret.description && (
-                        <p className="text-gray-400 text-sm mt-1">{secret.description}</p>
-                      )}
+                      <p className="text-gray-400 text-sm mt-1">{secret.description || '-'}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-700 text-gray-300">
-                      {getCategoryIcon(secret.category)}
-                      {secret.category}
+                      {getCategoryIcon(secret.category?.display_name_en)}
+                      {secret.category?.display_name_en || secret.secret_category || '-'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className="text-gray-300 font-mono text-sm">
-                        {showValues[secret.id] ? '••••••••' : secret.config_value_masked}
+                        {showValues[secret.id] ? '••••••••' : (secret.config_value_masked || '••••••••')}
                       </span>
                       <button
                         onClick={() => toggleShowValue(secret.id)}
@@ -504,7 +725,7 @@ const SystemSecretsTab = () => {
                         )}
                       </button>
                     </div>
-                  </td>
+                                    </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center gap-1 ${getStatusColor(secret.is_active)}`}>
                       {secret.is_active ? (
@@ -513,12 +734,12 @@ const SystemSecretsTab = () => {
                         <XCircleIcon className="h-4 w-4" />
                       )}
                       {secret.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
+                                        </span>
+                                    </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1 text-gray-400 text-sm">
                       <ClockIcon className="h-4 w-4" />
-                      {new Date(secret.last_updated).toLocaleDateString()}
+                      {secret.last_updated && secret.last_updated !== '-' ? new Date(secret.last_updated).toLocaleDateString() : '-'}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -551,13 +772,13 @@ const SystemSecretsTab = () => {
                       >
                         <TrashIcon className="h-4 w-4" />
                       </button>
-                    </div>
-                  </td>
-                </tr>
+                                        </div>
+                                    </td>
+                                </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+                    </tbody>
+                </table>
+            </div>
 
         {filteredSecrets.length === 0 && (
           <div className="text-center py-12">
@@ -575,7 +796,7 @@ const SystemSecretsTab = () => {
 
       {/* Audit Logs Panel */}
       {showAuditLogs && (
-        <div className="bg-gray-800/50 rounded-lg p-6">
+        <div key={`audit-logs-panel-${showAuditLogs}`} className="bg-gray-800/50 rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Audit Logs</h3>
             <button
@@ -714,53 +935,172 @@ const SystemSecretsTab = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* DYNAMIC PROVIDER DROPDOWN (Task 1) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Configuration Key *
+                    Provider *
+                  </label>
+                  <select
+                    value={formData.provider_id}
+                    onChange={handleProviderChange}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    required
+                  >
+                    <option value="">Select a Provider</option>
+                    {providerData.map(provider => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.name} ({provider.category})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* SECRET KEY (Backend Required Field) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Secret Key *
                   </label>
                   <input
                     type="text"
-                    value={formData.config_key}
-                    onChange={(e) => setFormData({ ...formData, config_key: e.target.value })}
+                    value={formData.secret_key}
+                    onChange={(e) => setFormData({ ...formData, secret_key: e.target.value })}
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="e.g., stripe_api_key"
+                    placeholder="e.g., openai_api_key"
                     required
-                    disabled={modalType === 'edit'}
+                    disabled={modalType === 'edit'} 
                   />
                 </div>
 
+                {/* DYNAMIC CATEGORY DROPDOWN */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Category *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCategoryModalType('create');
+                        setCategoryForm({
+                          name: '',
+                          name_en: '',
+                          name_ar: '',
+                          description_en: '',
+                          description_ar: '',
+                          display_order: 999,
+                          is_active: true
+                        });
+                        setShowCategoryModal(true);
+                      }}
+                      className="text-purple-400 hover:text-purple-300 transition-colors"
+                      title="Add New Category"
+                    >
+                      <FolderPlusIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <select
+                    value={formData.secret_category_id}
+                    onChange={handleCategoryChange}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    required
+                    disabled={loadingCategories}
+                  >
+                    <option value="">
+                      {loadingCategories ? 'Loading categories...' : 'Select a Category'}
+                    </option>
+                    {availableCategories.map(category => (
+                      <option key={`category-${category.id}`} value={category.id}>
+                        {category.name_en}
+                        {category.secrets_count > 0 && ` (${category.secrets_count} secrets)`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* DYNAMIC SUBCATEGORY DROPDOWN */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Subcategory
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!formData.secret_category_id) {
+                          alert('Please select a category first');
+                          return;
+                        }
+                        setSubcategoryModalType('create');
+                        setSubcategoryForm({
+                          category_id: formData.secret_category_id,
+                          name: '',
+                          name_en: '',
+                          name_ar: '',
+                          description_en: '',
+                          description_ar: '',
+                          display_order: 999,
+                          is_active: true
+                        });
+                        setShowSubcategoryModal(true);
+                      }}
+                      className="text-purple-400 hover:text-purple-300 transition-colors"
+                      title="Add New Subcategory"
+                      disabled={!formData.secret_category_id}
+                    >
+                      <TagIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <select
+                    value={formData.secret_subcategory_id}
+                    onChange={handleSubcategoryChange}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    disabled={loadingSubcategories || !formData.secret_category_id}
+                  >
+                    <option value="">
+                      {!formData.secret_category_id 
+                        ? 'Select a category first'
+                        : loadingSubcategories 
+                          ? 'Loading subcategories...' 
+                          : 'Select a Subcategory (Optional)'
+                      }
+                    </option>
+                    {availableSubcategories.map(subcategory => (
+                      <option key={`subcategory-${subcategory.id}`} value={subcategory.id}>
+                        {subcategory.name_en}
+                        {subcategory.secrets_count > 0 && ` (${subcategory.secrets_count} secrets)`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* DISPLAY NAME (Backend Required Field) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Value *
+                    Display Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.display_name}
+                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="e.g., OpenAI API Key"
+                    required
+                  />
+                </div>
+
+                {/* SECRET VALUE (Backend Required Field) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Secret Value *
                   </label>
                   <textarea
-                    value={formData.config_value}
-                    onChange={(e) => setFormData({ ...formData, config_value: e.target.value })}
+                    value={formData.secret_value}
+                    onChange={(e) => setFormData({ ...formData, secret_value: e.target.value })}
                     className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
                     placeholder="Enter the secret value"
                     rows={3}
                     required
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="general">General</option>
-                    <option value="payment">Payment</option>
-                    <option value="ai">AI Services</option>
-                    <option value="database">Database</option>
-                    <option value="backup">Backup</option>
-                    <option value="external_api">External API</option>
-                    <option value="security">Security</option>
-                    <option value="system">System</option>
-                  </select>
                 </div>
 
                 <div>
@@ -809,8 +1149,190 @@ const SystemSecretsTab = () => {
           </div>
         </div>
       )}
-    </div>
-  );
+
+      {/* CATEGORY MANAGEMENT MODAL */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-white mb-4">
+              {categoryModalType === 'create' ? 'Add New Category' : 'Edit Category'}
+            </h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                if (categoryModalType === 'create') {
+                  const response = await systemSecretsApi.createCategory(categoryForm);
+                  
+                  if (!response.success) {
+                    throw new Error(response.error || 'Failed to create category');
+                  }
+                } else {
+                  const response = await systemSecretsApi.updateCategory(editingCategory.id, categoryForm);
+                  
+                  if (!response.success) {
+                    throw new Error(response.error || 'Failed to update category');
+                  }
+                }
+
+                // Refresh categories and close modal
+                await loadCategories();
+                setShowCategoryModal(false);
+                setError(null);
+              } catch (err) {
+                setError(`Failed to ${categoryModalType} category: ${err.message}`);
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Category Name (English) *
+                </label>
+                <input
+                  type="text"
+                  value={categoryForm.display_name_en}
+                  onChange={(e) => setCategoryForm({...categoryForm, display_name_en: e.target.value, name: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="e.g., AI Services"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Category Name (Arabic)
+                </label>
+                <input
+                  type="text"
+                  value={categoryForm.display_name_ar}
+                  onChange={(e) => setCategoryForm({...categoryForm, display_name_ar: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="e.g., خدمات الذكاء الاصطناعي"
+                  dir="rtl"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Description (English)
+                </label>
+                <textarea
+                  value={categoryForm.description_en}
+                  onChange={(e) => setCategoryForm({...categoryForm, description_en: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Brief description"
+                  rows={2}
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCategoryModal(false)}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                >
+                  {categoryModalType === 'create' ? 'Create Category' : 'Update Category'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SUBCATEGORY MANAGEMENT MODAL */}
+      {showSubcategoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-white mb-4">
+              {subcategoryModalType === 'create' ? 'Add New Subcategory' : 'Edit Subcategory'}
+            </h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                if (subcategoryModalType === 'create') {
+                  const response = await systemSecretsApi.createSubcategory(subcategoryForm);
+                  
+                  if (!response.success) {
+                    throw new Error(response.error || 'Failed to create subcategory');
+                  }
+                } else {
+                  const response = await systemSecretsApi.updateSubcategory(editingSubcategory.id, subcategoryForm);
+                  
+                  if (!response.success) {
+                    throw new Error(response.error || 'Failed to update subcategory');
+                  }
+                }
+
+                // Refresh subcategories and close modal
+                if (formData.secret_category_id) {
+                  await loadSubcategories(formData.secret_category_id);
+                }
+                setShowSubcategoryModal(false);
+                setError(null);
+              } catch (err) {
+                setError(`Failed to ${subcategoryModalType} subcategory: ${err.message}`);
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Subcategory Name (English) *
+                </label>
+                <input
+                  type="text"
+                  value={subcategoryForm.display_name_en}
+                  onChange={(e) => setSubcategoryForm({...subcategoryForm, display_name_en: e.target.value, name: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="e.g., OpenAI Services"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Subcategory Name (Arabic)
+                </label>
+                <input
+                  type="text"
+                  value={subcategoryForm.display_name_ar}
+                  onChange={(e) => setSubcategoryForm({...subcategoryForm, display_name_ar: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="e.g., خدمات OpenAI"
+                  dir="rtl"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Description (English)
+                </label>
+                <textarea
+                  value={subcategoryForm.description_en}
+                  onChange={(e) => setSubcategoryForm({...subcategoryForm, description_en: e.target.value})}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Brief description"
+                  rows={2}
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSubcategoryModal(false)}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                >
+                  {subcategoryModalType === 'create' ? 'Create Subcategory' : 'Update Subcategory'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+        </div>
+    );
 };
 
 export default SystemSecretsTab; 

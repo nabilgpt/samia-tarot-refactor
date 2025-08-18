@@ -2,40 +2,159 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Shield, AlertTriangle, Home, LogOut, RefreshCw } from 'lucide-react';
+import AuthInitializer from './UI/AuthInitializer';
+import BulletproofAuthLoader from './UI/BulletproofAuthLoader';
+
+// 🔥 EXTREME DEBUG MODE - Route Protection Logging System
+const EXTREME_DEBUG = true;
+
+function debugLog(label, ...args) {
+  if (!EXTREME_DEBUG) return;
+  const styles = [
+    "background: #222; color: #32cd32; font-weight: bold; padding: 2px 6px; border-radius: 6px;",
+    "color: #fff; background: #1a1a1a; padding: 2px 6px; border-radius: 4px;"
+  ];
+  if (typeof label === "string") {
+    console.log(`%c[EXTREME DEBUG - ROUTE]%c ${label}`, ...styles, ...args);
+  } else {
+    console.log("%c[EXTREME DEBUG - ROUTE]", styles[0], label, ...args);
+  }
+}
 
 const ProtectedRoute = ({ children, requiredRoles = [], fallbackPath = '/login', showUnauthorized = false }) => {
+  debugLog('=== [ROUTE PROTECTION] COMPONENT RENDER ===');
+  
   const { user, profile, loading, initialized, isAuthenticated, logout } = useAuth();
   const location = useLocation();
   const [timeoutError, setTimeoutError] = useState(false);
-  const [roleError, setRoleError] = useState(false);
+  const [profileTimeout, setProfileTimeout] = useState(false);
+
+  debugLog('Route protection state:', {
+    hasUser: !!user,
+    hasProfile: !!profile,
+    loading,
+    initialized,
+    isAuthenticated,
+    timeoutError,
+    profileTimeout,
+    locationPathname: location.pathname,
+    requiredRoles,
+    fallbackPath
+  });
+
+  debugLog('User details:', {
+    user: user ? {
+      id: user.id,
+      email: user.email,
+      role: user.role
+    } : null,
+    profile: profile ? {
+      id: profile.id,
+      role: profile.role,
+      isActive: profile.is_active
+    } : null
+  });
 
   // Add timeout to prevent infinite loading
   useEffect(() => {
+    debugLog('Setting up authentication timeout (30s)...');
     const timer = setTimeout(() => {
       if (loading || !initialized) {
-        console.error('Authentication timeout - forcing fallback');
+        debugLog('🚨 AUTHENTICATION TIMEOUT TRIGGERED!', {
+          loading,
+          initialized,
+          timeElapsed: '30 seconds',
+          action: 'forcing fallback'
+        });
         setTimeoutError(true);
       }
-    }, 15000); // 15 second timeout
+    }, 30000); // 30 second timeout (increased from 15)
 
-    return () => clearTimeout(timer);
+    return () => {
+      debugLog('Cleaning up authentication timeout timer');
+      clearTimeout(timer);
+    };
   }, [loading, initialized]);
+
+  // Add timeout for profile loading when role checking is required
+  useEffect(() => {
+    debugLog('Profile timeout effect triggered:', {
+      hasRequiredRoles: requiredRoles.length > 0,
+      isAuthenticated,
+      hasProfile: !!profile,
+      profileTimeout
+    });
+
+    if (requiredRoles.length > 0 && isAuthenticated && !profile && !profileTimeout) {
+      debugLog('Setting up profile loading timeout (15s)...');
+      const profileTimer = setTimeout(() => {
+        debugLog('🚨 PROFILE LOADING TIMEOUT TRIGGERED!', {
+          isAuthenticated,
+          hasProfile: !!profile,
+          timeElapsed: '15 seconds',
+          action: 'allowing access without role check'
+        });
+        setProfileTimeout(true);
+      }, 15000); // 15 second timeout for profile
+
+      return () => {
+        debugLog('Cleaning up profile timeout timer');
+        clearTimeout(profileTimer);
+      };
+    }
+  }, [requiredRoles.length, isAuthenticated, profile, profileTimeout]);
 
   // Enhanced role validation
   const validateRoleAccess = (userRole, requiredRoles) => {
-    if (!requiredRoles || requiredRoles.length === 0) return true;
-    if (!userRole) return false;
+    debugLog('=== [ROLE VALIDATION] Starting validation ===', {
+      userRole,
+      requiredRoles,
+      hasRequiredRoles: !!(requiredRoles && requiredRoles.length > 0),
+      hasUserRole: !!userRole
+    });
+
+    if (!requiredRoles || requiredRoles.length === 0) {
+      debugLog('✅ No required roles - access granted', { requiredRoles });
+      return true;
+    }
+    
+    if (!userRole) {
+      debugLog('❌ No user role found - access denied', { userRole });
+      return false;
+    }
 
     // Super admin has access to everything
-    if (userRole === 'super_admin') return true;
+    if (userRole === 'super_admin') {
+      debugLog('✅ Super admin detected - access granted', { userRole });
+      return true;
+    }
 
     // Admin has access to admin, monitor, reader, client dashboards
-    if (userRole === 'admin' && requiredRoles.some(role => 
-      ['admin', 'monitor', 'reader', 'client'].includes(role)
-    )) return true;
+    const adminAccessRoles = ['admin', 'monitor', 'reader', 'client'];
+    const hasAdminAccess = userRole === 'admin' && requiredRoles.some(role => 
+      adminAccessRoles.includes(role)
+    );
+    
+    if (hasAdminAccess) {
+      debugLog('✅ Admin access granted for admin-level roles', {
+        userRole,
+        requiredRoles,
+        adminAccessRoles,
+        matchingRoles: requiredRoles.filter(role => adminAccessRoles.includes(role))
+      });
+      return true;
+    }
 
     // Check exact role match
-    return requiredRoles.includes(userRole);
+    const exactMatch = requiredRoles.includes(userRole);
+    debugLog(exactMatch ? '✅ Exact role match found' : '❌ No role match found', {
+      userRole,
+      requiredRoles,
+      exactMatch,
+      matchingRole: exactMatch ? userRole : null
+    });
+    
+    return exactMatch;
   };
 
   // Enhanced dashboard path mapping
@@ -49,6 +168,8 @@ const ProtectedRoute = ({ children, requiredRoles = [], fallbackPath = '/login',
     };
     return dashboardPaths[userRole] || '/';
   };
+
+  // Debug logging removed for performance
 
   // Show timeout error with enhanced UI
   if (timeoutError) {
@@ -86,81 +207,136 @@ const ProtectedRoute = ({ children, requiredRoles = [], fallbackPath = '/login',
     );
   }
 
-  // Show loading spinner while authentication is being checked
+  // BULLETPROOF: Show cosmic loader during session rehydration
   if (loading || !initialized) {
+    debugLog('🔄 SHOWING BULLETPROOF AUTH LOADER', {
+      loading,
+      initialized,
+      reason: loading ? 'loading=true' : 'initialized=false'
+    });
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative mb-6">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-400"></div>
-            <div className="absolute inset-0 rounded-full border-2 border-purple-400/20"></div>
-          </div>
-          <div className="space-y-2">
-            <p className="text-gray-300 text-lg font-medium">
-              Checking authentication...
-            </p>
-            <p className="text-gray-500 text-sm">
-              Please wait while we verify your credentials
-            </p>
-          </div>
-        </div>
-      </div>
+      <BulletproofAuthLoader 
+        message="Verifying Session..." 
+        submessage="Checking your authentication status"
+        showProgress={true}
+      />
     );
   }
 
+  debugLog('Session rehydration completed - checking authentication...', {
+    loading,
+    initialized,
+    isAuthenticated,
+    hasUser: !!user
+  });
+
   // Redirect to login if not authenticated
   if (!isAuthenticated || !user) {
+    debugLog('🚫 REDIRECTING TO LOGIN - User not authenticated', {
+      isAuthenticated,
+      hasUser: !!user,
+      currentPath: location.pathname,
+      redirectingTo: '/login'
+    });
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  debugLog('✅ User is authenticated - checking role requirements...', {
+    hasRequiredRoles: requiredRoles.length > 0,
+    requiredRoles,
+    userRole: profile?.role || 'no-profile'
+  });
+
   // Check role-based access if required roles are specified
   if (requiredRoles.length > 0) {
-    // Wait for profile to load before doing role checks
-    if (!profile) {
-      console.log('🔄 ProtectedRoute: Profile not loaded yet, showing loading...');
+    debugLog('🔐 ROLE-BASED ACCESS CONTROL REQUIRED', {
+      requiredRoles,
+      hasProfile: !!profile,
+      profileRole: profile?.role,
+      profileTimeout
+    });
+
+    // Wait for profile to load before doing role checks, but timeout after 15 seconds
+    if (!profile && !profileTimeout) {
+      debugLog('⏳ WAITING FOR PROFILE - Showing profile loader', {
+        profileTimeout,
+        hasProfile: !!profile
+      });
       return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
-          <div className="text-center">
-            <div className="relative mb-6">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-400"></div>
-              <div className="absolute inset-0 rounded-full border-2 border-purple-400/20"></div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-gray-300 text-lg font-medium">
-                Loading profile...
-              </p>
-              <p className="text-gray-500 text-sm">
-                Fetching your role and permissions
-              </p>
-            </div>
-          </div>
-        </div>
+        <BulletproofAuthLoader 
+          message="Loading Profile..." 
+          submessage="Fetching your role and permissions"
+          showProgress={false}
+        />
       );
     }
 
-    console.log('🔍 ProtectedRoute Role Check:');
-    console.log('  - User Role:', profile.role);
-    console.log('  - Required Roles:', requiredRoles);
-    console.log('  - Profile Object:', profile);
+    // If profile timeout occurred, allow access without role check (emergency fallback)
+    if (profileTimeout && !profile) {
+      debugLog('⚠️ PROFILE TIMEOUT - Allowing emergency access', {
+        profileTimeout,
+        hasProfile: !!profile,
+        action: 'bypassing role check'
+      });
+      return children;
+    }
+
+    debugLog('🔍 VALIDATING ROLE ACCESS...', {
+      userRole: profile.role,
+      requiredRoles,
+      profileData: profile
+    });
 
     const hasRequiredRole = validateRoleAccess(profile.role, requiredRoles);
-    console.log('  - Access Granted:', hasRequiredRole);
+    
+    debugLog('Role validation result:', {
+      hasRequiredRole,
+      userRole: profile.role,
+      requiredRoles,
+      validationMethod: 'validateRoleAccess'
+    });
     
     if (!hasRequiredRole) {
-      console.log('❌ ProtectedRoute: Access denied - showing unauthorized page');
+      debugLog('🚫 ACCESS DENIED - Insufficient role permissions', {
+        userRole: profile.role,
+        requiredRoles,
+        showUnauthorized,
+        action: showUnauthorized ? 'showing unauthorized page' : 'redirecting to user dashboard'
+      });
+      
       // Show unauthorized page if requested, otherwise redirect
       if (showUnauthorized) {
+        debugLog('Rendering UnauthorizedAccess component');
         return <UnauthorizedAccess userRole={profile.role} requiredRoles={requiredRoles} />;
       }
       
       // Redirect to appropriate dashboard based on user's actual role
       const userDashboard = getDashboardPath(profile.role);
-      console.log('🔄 ProtectedRoute: Redirecting to user dashboard:', userDashboard);
+      debugLog('Redirecting to user dashboard:', {
+        userRole: profile.role,
+        userDashboard,
+        currentPath: location.pathname
+      });
       return <Navigate to={userDashboard} replace />;
     }
-
-    console.log('✅ ProtectedRoute: Access granted - rendering protected content');
+    
+    debugLog('✅ ROLE ACCESS GRANTED', {
+      userRole: profile.role,
+      requiredRoles,
+      action: 'rendering protected component'
+    });
   }
+
+  debugLog('=== [SUCCESS] ROUTE PROTECTION COMPLETE - RENDERING CHILDREN ===', {
+    finalState: {
+      isAuthenticated,
+      hasUser: !!user,
+      hasProfile: !!profile,
+      userRole: profile?.role || user?.role,
+      hasRequiredRoles: requiredRoles.length > 0,
+      allChecksPass: true
+    }
+  });
 
   // User is authenticated and has proper role, render the protected component
   return children;

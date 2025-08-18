@@ -7,7 +7,6 @@ const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
-const path = require('path');
 
 // Import middleware
 const { authenticateToken, requireRole } = require('../middleware/auth.js');
@@ -546,7 +545,7 @@ router.delete('/backups/:id', mediaAuth, mediaController.deleteBackup);
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-router.use((error, req, res, next) => {
+router.use((error, req, res, /* next */) => {
   console.error('Media API Error:', {
     error: error.message,
     stack: error.stack,

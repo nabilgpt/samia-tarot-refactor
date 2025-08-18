@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
+import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { body, query, param, validationResult } from 'express-validator';
+
 const router = express.Router();
-const { authenticateToken, requireRole } = require('../middleware/auth');
-const { body, query, param, validationResult } = require('express-validator');
 
 // =====================================================
 // 1. QUICK ACTIONS & COMMAND PALETTE APIs
@@ -249,7 +250,7 @@ router.get('/notification-rules', [
         actions: [{
           type: 'sms',
           template: 'Low rating alert: {{rating}} stars from {{client_name}}',
-          recipients: ['admin']
+          recipients: ['admin', 'super_admin']
         }],
         channels: ['sms', 'email'],
         is_active: true,
@@ -349,7 +350,7 @@ router.post('/bulk-operations/execute', [
   body('entity_ids').isArray()
 ], async (req, res) => {
   try {
-    const { operation_type, entity_type, entity_ids } = req.body;
+    // const { operation_type, entity_type, entity_ids } = req.body;
     
     // Mock bulk operation
     const operationId = Date.now().toString();
@@ -615,7 +616,7 @@ router.put('/referrals/settings/:id', [
 // HELPER FUNCTIONS
 // =====================================================
 
-async function logQuickAction(userId, action, params, responseTime, success) {
+async function logQuickAction(userId, action, /*params, responseTime, success*/) {
   // Implementation for logging quick actions
   console.log(`Quick action logged: ${action} by ${userId}`);
 }
@@ -638,7 +639,7 @@ async function handleBulkApproveBookings(params) {
   };
 }
 
-async function handleSendNotification(params) {
+async function handleSendNotification(/*params*/) {
   // Mock implementation
   return {
     success: true,
@@ -646,4 +647,4 @@ async function handleSendNotification(params) {
   };
 }
 
-module.exports = router; 
+export default router; 

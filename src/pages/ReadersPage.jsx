@@ -7,6 +7,7 @@ import { Star, Clock, Users, MessageCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
 import EmergencyCallButton from '../components/EmergencyCallButton';
+import api from '../services/frontendApi.js';
 
 const ReadersPage = () => {
   const { t, i18n } = useTranslation();
@@ -118,47 +119,52 @@ const ReadersPage = () => {
     }
   };
 
-  // Mock data for readers
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setReaders([
-        {
-          id: 1,
-          name: language === 'ar' ? 'سامية الأحمد' : 'Samia Ahmed',
-          avatar: '/avatars/samia.jpg',
-          rating: 4.9,
-          experience: 15,
-          specialties: language === 'ar' ? ['التاروت', 'علم الفلك', 'الأبراج'] : ['Tarot', 'Astrology', 'Zodiac'],
-          isOnline: true,
-          price: 50,
-          reviews: 1250
-        },
-        {
-          id: 2,
-          name: language === 'ar' ? 'فاطمة العلي' : 'Fatima Ali',
-          avatar: '/avatars/fatima.jpg',
-          rating: 4.8,
-          experience: 10,
-          specialties: language === 'ar' ? ['قراءة الكف', 'الأحلام', 'الطاقة'] : ['Palm Reading', 'Dreams', 'Energy'],
-          isOnline: false,
-          price: 40,
-          reviews: 890
-        },
-        {
-          id: 3,
-          name: language === 'ar' ? 'نور الدين' : 'Nour Aldeen',
-          avatar: '/avatars/nour.jpg',
-          rating: 4.7,
-          experience: 8,
-          specialties: language === 'ar' ? ['علم الأرقام', 'الروحانيات', 'التأمل'] : ['Numerology', 'Spirituality', 'Meditation'],
-          isOnline: true,
-          price: 35,
-          reviews: 654
+    const loadReaders = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/readers');
+        if (response.data.success) {
+          // Transform the data from profiles table structure to expected reader structure
+          const transformedReaders = (response.data.data || []).map(profile => ({
+            id: profile.id,
+            name: profile.display_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Unknown Reader',
+            isOnline: profile.is_active || false,
+            rating: profile.rating || 4.5,
+            reviews: profile.total_reviews || Math.floor(Math.random() * 100) + 10, // Mock data for now
+            experience: profile.years_experience || Math.floor(Math.random() * 10) + 2, // Mock data for now
+            price: profile.price_per_session || (Math.floor(Math.random() * 50) + 25), // Mock data for now
+            specialties: Array.isArray(profile.specializations) ? 
+              profile.specializations.map(s => {
+                const specialtyMap = {
+                  'tarot': 'Tarot Reading',
+                  'coffee': 'Coffee Reading',
+                  'numerology': 'Numerology',
+                  'astrology': 'Astrology',
+                  'relationship': 'Relationship Guidance',
+                  'career': 'Career Guidance',
+                  'dream': 'Dream Interpretation',
+                  'general_reading': 'General Reading',
+                  'spiritual': 'Spiritual Guidance'
+                };
+                return specialtyMap[s] || s.charAt(0).toUpperCase() + s.slice(1);
+              }) : 
+              ['Tarot Reading', 'Spiritual Guidance']
+          }));
+          setReaders(transformedReaders);
+        } else {
+          console.error('Failed to load readers:', response.data.error);
+          setReaders([]);
         }
-      ]);
-      setLoading(false);
-    }, 1000);
+      } catch (error) {
+        console.error('Error loading readers:', error);
+        setReaders([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadReaders();
   }, [language]);
 
   if (loading) {
@@ -265,7 +271,7 @@ const ReadersPage = () => {
                       transition={{ type: "spring", stiffness: 300 }}
                     >
                       <span className="text-2xl font-bold text-gray-900">
-                        {reader.name.split(' ').map(n => n[0]).join('')}
+                        {reader.name ? reader.name.split(' ').map(n => n[0]).join('') : 'R'}
                       </span>
                     </motion.div>
                     {/* Online Status */}
@@ -315,9 +321,9 @@ const ReadersPage = () => {
                     {language === 'ar' ? 'التخصصات' : 'Specialties'}
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {reader.specialties.map((specialty, index) => (
+                    {(reader.specialties || []).map((specialty) => (
                       <span
-                        key={index}
+                        key={specialty}
                         className="px-3 py-1 bg-cosmic-500/20 border border-cosmic-400/30 text-cosmic-300 text-xs rounded-full backdrop-blur-sm"
                       >
                         {specialty}

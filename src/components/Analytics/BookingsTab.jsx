@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AnalyticsAPI } from '../../api/analyticsApi.js';
+import api from '../../services/frontendApi.js';
 import { 
   Calendar, 
   Clock, 
@@ -50,19 +50,19 @@ const BookingsTab = ({ dateRange, loading, setLoading }) => {
     setLoading(true);
     try {
       // Load booking stats
-      const bookingResult = await AnalyticsAPI.getBookingStats(dateRange.start, dateRange.end, filters);
+      const bookingResult = await api.getBookingStats(dateRange.start, dateRange.end, filters);
       if (bookingResult.success) {
         setBookingStats(bookingResult.data);
       }
 
       // Load emergency stats
-      const emergencyResult = await AnalyticsAPI.getEmergencyStats(dateRange.start, dateRange.end);
+      const emergencyResult = await api.getEmergencyStats(dateRange.start, dateRange.end);
       if (emergencyResult.success) {
         setEmergencyStats(emergencyResult.data);
       }
 
       // Load bookings by reader
-      const readerResult = await AnalyticsAPI.getBookingsByReader(dateRange.start, dateRange.end);
+      const readerResult = await api.getBookingsByReader(dateRange.start, dateRange.end);
       if (readerResult.success) {
         setBookingsByReader(readerResult.data);
       }
@@ -76,9 +76,9 @@ const BookingsTab = ({ dateRange, loading, setLoading }) => {
 
   const handleExportCSV = async () => {
     try {
-      const result = await AnalyticsAPI.exportToCSV('bookings', dateRange.start, dateRange.end, filters);
+      const result = await api.exportToCSV('bookings', dateRange.start, dateRange.end, filters);
       if (result.success) {
-        console.log('Booking data exported successfully');
+        // Booking data exported successfully
       }
     } catch (error) {
       console.error('Error exporting booking data:', error);

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase.js';
+import { supabase } from './lib/supabase.js';
 
 export const ChatAPI = {
   // =====================================================
@@ -47,17 +47,14 @@ export const ChatAPI = {
   async getMessages(bookingId, limit = 50, offset = 0) {
     try {
       const { data, error } = await supabase
-        .from('messages')
+        .from('chat_messages')
         .select(`
           *,
-          sender:profiles!messages_sender_id_fkey(
+          sender:profiles!chat_messages_sender_id_fkey(
             id, first_name, last_name, avatar_url, role
-          ),
-          reply_to_message:messages!messages_reply_to_fkey(
-            id, content, type, sender:profiles!messages_sender_id_fkey(first_name, last_name)
           )
         `)
-        .eq('booking_id', bookingId)
+        .eq('session_id', bookingId)
         .order('created_at', { ascending: true })
         .range(offset, offset + limit - 1);
 
@@ -67,20 +64,19 @@ export const ChatAPI = {
     }
   },
 
-  async sendTextMessage(bookingId, senderId, content, replyTo = null) {
+  async sendMessage(sessionId, senderId, content, type = 'text') {
     try {
       const { data, error } = await supabase
-        .from('messages')
+        .from('chat_messages')
         .insert({
-          booking_id: bookingId,
+          session_id: sessionId,
           sender_id: senderId,
-          type: 'text',
-          content: content.trim(),
-          reply_to: replyTo
+          type: type,
+          content: content
         })
         .select(`
           *,
-          sender:profiles!messages_sender_id_fkey(
+          sender:profiles!chat_messages_sender_id_fkey(
             id, first_name, last_name, avatar_url, role
           )
         `)
@@ -92,28 +88,28 @@ export const ChatAPI = {
     }
   },
 
-  async sendImageMessage(bookingId, senderId, imageFile, caption = '') {
+  async sendImageMessage(sessionId, senderId, imageFile, caption = '') {
     try {
       // Upload image to Supabase storage
       const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${bookingId}/${Date.now()}.${fileExt}`;
+      const fileName = `${sessionId}/${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('chat-attachments')
+        .from('chat-files')
         .upload(fileName, imageFile);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('chat-attachments')
+        .from('chat-files')
         .getPublicUrl(fileName);
 
       // Create message record
       const { data, error } = await supabase
-        .from('messages')
+        .from('chat_messages')
         .insert({
-          booking_id: bookingId,
+          session_id: sessionId,
           sender_id: senderId,
           type: 'image',
           content: caption,
@@ -123,7 +119,7 @@ export const ChatAPI = {
         })
         .select(`
           *,
-          sender:profiles!messages_sender_id_fkey(
+          sender:profiles!chat_messages_sender_id_fkey(
             id, first_name, last_name, avatar_url, role
           )
         `)
@@ -135,7 +131,7 @@ export const ChatAPI = {
     }
   },
 
-  async sendVoiceMessage(bookingId, senderId, audioBlob, durationSeconds) {
+  async sendVoiceMessage(sessionId, senderId, audioBlob, durationSeconds) {
     try {
       // Convert blob to file
       const audioFile = new File([audioBlob], `voice-${Date.now()}.webm`, {
@@ -143,26 +139,26 @@ export const ChatAPI = {
       });
 
       // Upload audio to Supabase storage
-      const fileName = `${bookingId}/voice/${Date.now()}.webm`;
+      const fileName = `${sessionId}/voice/${Date.now()}.webm`;
       
       const { error: uploadError } = await supabase.storage
-        .from('chat-attachments')
+        .from('chat-files')
         .upload(fileName, audioFile);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('chat-attachments')
+        .from('chat-files')
         .getPublicUrl(fileName);
 
       // Create message record
       const { data, error } = await supabase
-        .from('messages')
+        .from('chat_messages')
         .insert({
-          booking_id: bookingId,
+          session_id: sessionId,
           sender_id: senderId,
-          type: 'voice',
+          type: 'audio',
           file_url: publicUrl,
           file_name: audioFile.name,
           file_size: audioFile.size,
@@ -170,7 +166,7 @@ export const ChatAPI = {
         })
         .select(`
           *,
-          sender:profiles!messages_sender_id_fkey(
+          sender:profiles!chat_messages_sender_id_fkey(
             id, first_name, last_name, avatar_url, role
           )
         `)
@@ -182,13 +178,16 @@ export const ChatAPI = {
     }
   },
 
-  async markMessagesAsRead(bookingId, userId) {
+  async markAsRead(sessionId, userId) {
     try {
+      // Update all unread messages in the session
       const { error } = await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('booking_id', bookingId)
-        .neq('sender_id', userId);
+        .from('chat_messages')
+        .update({ 
+          read_by: supabase.raw(`array_append(read_by, '${userId}')`)
+        })
+        .eq('session_id', sessionId)
+        .not('read_by', 'cs', `{${userId}}`);
 
       return { success: !error, error: error?.message };
     } catch (err) {
@@ -408,21 +407,15 @@ export const ChatAPI = {
   // UTILITY FUNCTIONS
   // =====================================================
 
-  async getUnreadMessageCount(userId) {
+  async getUnreadCount(userId) {
     try {
       const { count, error } = await supabase
-        .from('messages')
+        .from('chat_messages')
         .select('*', { count: 'exact', head: true })
-        .eq('is_read', false)
-        .neq('sender_id', userId)
-        .in('booking_id', 
-          supabase
-            .from('bookings')
-            .select('id')
-            .or(`user_id.eq.${userId},reader_id.eq.${userId}`)
-        );
+        .not('read_by', 'cs', `{${userId}}`)
+        .neq('sender_id', userId);
 
-      return { success: !error, count: count || 0, error: error?.message };
+      return { success: !error, data: count || 0, error: error?.message };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -432,7 +425,7 @@ export const ChatAPI = {
     try {
       // Only allow sender to delete their own messages within 5 minutes
       const { data: message, error: fetchError } = await supabase
-        .from('messages')
+        .from('chat_messages')
         .select('sender_id, created_at, file_url')
         .eq('id', messageId)
         .single();
@@ -452,13 +445,13 @@ export const ChatAPI = {
       if (message.file_url) {
         const fileName = message.file_url.split('/').pop();
         await supabase.storage
-          .from('chat-attachments')
+          .from('chat-files')
           .remove([fileName]);
       }
 
       // Delete message
       const { error } = await supabase
-        .from('messages')
+        .from('chat_messages')
         .delete()
         .eq('id', messageId);
 

@@ -1,40 +1,134 @@
 // ===============================================
-// OPENAI SERVICE CONFIGURATION
+// OPENAI SERVICE CONFIGURATION - SECURE IMPLEMENTATION
+// Compliant with ENVIRONMENT_SECURITY_POLICY.md
+// All credentials retrieved from Super Admin Dashboard
 // ===============================================
 
-const { OpenAI } = require('openai');
+import { supabaseAdmin } from '../lib/supabase.js';
+import { OpenAI } from 'openai';
 
-// OpenAI configuration
-const openaiConfig = {
-  apiKey: process.env.OPENAI_API_KEY || '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',
-  organization: process.env.OPENAI_ORG_ID || 'org-86Ph6EJRXApTkzhnBzt32XQw',
-  model: process.env.OPENAI_MODEL || 'gpt-4-1'
-};
+// ===============================================
+// SECURE CREDENTIAL MANAGEMENT
+// ===============================================
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: openaiConfig.apiKey,
-  organization: openaiConfig.organization,
-});
-
-// Validate OpenAI configuration
-const validateOpenAIConfig = () => {
-  if (!process.env.OPENAI_API_KEY) {
-    console.warn('⚠️ OPENAI_API_KEY not found in environment variables, using default key');
-  }
-  
-  if (!process.env.OPENAI_ORG_ID) {
-    console.warn('⚠️ OPENAI_ORG_ID not found in environment variables, using default org');
-  }
-  
-  console.log('✅ OpenAI configuration loaded');
-};
-
-// Test OpenAI connection
-const testOpenAIConnection = async () => {
+/**
+ * Get OpenAI API key from Super Admin Dashboard (system_configurations)
+ * Compliant with ENVIRONMENT_SECURITY_POLICY.md
+ */
+async function getOpenAICredentials() {
   try {
+    // Get OpenAI API key from dashboard
+    const { data: apiKeyConfig, error: keyError } = await supabaseAdmin
+      .from('system_configurations')
+      .select('config_value_plain, config_value_encrypted, is_encrypted')
+      .eq('config_key', 'OPENAI_API_KEY')
+      .eq('config_category', 'ai_services')
+      .single();
+
+    if (keyError || !apiKeyConfig) {
+      throw new Error('OpenAI API key not configured. Please set it in Super Admin Dashboard → System Secrets → AI Services');
+    }
+
+    // Get OpenAI Organization ID from dashboard
+    const { data: orgConfig, error: orgError } = await supabaseAdmin
+      .from('system_configurations')
+      .select('config_value_plain, config_value_encrypted, is_encrypted')
+      .eq('config_key', 'OPENAI_ORG_ID')
+      .eq('config_category', 'ai_services')
+      .maybeSingle(); // Optional parameter
+
+    const apiKey = apiKeyConfig.is_encrypted 
+      ? apiKeyConfig.config_value_encrypted // TODO: Implement decryption
+      : apiKeyConfig.config_value_plain;
+
+    const organization = orgConfig?.is_encrypted
+      ? orgConfig.config_value_encrypted // TODO: Implement decryption  
+      : orgConfig?.config_value_plain;
+
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'CONFIGURE_VIA_DASHBOARD') {
+      throw new Error('OpenAI API key is not configured. Please add it in Super Admin Dashboard → System Secrets → AI Services');
+    }
+
+    // Get default model from dashboard
+    const { data: modelConfig } = await supabaseAdmin
+      .from('system_configurations')
+      .select('config_value_plain')
+      .eq('config_key', 'OPENAI_DEFAULT_MODEL')
+      .eq('config_category', 'ai_services')
+      .maybeSingle();
+
+    const model = modelConfig?.config_value_plain || 'gpt-4o';
+
+    return {
+      apiKey,
+      organization,
+      model
+    };
+  } catch (error) {
+    console.error('❌ Error loading OpenAI credentials from dashboard:', error);
+    throw new Error(`Failed to load OpenAI credentials: ${error.message}. Please configure them in Super Admin Dashboard → System Secrets → AI Services`);
+  }
+}
+
+/**
+ * Initialize OpenAI client with dashboard credentials
+ */
+async function createOpenAIClient() {
+  const credentials = await getOpenAICredentials();
+  
+  const config = {
+    apiKey: credentials.apiKey
+  };
+
+  // Add organization if configured
+  if (credentials.organization) {
+    config.organization = credentials.organization;
+  }
+
+  return new OpenAI(config);
+}
+
+/**
+ * Get OpenAI configuration (cached for performance)
+ */
+let configCache = null;
+let lastConfigLoad = 0;
+const configCacheExpiry = 5 * 60 * 1000; // 5 minutes
+
+async function getOpenAIConfig() {
+  const now = Date.now();
+  
+  if (configCache && (now - lastConfigLoad) < configCacheExpiry) {
+    return configCache;
+  }
+
+  try {
+    const credentials = await getOpenAICredentials();
+    configCache = credentials;
+    lastConfigLoad = now;
+    
+    console.log('✅ OpenAI configuration loaded from dashboard');
+    return configCache;
+  } catch (error) {
+    console.error('❌ Failed to load OpenAI configuration:', error);
+    throw error;
+  }
+}
+
+// ===============================================
+// OPENAI CLIENT OPERATIONS
+// ===============================================
+
+/**
+ * Test OpenAI connection using dashboard credentials
+ */
+async function testOpenAIConnection() {
+  try {
+    const openai = await createOpenAIClient();
+    const config = await getOpenAIConfig();
+    
     const response = await openai.chat.completions.create({
-      model: openaiConfig.model,
+      model: config.model,
       messages: [{ role: 'user', content: 'Hello, this is a connection test.' }],
       max_tokens: 10
     });
@@ -45,12 +139,42 @@ const testOpenAIConnection = async () => {
     console.error('❌ OpenAI connection test failed:', error.message);
     return { success: false, error: error.message };
   }
-};
+}
 
-// Initialize validation
-validateOpenAIConfig();
+/**
+ * Make OpenAI API call with automatic credential management
+ */
+async function makeOpenAICall(messages, options = {}) {
+  try {
+    const openai = await createOpenAIClient();
+    const config = await getOpenAIConfig();
+    
+    const {
+      model = config.model,
+      temperature = 0.7,
+      max_tokens = 1000,
+      ...otherOptions
+    } = options;
 
-// Tarot-specific prompt templates
+    const response = await openai.chat.completions.create({
+      model,
+      messages,
+      temperature,
+      max_tokens,
+      ...otherOptions
+    });
+
+    return response;
+  } catch (error) {
+    console.error('❌ OpenAI API call failed:', error);
+    throw error;
+  }
+}
+
+// ===============================================
+// TAROT-SPECIFIC PROMPTS
+// ===============================================
+
 const tarotPrompts = {
   cardInterpretation: (cardName, position, question) => `
     As a professional tarot reader, provide an insightful interpretation for the ${cardName} card in the ${position} position for the question: "${question}".
@@ -92,10 +216,17 @@ const tarotPrompts = {
   `
 };
 
-module.exports = {
-  openai,
-  openaiConfig,
-  validateOpenAIConfig,
+// ===============================================
+// EXPORTS
+// ===============================================
+
+export {
+  createOpenAIClient,
+  getOpenAIConfig,
+  getOpenAICredentials,
   testOpenAIConnection,
+  makeOpenAICall,
   tarotPrompts
-}; 
+};
+
+// ES6 exports only - full ES module compliance 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TarotAPI } from '../../api/tarotApi.js';
+import api from '../../services/frontendApi.js';
 import { aiReadingService } from '../../services/aiReadingService.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import TarotCard from './TarotCard.jsx';
@@ -62,7 +62,7 @@ const TarotReading = ({ bookingId, readerId, onReadingComplete }) => {
 
     try {
       // Perform the reading
-      const result = await TarotAPI.performReading(
+      const result = await api.performReading(
         bookingId,
         user.id,
         readerId,
@@ -101,7 +101,7 @@ const TarotReading = ({ bookingId, readerId, onReadingComplete }) => {
 
       if (aiResult.success) {
         // Update the reading with AI interpretation
-        const updateResult = await TarotAPI.updateReading(readingData.id, {
+        const updateResult = await api.updateReading(readingData.id, {
           overall_interpretation: aiResult.data.overall_message,
           ai_insights: aiResult.data,
           confidence_score: aiResult.data.confidence_score,

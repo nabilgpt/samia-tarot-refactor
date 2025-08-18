@@ -74,84 +74,28 @@ const ClientSupport = () => {
     try {
       setLoading(true);
       
-      // Mock support tickets
-      const mockTickets = [
-        {
-          id: '1',
-          subject: 'Payment Issue with Last Session',
-          subject_ar: 'مشكلة في الدفع للجلسة الأخيرة',
-          category: 'payment',
-          priority: 'high',
-          status: 'open',
-          description: 'I was charged twice for my last tarot reading session. Can you please help resolve this?',
-          description_ar: 'تم خصم المبلغ مرتين للجلسة الأخيرة لقراءة التاروت. هل يمكنكم المساعدة في حل هذه المشكلة؟',
-          created_at: '2024-01-25T10:00:00Z',
-          updated_at: '2024-01-25T10:00:00Z',
-          responses: []
-        },
-        {
-          id: '2',
-          subject: 'How to reschedule my appointment?',
-          subject_ar: 'كيف يمكنني إعادة جدولة موعدي؟',
-          category: 'booking',
-          priority: 'medium',
-          status: 'resolved',
-          description: 'I need to reschedule my appointment with Samia. How can I do this through the platform?',
-          description_ar: 'أحتاج إلى إعادة جدولة موعدي مع سامية. كيف يمكنني فعل ذلك من خلال المنصة؟',
-          created_at: '2024-01-24T14:00:00Z',
-          updated_at: '2024-01-24T16:00:00Z',
-          responses: [
-            {
-              id: 'resp1',
-              message: 'You can reschedule by going to "My Bookings" and clicking the reschedule button.',
-              message_ar: 'يمكنك إعادة الجدولة بالذهاب إلى "حجوزاتي" والنقر على زر إعادة الجدولة.',
-              sender: 'support',
-              created_at: '2024-01-24T15:00:00Z'
-            }
-          ]
-        }
-      ];
+      const [ticketsResponse, faqsResponse] = await Promise.all([
+        api.getSupportTickets(),
+        api.getFAQs()
+      ]);
+      
+      if (ticketsResponse.success) {
+        setTickets(ticketsResponse.data);
+      } else {
+        console.error('Failed to load support tickets:', ticketsResponse.error);
+        setTickets([]);
+      }
 
-      // Mock FAQs
-      const mockFaqs = [
-        {
-          id: '1',
-          question: 'How do I book a reading session?',
-          question_ar: 'كيف يمكنني حجز جلسة قراءة؟',
-          answer: 'To book a reading session, browse our available readers, select your preferred reader and service, choose a time slot, and complete the payment.',
-          answer_ar: 'لحجز جلسة قراءة، تصفح القرّاء المتاحين، اختر القارئ والخدمة المفضلة، اختر وقتاً مناسباً، وأكمل عملية الدفع.',
-          category: 'booking'
-        },
-        {
-          id: '2',
-          question: 'What payment methods do you accept?',
-          question_ar: 'ما هي طرق الدفع التي تقبلونها؟',
-          answer: 'We accept Stripe/Square credit cards, USDT cryptocurrency, Western Union, MoneyGram, RIA money transfers, and in-app wallet funding. For Lebanon users, we also support OMT, Whish Money, and BOB Finance.',
-          answer_ar: 'نقبل البطاقات الائتمانية الرئيسية (فيزا، ماستركارد، أمريكان إكسبريس)، باي بال، والتحويلات البنكية.',
-          category: 'payment'
-        },
-        {
-          id: '3',
-          question: 'Can I get a refund if I\'m not satisfied?',
-          question_ar: 'هل يمكنني استرداد المبلغ إذا لم أكن راضياً؟',
-          answer: 'Yes, we offer a satisfaction guarantee. If you\'re not happy with your reading, contact our support team within 24 hours.',
-          answer_ar: 'نعم، نقدم ضمان الرضا. إذا لم تكن راضياً عن قراءتك، اتصل بفريق الدعم خلال 24 ساعة.',
-          category: 'refund'
-        },
-        {
-          id: '4',
-          question: 'How long does a typical reading session last?',
-          question_ar: 'كم تستغرق جلسة القراءة العادية؟',
-          answer: 'Reading sessions typically last between 30-60 minutes, depending on the service type and reader.',
-          answer_ar: 'تستغرق جلسات القراءة عادة بين 30-60 دقيقة، اعتماداً على نوع الخدمة والقارئ.',
-          category: 'general'
-        }
-      ];
-
-      setTickets(mockTickets);
-      setFaqs(mockFaqs);
+      if (faqsResponse.success) {
+        setFaqs(faqsResponse.data);
+      } else {
+        console.error('Failed to load FAQs:', faqsResponse.error);
+        setFaqs([]);
+      }
     } catch (error) {
       console.error('Error loading support data:', error);
+      setTickets([]);
+      setFaqs([]);
       showError(language === 'ar' ? 'فشل في تحميل بيانات الدعم' : 'Failed to load support data');
     } finally {
       setLoading(false);
@@ -356,7 +300,7 @@ const ClientSupport = () => {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={language === 'ar' ? 'البحث...' : 'Search...'}
+                            placeholder={t('support.searchPlaceholder')}
             className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400/50 transition-colors"
           />
         </div>
@@ -512,7 +456,7 @@ const ClientSupport = () => {
                     type="text"
                     value={newTicket.subject}
                     onChange={(e) => setNewTicket(prev => ({ ...prev, subject: e.target.value }))}
-                    placeholder={language === 'ar' ? 'أدخل موضوع التذكرة...' : 'Enter ticket subject...'}
+                    placeholder={t('support.ticketSubject')}
                     className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-400/50 transition-colors"
                   />
                 </div>

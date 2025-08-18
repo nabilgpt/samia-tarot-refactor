@@ -1,40 +1,29 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { Menu, X, User, LogOut, Wallet, MessageCircle, Calendar, Globe, LayoutDashboard, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
+import { useLanguage } from '../context/LanguageContext';
 import Button from './Button';
 import { cn } from '../utils/cn';
 import ThemeToggle from './UI/ThemeToggle';
-import EmergencyButton from './Call/EmergencyButton';
-import { CallAPI } from '../api/callApi';
+import EmergencyCallButton from './EmergencyCallButton';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
-  const { t } = useTranslation();
+
   const location = useLocation();
   const { isAuthenticated, user, profile, logout } = useAuth();
-  const { language, setLanguage, showError, showSuccess } = useUI();
-
-  // Check if user is a client (emergency button should only show for clients)
-  const isClientUser = isAuthenticated && profile?.role === 'client';
-
-  // Check if we should show emergency button
-  // Show ONLY for:
-  // - Users with "client" role
-  // - Unauthenticated users (guests)
-  // Do NOT show for: super_admin, admin, reader, monitor
-  const shouldShowEmergencyButton = !isAuthenticated || (isAuthenticated && profile?.role === 'client');
-
+  const { showError, showSuccess } = useUI();
+  const { currentLanguage, changeLanguage } = useLanguage();
+  
   const navItems = [
-    { key: 'home', path: '/', label: t('nav.home') },
-    { key: 'services', path: '/services', label: t('nav.services') },
-    { key: 'readers', path: '/readers', label: t('nav.readers') },
-    { key: 'about', path: '/about', label: t('nav.about') },
-    { key: 'contact', path: '/contact', label: t('nav.contact') }
+    { key: 'home', path: '/', label: currentLanguage === 'ar' ? 'الرئيسية' : 'Home' },
+    { key: 'services', path: '/services', label: currentLanguage === 'ar' ? 'الخدمات' : 'Services' },
+    { key: 'readers', path: '/readers', label: currentLanguage === 'ar' ? 'القراء' : 'Readers' },
+    { key: 'about', path: '/about', label: currentLanguage === 'ar' ? 'حولنا' : 'About' },
+    { key: 'contact', path: '/contact', label: currentLanguage === 'ar' ? 'اتصل بنا' : 'Contact' }
   ];
 
   // Role-based dashboard configuration
@@ -43,27 +32,27 @@ const Navbar = () => {
 
     const roleConfigs = {
       super_admin: {
-        label: t('nav.superAdminDashboard'),
+        label: currentLanguage === 'ar' ? 'لوحة المدير العام' : 'Super Admin Dashboard',
         path: '/dashboard/super-admin',
         icon: LayoutDashboard
       },
       admin: {
-        label: t('nav.adminDashboard'),
+        label: currentLanguage === 'ar' ? 'لوحة الإدارة' : 'Admin Dashboard',
         path: '/dashboard/admin',
         icon: LayoutDashboard
       },
       reader: {
-        label: t('nav.readerDashboard'),
+        label: currentLanguage === 'ar' ? 'لوحة القارئ' : 'Reader Dashboard',
         path: '/dashboard/reader',
         icon: LayoutDashboard
       },
       monitor: {
-        label: t('nav.monitorDashboard'),
+        label: currentLanguage === 'ar' ? 'لوحة المراقب' : 'Monitor Dashboard',
         path: '/dashboard/monitor',
         icon: LayoutDashboard
       },
       client: {
-        label: t('nav.clientDashboard'),
+        label: currentLanguage === 'ar' ? 'لوحة العميل' : 'Client Dashboard',
         path: '/dashboard/client',
         icon: LayoutDashboard
       }
@@ -82,10 +71,10 @@ const Navbar = () => {
       label: dashboardConfig.label,
       icon: LayoutDashboard
     }] : []),
-    { key: 'profile', path: '/profile', label: t('nav.profile'), icon: User },
-    { key: 'wallet', path: '/wallet', label: t('nav.wallet'), icon: Wallet },
-    { key: 'messages', path: '/messages', label: t('nav.messages'), icon: MessageCircle },
-    { key: 'bookings', path: '/bookings', label: t('nav.bookings'), icon: Calendar }
+    { key: 'profile', path: '/profile', label: currentLanguage === 'ar' ? 'الملف الشخصي' : 'Profile', icon: User },
+    { key: 'wallet', path: '/wallet', label: currentLanguage === 'ar' ? 'المحفظة' : 'Wallet', icon: Wallet },
+    { key: 'messages', path: '/messages', label: currentLanguage === 'ar' ? 'الرسائل' : 'Messages', icon: MessageCircle },
+    { key: 'bookings', path: '/bookings', label: currentLanguage === 'ar' ? 'الحجوزات' : 'Bookings', icon: Calendar }
   ];
 
   const isActivePath = (path) => {
@@ -93,49 +82,13 @@ const Navbar = () => {
   };
 
   const handleLanguageToggle = () => {
-    setLanguage(language === 'ar' ? 'en' : 'ar');
+    const newLanguage = currentLanguage === 'ar' ? 'en' : 'ar';
+    changeLanguage(newLanguage);
   };
 
   const handleLogout = () => {
     logout();
     setUserMenuOpen(false);
-  };
-
-  const handleEmergencyCall = async () => {
-    if (!isAuthenticated) {
-      // For non-authenticated users, show a message to sign up/login first
-      showError(
-        language === 'ar' 
-          ? 'يرجى تسجيل الدخول أولاً لاستخدام خدمة الطوارئ'
-          : 'Please sign in first to use emergency service'
-      );
-      setShowEmergencyModal(false);
-      return;
-    }
-
-    // For authenticated users, proceed with emergency call creation
-    try {
-      const result = await CallAPI.createEmergencyCall(user.id, 'voice');
-      
-      if (result.success) {
-        setShowEmergencyModal(false);
-        showSuccess(
-          language === 'ar'
-            ? 'تم إنشاء مكالمة الطوارئ بنجاح'
-            : 'Emergency call created successfully'
-        );
-      } else {
-        showError(result.error || (language === 'ar' ? 'فشل في إنشاء مكالمة الطوارئ' : 'Failed to create emergency call'));
-      }
-    } catch (error) {
-      console.error('Error creating emergency call:', error);
-      showError(language === 'ar' ? 'فشل في إنشاء مكالمة الطوارئ' : 'Failed to create emergency call');
-    }
-  };
-
-  const triggerEmergencyCall = () => {
-    setIsOpen(false); // Close mobile menu if open
-    setShowEmergencyModal(true);
   };
 
   return (
@@ -149,7 +102,7 @@ const Navbar = () => {
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold gradient-text">
-                {language === 'ar' ? 'سامية تاروت' : 'SAMIA TAROT'}
+                {currentLanguage === 'ar' ? 'سامية تاروت' : 'SAMIA TAROT'}
               </h1>
             </div>
           </Link>
@@ -171,29 +124,8 @@ const Navbar = () => {
               </Link>
             ))}
 
-            {/* Emergency Call Button - For all client-facing pages */}
-            {shouldShowEmergencyButton && (
-              <button
-                onClick={triggerEmergencyCall}
-                className="relative group flex items-center space-x-2 rtl:space-x-reverse px-4 py-2 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:via-red-800 hover:to-red-900 text-white font-bold rounded-xl shadow-theme-card hover:shadow-xl transition-all duration-300 border border-red-500/40 backdrop-blur-sm"
-                title={language === 'ar' ? 'مكالمة الطوارئ' : 'Emergency Call'}
-              >
-                {/* Cosmic pulsing ring animation */}
-                <div className="absolute inset-0 rounded-xl bg-red-500/20 animate-ping group-hover:animate-none" />
-                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/10 to-red-600/10 group-hover:from-red-400/20 group-hover:to-red-500/20 transition-all duration-300" />
-                
-                {/* Button content */}
-                <div className="relative flex items-center space-x-2 rtl:space-x-reverse z-10">
-                  <AlertTriangle className="w-4 h-4 animate-pulse drop-shadow-sm" />
-                  <span className="text-sm font-bold tracking-wide">
-                    {language === 'ar' ? 'مكالمة الطوارئ' : 'EMERGENCY CALL'}
-                  </span>
-                </div>
-
-                {/* Cosmic glow effect */}
-                <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-30 transition-opacity duration-300 bg-gradient-to-r from-red-400/30 via-red-500/30 to-red-600/30 blur-sm -z-10" />
-              </button>
-            )}
+            {/* Emergency Call Button - Single instance for clients and guests */}
+            <EmergencyCallButton className="hidden md:inline-flex" />
 
             {/* Dashboard Button for Desktop - Only show if user is logged in and has a valid role */}
             {dashboardConfig && (
@@ -218,7 +150,7 @@ const Navbar = () => {
             <button
               onClick={handleLanguageToggle}
               className="p-2 text-theme-secondary hover:text-theme-primary transition-colors duration-200"
-              title={language === 'ar' ? 'English' : 'العربية'}
+              title={currentLanguage === 'ar' ? 'English' : 'العربية'}
             >
               <Globe className="w-5 h-5" />
             </button>
@@ -282,7 +214,7 @@ const Navbar = () => {
                       className="flex items-center space-x-2 rtl:space-x-reverse w-full px-4 py-2 text-sm text-red-400 hover:bg-red-400/10 transition-colors duration-200"
                     >
                       <LogOut className="w-4 h-4" />
-                      <span>{t('nav.logout')}</span>
+                      <span>{currentLanguage === 'ar' ? 'تسجيل الخروج' : 'Logout'}</span>
                     </button>
                   </div>
                 )}
@@ -291,12 +223,12 @@ const Navbar = () => {
               <div className="flex items-center space-x-2 rtl:space-x-reverse">
                 <Link to="/login">
                   <Button variant="outline" size="sm">
-                    {t('nav.login')}
+                    {currentLanguage === 'ar' ? 'تسجيل الدخول' : 'Login'}
                   </Button>
                 </Link>
                 <Link to="/signup">
                   <Button size="sm">
-                    {t('nav.signup')}
+                    {currentLanguage === 'ar' ? 'إنشاء حساب' : 'Sign Up'}
                   </Button>
                 </Link>
               </div>
@@ -332,28 +264,8 @@ const Navbar = () => {
                 </Link>
               ))}
 
-              {/* Emergency Call Button for Mobile - For all client-facing pages */}
-              {shouldShowEmergencyButton && (
-                <button
-                  onClick={triggerEmergencyCall}
-                  className="relative group flex items-center space-x-2 rtl:space-x-reverse w-full px-4 py-3 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:via-red-800 hover:to-red-900 text-white font-bold rounded-xl shadow-theme-card transition-all duration-300 border border-red-500/40 mt-2 backdrop-blur-sm"
-                >
-                  {/* Cosmic pulsing ring animation */}
-                  <div className="absolute inset-0 rounded-xl bg-red-500/20 animate-ping group-hover:animate-none" />
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/10 to-red-600/10 group-hover:from-red-400/20 group-hover:to-red-500/20 transition-all duration-300" />
-                  
-                  {/* Button content */}
-                  <div className="relative flex items-center space-x-2 rtl:space-x-reverse z-10 justify-center w-full">
-                    <AlertTriangle className="w-5 h-5 animate-pulse drop-shadow-sm" />
-                    <span className="text-base font-bold tracking-wide">
-                      {language === 'ar' ? 'مكالمة الطوارئ' : 'EMERGENCY CALL'}
-                    </span>
-                  </div>
-
-                  {/* Cosmic glow effect */}
-                  <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-30 transition-opacity duration-300 bg-gradient-to-r from-red-400/30 via-red-500/30 to-red-600/30 blur-sm -z-10" />
-                </button>
-              )}
+              {/* Emergency Call Button for Mobile */}
+              <EmergencyCallButton className="md:hidden w-full mt-2" />
 
               {/* Dashboard Button for Mobile - Only show if user is logged in and has a valid role */}
               {dashboardConfig && (
@@ -378,7 +290,7 @@ const Navbar = () => {
               {/* Mobile Theme and Language Controls */}
               <div className="pt-4 border-t border-theme space-y-2">
                 <div className="flex items-center justify-between px-3 py-2">
-                  <span className="text-theme-secondary font-medium">Theme</span>
+                  <span className="text-theme-secondary font-medium">{currentLanguage === 'ar' ? 'الثيم' : 'Theme'}</span>
                   <ThemeToggle />
                 </div>
                 <button
@@ -386,7 +298,7 @@ const Navbar = () => {
                   className="flex items-center space-x-2 rtl:space-x-reverse w-full px-3 py-2 rounded-md text-base font-medium text-theme-secondary hover:text-theme-primary hover:bg-cosmic-gradient transition-colors duration-200"
                 >
                   <Globe className="w-5 h-5" />
-                  <span>{language === 'ar' ? 'English' : 'العربية'}</span>
+                  <span>{currentLanguage === 'ar' ? 'العربية' : 'English'}</span>
                 </button>
               </div>
               
@@ -394,12 +306,12 @@ const Navbar = () => {
                 <div className="pt-4 space-y-2">
                   <Link to="/login" onClick={() => setIsOpen(false)}>
                     <Button variant="outline" className="w-full">
-                      {t('nav.login')}
+                      {currentLanguage === 'ar' ? 'تسجيل الدخول' : 'Login'}
                     </Button>
                   </Link>
                   <Link to="/signup" onClick={() => setIsOpen(false)}>
                     <Button className="w-full">
-                      {t('nav.signup')}
+                      {currentLanguage === 'ar' ? 'إنشاء حساب' : 'Sign Up'}
                     </Button>
                   </Link>
                 </div>
@@ -408,15 +320,6 @@ const Navbar = () => {
           </div>
         )}
       </div>
-
-      {/* Emergency Call Modal */}
-      {showEmergencyModal && (
-        <EmergencyButton
-          showModalOnly={true}
-          onEmergencyCall={handleEmergencyCall}
-          onCancel={() => setShowEmergencyModal(false)}
-        />
-      )}
     </nav>
   );
 };

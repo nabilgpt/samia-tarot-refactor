@@ -220,8 +220,8 @@ const ServiceDetails = () => {
                       {language === 'ar' ? 'ما ستحصل عليه' : 'What You\'ll Get'}
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {service.features.map((feature, index) => (
-                        <div key={index} className="flex items-center space-x-2">
+                      {service.features.map((feature) => (
+                        <div key={feature} className="flex items-center space-x-2">
                           <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
                           <span className="text-gray-300">{feature}</span>
                         </div>
@@ -297,7 +297,7 @@ const ServiceDetails = () => {
             {readersLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="bg-dark-700/30 rounded-2xl p-6 animate-pulse">
+                  <div key={`reader-skeleton-${i}`} className="bg-dark-700/30 rounded-2xl p-6 animate-pulse">
                     <div className="w-20 h-20 bg-gold-400/20 rounded-full mx-auto mb-4"></div>
                     <div className="h-4 bg-gold-400/20 rounded w-3/4 mx-auto mb-2"></div>
                     <div className="h-3 bg-cosmic-400/20 rounded w-1/2 mx-auto mb-4"></div>

@@ -17,6 +17,7 @@ import {
 import Button from '../components/Button';
 import AnimatedBackground from '../components/UI/AnimatedBackground';
 import EmergencyCallButton from '../components/EmergencyCallButton';
+import api from '../services/frontendApi.js';
 
 const WalletPage = () => {
   const { t } = useTranslation();
@@ -29,34 +30,25 @@ const WalletPage = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Mock wallet data
-    setBalance(250.75);
-    setTransactions([
-      {
-        id: 1,
-        type: 'credit',
-        amount: 50,
-        description: 'إيداع عبر البطاقة الائتمانية',
-        date: '2024-01-15',
-        status: 'completed'
-      },
-      {
-        id: 2,
-        type: 'debit',
-        amount: 25,
-        description: 'جلسة قراءة تاروت مع سامية',
-        date: '2024-01-14',
-        status: 'completed'
-      },
-      {
-        id: 3,
-        type: 'credit',
-        amount: 100,
-        description: 'مكافأة ترحيب',
-        date: '2024-01-10',
-        status: 'completed'
+    const loadWalletData = async () => {
+      try {
+        const response = await api.get('/wallet');
+        if (response.data.success) {
+          setBalance(response.data.data.balance || 0);
+          setTransactions(response.data.data.transactions || []);
+        } else {
+          console.error('Failed to load wallet data');
+          setBalance(0);
+          setTransactions([]);
+        }
+      } catch (error) {
+        console.error('Error loading wallet data:', error);
+        setBalance(0);
+        setTransactions([]);
       }
-    ]);
+    };
+    
+    loadWalletData();
   }, []);
 
   if (!isAuthenticated) {
@@ -83,8 +75,10 @@ const WalletPage = () => {
 
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await api.post('/wallet/add-funds', { amount: Number(amount) });
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to add funds');
+      }
       
       const newBalance = balance + Number(amount);
       setBalance(newBalance);
@@ -164,16 +158,16 @@ const WalletPage = () => {
                   <div className="flex items-center p-3 bg-dark-700/50 border border-gold-400/20 rounded-lg">
                     <CreditCard className="w-5 h-5 text-blue-400 mr-3" />
                     <div>
-                      <p className="text-white text-sm font-medium">بطاقة ائتمانية</p>
-                      <p className="text-gray-400 text-xs">**** 1234</p>
+                                      <p className="text-white text-sm font-medium">{t('wallet.creditCard')}</p>
+                <p className="text-gray-400 text-xs">**** 1234</p>
                     </div>
                   </div>
                   
                   <div className="flex items-center p-3 bg-dark-700/50 border border-gold-400/20 rounded-lg">
                     <Coins className="w-5 h-5 text-orange-400 mr-3" />
                     <div>
-                      <p className="text-white text-sm font-medium">عملة رقمية</p>
-                      <p className="text-gray-400 text-xs">USDT, BTC</p>
+                                      <p className="text-white text-sm font-medium">{t('wallet.cryptocurrency')}</p>
+                <p className="text-gray-400 text-xs">USDT, BTC</p>
                     </div>
                   </div>
                 </div>
@@ -200,8 +194,8 @@ const WalletPage = () => {
                   <div className="bg-dark-700/50 border border-gold-400/20 rounded-lg p-4 backdrop-blur-xl">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-gray-400 text-sm">إجمالي الإيداعات</p>
-                        <p className="text-green-400 text-lg font-bold">$150.00</p>
+                                        <p className="text-gray-400 text-sm">{t('wallet.totalDeposits')}</p>
+                <p className="text-green-400 text-lg font-bold">$150.00</p>
                       </div>
                       <TrendingUp className="w-6 h-6 text-green-400" />
                     </div>
@@ -210,8 +204,8 @@ const WalletPage = () => {
                   <div className="bg-dark-700/50 border border-gold-400/20 rounded-lg p-4 backdrop-blur-xl">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-gray-400 text-sm">إجمالي المصروفات</p>
-                        <p className="text-red-400 text-lg font-bold">$25.00</p>
+                                        <p className="text-gray-400 text-sm">{t('wallet.totalExpenses')}</p>
+                <p className="text-red-400 text-lg font-bold">$25.00</p>
                       </div>
                       <ArrowDownLeft className="w-6 h-6 text-red-400" />
                     </div>
@@ -220,8 +214,8 @@ const WalletPage = () => {
                   <div className="bg-dark-700/50 border border-gold-400/20 rounded-lg p-4 backdrop-blur-xl">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-gray-400 text-sm">عدد المعاملات</p>
-                        <p className="text-gold-400 text-lg font-bold">{transactions.length}</p>
+                                        <p className="text-gray-400 text-sm">{t('wallet.transactionCount')}</p>
+                <p className="text-gold-400 text-lg font-bold">{transactions.length}</p>
                       </div>
                       <DollarSign className="w-6 h-6 text-gold-400" />
                     </div>
@@ -281,7 +275,7 @@ const WalletPage = () => {
                       type="number"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      placeholder="أدخل المبلغ"
+                      placeholder={t('wallet.enterAmount')}
                       className="w-full px-4 py-3 bg-dark-700/50 border border-gold-400/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 transition-all duration-200"
                     />
                   </div>

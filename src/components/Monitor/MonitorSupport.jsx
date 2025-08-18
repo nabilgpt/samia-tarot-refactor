@@ -20,7 +20,7 @@ import {
   ArrowUp
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { MonitorAPI } from '../../api/monitorApi';
+import api from '../../services/frontendApi.js';
 
 const MonitorSupport = () => {
   const { t } = useTranslation();
@@ -123,7 +123,7 @@ const MonitorSupport = () => {
     }
 
     try {
-      const response = await MonitorAPI.createEscalation(
+      const response = await api.createEscalation(
         newEscalation.subject,
         newEscalation.description,
         newEscalation.priority,

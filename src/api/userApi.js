@@ -1,4 +1,4 @@
-import { supabase, authHelpers, profileHelpers, bookingHelpers, paymentHelpers } from '../lib/supabase.js';
+import { supabase, supabaseAdmin } from './lib/supabase.js';
 
 // =====================================================
 // USER MANAGEMENT API
@@ -187,7 +187,7 @@ export class UserAPI {
         'first_name', 'last_name', 'dob', 'zodiac', 
         'country', 'country_code', 'phone', 'profile_picture', 'maritalStatus',
         // Reader-specific fields
-        'bio', 'experience_years', 'specializations', 'languages', 'status',
+        'bio', 'specializations', 'languages', 'status',
         'date_of_birth' // Alternative field name
       ];
       
@@ -255,7 +255,7 @@ export class UserAPI {
       }
 
       const { data: currentProfile } = await profileHelpers.getProfile(currentUser.id);
-      if (!currentProfile || currentProfile.role !== 'admin') {
+      if (!currentProfile || !['admin', 'super_admin', 'monitor'].includes(currentProfile.role)) {
         throw new Error('Admin privileges required');
       }
 
@@ -482,7 +482,7 @@ export class UserAPI {
       }
 
       const { data: currentProfile } = await profileHelpers.getProfile(currentUser.id);
-      if (!currentProfile || !['admin', 'monitor'].includes(currentProfile.role)) {
+      if (!currentProfile || !['admin', 'super_admin', 'monitor'].includes(currentProfile.role)) {
         throw new Error('Admin/Monitor privileges required');
       }
 
@@ -527,7 +527,7 @@ export class UserAPI {
       const fileExt = file.name.split('.').pop();
       const fileName = `receipts/${paymentId}/${Date.now()}.${fileExt}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('receipt-uploads')
         .upload(fileName, file);
 
@@ -718,7 +718,7 @@ export class UserAPI {
       }
 
       const { data: currentProfile } = await profileHelpers.getProfile(currentUser.id);
-      if (!currentProfile || currentProfile.role !== 'admin') {
+      if (!currentProfile || !['admin', 'super_admin', 'monitor'].includes(currentProfile.role)) {
         throw new Error('Admin privileges required');
       }
 
@@ -786,7 +786,7 @@ export class UserAPI {
       }
 
       const { data: currentProfile } = await profileHelpers.getProfile(currentUser.id);
-      if (!currentProfile || !['admin', 'monitor'].includes(currentProfile.role)) {
+      if (!currentProfile || !['admin', 'super_admin', 'monitor'].includes(currentProfile.role)) {
         throw new Error('Admin/Monitor privileges required');
       }
 
@@ -829,7 +829,7 @@ export class UserAPI {
       const fileExt = file.name.split('.').pop();
       const fileName = `${userId}/profile.${fileExt}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('profile-pictures')
         .upload(fileName, file, {
           upsert: true
@@ -1431,7 +1431,7 @@ export class UserAPI {
       }
 
       const { data: currentProfile } = await profileHelpers.getProfile(currentUser.id);
-      if (!currentProfile || !['admin', 'super_admin'].includes(currentProfile.role)) {
+      if (!currentProfile || !['admin', 'super_admin', 'monitor'].includes(currentProfile.role)) {
         throw new Error('Admin privileges required');
       }
 

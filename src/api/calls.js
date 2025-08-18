@@ -6,48 +6,6 @@
 import api from './api';
 const { supabase } = require('./lib/supabase');
 
-// Mock data for development
-const mockCallSessions = [
-  {
-    id: '1',
-    session_id: 'call_session_1',
-    client_id: 'client_1',
-    reader_id: 'reader_1',
-    status: 'active',
-    session_type: 'video',
-    started_at: new Date().toISOString(),
-    duration_seconds: 1200,
-    connection_quality: 'good'
-  },
-  {
-    id: '2',
-    session_id: 'call_session_2',
-    client_id: 'client_2',
-    reader_id: 'reader_2',
-    status: 'completed',
-    session_type: 'voice',
-    started_at: new Date(Date.now() - 3600000).toISOString(),
-    ended_at: new Date().toISOString(),
-    duration_seconds: 2400,
-    connection_quality: 'excellent'
-  }
-];
-
-const mockCallRecordings = [
-  {
-    id: '1',
-    call_session_id: 'call_session_2',
-    recording_type: 'audio',
-    file_url: '/recordings/call_session_2_audio.mp3',
-    duration: 2400,
-    file_size: 15728640,
-    is_processed: true
-  }
-];
-
-// Check if we're in development mode
-const isDevelopmentMode = import.meta.env.DEV || import.meta.env.MODE === 'development';
-
 class CallsAPI {
   constructor() {
     this.namespace = 'calls';
@@ -61,40 +19,18 @@ class CallsAPI {
    * Get all call sessions with filtering
    * GET /api/calls/sessions
    */
-  getAllSessions: async (filters = {}) => {
-    if (isDevelopmentMode) {
-      return {
-        data: mockCallSessions.filter(session => {
-          if (filters.status && session.status !== filters.status) return false;
-          if (filters.session_type && session.session_type !== filters.session_type) return false;
-          if (filters.client_id && session.client_id !== filters.client_id) return false;
-          if (filters.reader_id && session.reader_id !== filters.reader_id) return false;
-          return true;
-        }),
-        total: mockCallSessions.length,
-        success: true
-      };
-    }
-
+  async getAllSessions(filters = {}) {
     const queryParams = new URLSearchParams(filters).toString();
     return api.get(`/calls/sessions${queryParams ? `?${queryParams}` : ''}`);
-  },
+  }
 
   /**
    * Get specific call session by ID
    * GET /api/calls/sessions/:id
    */
-  getSessionById: async (sessionId) => {
-    if (isDevelopmentMode) {
-      const session = mockCallSessions.find(s => s.id === sessionId);
-      return {
-        data: session,
-        success: !!session
-      };
-    }
-
+  async getSessionById(sessionId) {
     return api.get(`/calls/sessions/${sessionId}`);
-  },
+  }
 
   /**
    * Create a new call session
@@ -134,27 +70,15 @@ class CallsAPI {
         message: 'Failed to create call session'
       };
     }
-  },
+  }
 
   /**
    * Update call session
    * PUT /api/calls/sessions/:id
    */
-  updateSession: async (sessionId, updateData) => {
-    if (isDevelopmentMode) {
-      const index = mockCallSessions.findIndex(s => s.id === sessionId);
-      if (index !== -1) {
-        mockCallSessions[index] = { ...mockCallSessions[index], ...updateData };
-        return {
-          data: mockCallSessions[index],
-          success: true
-        };
-      }
-      return { success: false, error: 'Session not found' };
-    }
-
+  async updateSession(sessionId, updateData) {
     return api.put(`/calls/sessions/${sessionId}`, updateData);
-  },
+  }
 
   /**
    * Start a call session
@@ -196,7 +120,7 @@ class CallsAPI {
         message: 'Failed to start call'
       };
     }
-  },
+  }
 
   /**
    * End a call session
@@ -243,7 +167,7 @@ class CallsAPI {
         message: 'Failed to end call'
       };
     }
-  },
+  }
 
   /**
    * Join an ongoing call
@@ -296,7 +220,7 @@ class CallsAPI {
         message: 'Failed to join call'
       };
     }
-  },
+  }
 
   /**
    * Leave a call
@@ -337,7 +261,7 @@ class CallsAPI {
         message: 'Failed to leave call'
       };
     }
-  },
+  }
 
   // ===================================================================
   // CALL RECORDINGS MANAGEMENT
@@ -347,18 +271,9 @@ class CallsAPI {
    * Get recordings for a call session
    * GET /api/calls/sessions/:id/recordings
    */
-  getSessionRecordings: async (sessionId) => {
-    if (isDevelopmentMode) {
-      const recordings = mockCallRecordings.filter(r => r.call_session_id === sessionId);
-      return {
-        data: recordings,
-        total: recordings.length,
-        success: true
-      };
-    }
-
+  async getSessionRecordings(sessionId) {
     return api.get(`/calls/sessions/${sessionId}/recordings`);
-  },
+  }
 
   /**
    * Start recording a call session
@@ -401,7 +316,7 @@ class CallsAPI {
         message: 'Failed to start recording'
       };
     }
-  },
+  }
 
   /**
    * Stop recording a call session
@@ -446,7 +361,7 @@ class CallsAPI {
         message: 'Failed to stop recording'
       };
     }
-  },
+  }
 
   // ===================================================================
   // EMERGENCY CALLS
@@ -506,27 +421,15 @@ class CallsAPI {
         message: 'Failed to create emergency call'
       };
     }
-  },
+  }
 
   /**
    * Get active emergency calls
    * GET /api/calls/emergency/active
    */
-  getActiveEmergencyCalls: async () => {
-    if (isDevelopmentMode) {
-      const emergencyCalls = mockCallSessions.filter(s => 
-        s.session_type === 'emergency' && 
-        (s.status === 'active' || s.status === 'pending')
-      );
-      return {
-        data: emergencyCalls,
-        total: emergencyCalls.length,
-        success: true
-      };
-    }
-
+  async getActiveEmergencyCalls() {
     return api.get('/calls/emergency/active');
-  },
+  }
 
   // ===================================================================
   // WEBRTC CONFIGURATION
@@ -567,7 +470,7 @@ class CallsAPI {
         message: 'Failed to get WebRTC configuration'
       };
     }
-  },
+  }
 
   /**
    * Test WebRTC connectivity
@@ -620,7 +523,7 @@ class CallsAPI {
         message: 'WebRTC connectivity test failed'
       };
     }
-  },
+  }
 
   // ===================================================================
   // CALL ANALYTICS
@@ -695,7 +598,7 @@ class CallsAPI {
         message: 'Failed to retrieve call analytics'
       };
     }
-  },
+  }
 
   /**
    * Helper: Add call participants
@@ -715,7 +618,7 @@ class CallsAPI {
       .insert(participantRecords);
 
     if (error) throw error;
-  },
+  }
 
   /**
    * Helper: Log call events for analytics
@@ -737,7 +640,7 @@ class CallsAPI {
     } catch (error) {
       console.warn('Failed to log call event:', error.message);
     }
-  },
+  }
 
   /**
    * Helper: Create emergency escalation
@@ -759,7 +662,7 @@ class CallsAPI {
     } catch (error) {
       console.warn('Failed to create emergency escalation:', error.message);
     }
-  },
+  }
 
   /**
    * Get call session details

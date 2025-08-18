@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { UserAPI } from '../api/userApi.js';
+import api from '../services/frontendApi.js';
 import { serviceHelpers, supabase } from '../lib/supabase.js';
 import ServiceSelector from '../components/Booking/ServiceSelector.jsx';
 import AnimatedBackground from '../components/UI/AnimatedBackground.jsx';
@@ -175,7 +175,7 @@ const BookingPage = () => {
         notes: isEmergency ? 'Emergency call booking' : ''
       };
 
-      const result = await UserAPI.createBooking(bookingData);
+      const result = await api.createBooking(bookingData);
       
       if (result.success) {
         // Redirect to payment or confirmation page

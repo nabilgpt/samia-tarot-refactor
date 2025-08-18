@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { analyticsAPI } from '../api/analytics';
+import api from '../services/frontendApi.js';
 
 /**
  * Custom hook for analytics functionality
@@ -26,15 +26,15 @@ export const useAnalytics = (userId = null, options = {}) => {
       setLoading(true);
       setError(null);
 
-      const summary = await analyticsAPI.getAnalyticsSummary(timeRange);
+      const summary = await api.getAnalyticsSummary(timeRange);
       
       let userAnalytics = null;
       if (userId) {
-        userAnalytics = await analyticsAPI.getUserAnalytics(userId, timeRange);
+        userAnalytics = await api.getUserAnalytics(userId, timeRange);
       }
 
-      const bookingAnalytics = await analyticsAPI.getBookingAnalytics(timeRange);
-      const paymentAnalytics = await analyticsAPI.getPaymentAnalytics(timeRange);
+      const bookingAnalytics = await api.getBookingAnalytics(timeRange);
+      const paymentAnalytics = await api.getPaymentAnalytics(timeRange);
 
       setData({
         summary,
@@ -55,7 +55,7 @@ export const useAnalytics = (userId = null, options = {}) => {
     if (!userId) return;
     
     try {
-      await analyticsAPI.trackUserEvent(userId, eventType, eventData);
+      await api.trackUserEvent(userId, eventType, eventData);
       // Optionally refresh data after tracking
       if (options.refreshAfterTrack) {
         loadAnalytics();
@@ -68,7 +68,7 @@ export const useAnalytics = (userId = null, options = {}) => {
   // Track booking events
   const trackBookingEvent = useCallback(async (bookingId, eventType, eventData = {}) => {
     try {
-      await analyticsAPI.trackBookingEvent(bookingId, eventType, eventData);
+      await api.trackBookingEvent(bookingId, eventType, eventData);
       if (options.refreshAfterTrack) {
         loadAnalytics();
       }
@@ -80,7 +80,7 @@ export const useAnalytics = (userId = null, options = {}) => {
   // Track payment events
   const trackPaymentEvent = useCallback(async (paymentId, eventType, eventData = {}) => {
     try {
-      await analyticsAPI.trackPaymentEvent(paymentId, eventType, eventData);
+      await api.trackPaymentEvent(paymentId, eventType, eventData);
       if (options.refreshAfterTrack) {
         loadAnalytics();
       }

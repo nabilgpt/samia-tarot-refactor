@@ -16,13 +16,16 @@ import {
   Search,
   Filter,
   Save,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react';
 import { useUI } from '../../../context/UIContext';
+import AddServiceModal from '../AddServiceModal';
 
 const ServicesManagement = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { language, showSuccess, showError } = useUI();
+  const isRTL = i18n.language === 'ar';
   const [loading, setLoading] = useState(true);
   const [services, setServices] = useState([]);
   const [readers, setReaders] = useState([]);
@@ -31,6 +34,20 @@ const ServicesManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filters, setFilters] = useState({
+    search: '',
+    type: '',
+    is_vip: '',
+    is_active: '',
+    reader_id: ''
+  });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0
+  });
+  const [error, setError] = useState('');
 
   // Animation variants
   const containerVariants = {
@@ -58,75 +75,76 @@ const ServicesManagement = () => {
   };
 
   useEffect(() => {
-    loadData();
+    loadServices();
   }, []);
 
-  const loadData = async () => {
+  const loadServices = async () => {
+    setLoading(true);
+    setError('');
+    
     try {
-      setLoading(true);
-      // Mock data for demonstration
-      setServices([
-        {
-          id: '1',
-          name: language === 'ar' ? 'قراءة التاروت' : 'Tarot Reading',
-          name_ar: 'قراءة التاروت',
-          name_en: 'Tarot Reading',
-          type: 'tarot',
-          description: language === 'ar' ? 'قراءة شاملة لأوراق التاروت' : 'Comprehensive tarot card reading',
-          description_ar: 'قراءة شاملة لأوراق التاروت',
-          description_en: 'Comprehensive tarot card reading',
-          price: 50,
-          duration_minutes: 30,
-          is_active: true,
-          assigned_readers: 12,
-          total_bookings: 245,
-          avg_rating: 4.8,
-          created_at: '2024-01-10T10:00:00Z'
-        },
-        {
-          id: '2',
-          name: language === 'ar' ? 'قراءة الكف' : 'Palm Reading',
-          name_ar: 'قراءة الكف',
-          name_en: 'Palm Reading',
-          type: 'palm',
-          description: language === 'ar' ? 'تحليل خطوط اليد' : 'Hand lines analysis',
-          description_ar: 'تحليل خطوط اليد',
-          description_en: 'Hand lines analysis',
-          price: 40,
-          duration_minutes: 25,
-          is_active: true,
-          assigned_readers: 8,
-          total_bookings: 189,
-          avg_rating: 4.6,
-          created_at: '2024-01-12T14:30:00Z'
-        },
-        {
-          id: '3',
-          name: language === 'ar' ? 'قراءة الفنجان' : 'Coffee Cup Reading',
-          name_ar: 'قراءة الفنجان',
-          name_en: 'Coffee Cup Reading',
-          type: 'coffee',
-          description: language === 'ar' ? 'قراءة الطالع من الفنجان' : 'Fortune telling from coffee grounds',
-          description_ar: 'قراءة الطالع من الفنجان',
-          description_en: 'Fortune telling from coffee grounds',
-          price: 35,
-          duration_minutes: 20,
-          is_active: false,
-          assigned_readers: 5,
-          total_bookings: 67,
-          avg_rating: 4.3,
-          created_at: '2024-01-15T09:15:00Z'
-        }
-      ]);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('⚠️ [Enhanced ServicesManagement] No authentication token available, skipping load');
+        return;
+      }
 
-      setReaders([
-        { id: '1', name: 'Sarah Ahmed', specialties: ['tarot', 'palm'] },
-        { id: '2', name: 'Mohamed Ali', specialties: ['coffee', 'tarot'] },
-        { id: '3', name: 'Fatima Hassan', specialties: ['palm', 'coffee'] }
-      ]);
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString()
+      });
+
+      // Add filters
+      if (filters.type) params.append('type', filters.type);
+      if (filters.is_vip !== '') params.append('is_vip', filters.is_vip);
+      if (filters.is_active !== '') params.append('is_active', filters.is_active);
+      if (filters.reader_id) params.append('reader_id', filters.reader_id);
+
+      const response = await fetch(`/api/services/admin?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Filter by search term locally for real-time search
+        let filteredServices = data.data || [];
+        if (filters.search) {
+          const searchTerm = filters.search.toLowerCase();
+          filteredServices = filteredServices.filter(service => 
+            service.name_ar?.toLowerCase().includes(searchTerm) ||
+            service.name_en?.toLowerCase().includes(searchTerm) ||
+            service.reader_name?.toLowerCase().includes(searchTerm)
+          );
+        }
+
+        setServices(filteredServices);
+        
+        if (data.pagination) {
+          setPagination(prev => ({
+            ...prev,
+            total: data.pagination.total,
+            pages: data.pagination.pages
+          }));
+        }
+
+        console.log(`✅ Loaded ${filteredServices.length} services`);
+      } else {
+        throw new Error(data.error || 'Failed to load services');
+      }
+
     } catch (error) {
-      console.error('Error loading data:', error);
-      showError(language === 'ar' ? 'فشل في تحميل البيانات' : 'Failed to load data');
+      console.error('❌ Error loading services:', error);
+      setError(error.message);
+      showError(error.message);
     } finally {
       setLoading(false);
     }
@@ -193,6 +211,57 @@ const ServicesManagement = () => {
     return matchesSearch && matchesType && matchesStatus;
   });
 
+  const handleAddService = () => {
+    setShowAddModal(true);
+  };
+
+  const handleServiceAdded = (newService) => {
+    // Add new service to the list
+    setServices(prev => [newService, ...prev]);
+    showSuccess(language === 'ar' ? 'تم إنشاء الخدمة بنجاح!' : 'Service created successfully!');
+    console.log('✅ Service added to list:', newService);
+  };
+
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Reset to first page when filtering
+    setPagination(prev => ({
+      ...prev,
+      page: 1
+    }));
+  };
+
+  const handleRefresh = () => {
+    loadServices();
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(price);
+  };
+
+  const getServiceTypeLabel = (type) => {
+    const typeLabels = {
+      tarot: { ar: 'قراءة التاروت', en: 'Tarot Reading' },
+      coffee: { ar: 'قراءة القهوة', en: 'Coffee Reading' },
+      dream: { ar: 'تفسير الأحلام', en: 'Dream Interpretation' },
+      numerology: { ar: 'علم الأرقام', en: 'Numerology' },
+      astrology: { ar: 'علم التنجيم', en: 'Astrology' },
+      general_reading: { ar: 'قراءة عامة', en: 'General Reading' },
+      relationship: { ar: 'قراءة العلاقات', en: 'Relationship Reading' },
+      career: { ar: 'إرشاد مهني', en: 'Career Guidance' },
+      spiritual: { ar: 'إرشاد روحي', en: 'Spiritual Guidance' }
+    };
+    
+    return typeLabels[type] ? typeLabels[type][language === 'ar' ? 'ar' : 'en'] : type;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -202,407 +271,278 @@ const ServicesManagement = () => {
   }
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="space-y-6"
-    >
-      {/* Header */}
-      <motion.div
-        variants={itemVariants}
-        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
-      >
+    <div className={`space-y-6 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+      
+      {/* ===== HEADER ===== */}
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-green-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
-            {language === 'ar' ? 'إدارة الخدمات' : 'Services Management'}
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
+            {isRTL ? 'إدارة الخدمات' : 'Services Management'}
           </h2>
           <p className="text-gray-400 mt-1">
-            {language === 'ar' ? 'إدارة جميع الخدمات المتاحة والقراء المخصصين' : 'Manage all available services and assigned readers'}
+            {isRTL ? 'إدارة الخدمات العادية و VIP مع تحديد القراء' : 'Manage regular and VIP services with reader assignment'}
           </p>
         </div>
-        
-        <div className="flex items-center space-x-3">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-colors shadow-lg"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{language === 'ar' ? 'إضافة خدمة' : 'Add Service'}</span>
-          </motion.button>
-        </div>
-      </motion.div>
 
-      {/* Filters */}
-      <motion.div
-        variants={itemVariants}
-        className="glassmorphism rounded-2xl p-6 border border-white/10"
-      >
-        <div className="flex flex-col lg:flex-row gap-4">
+        <button
+          onClick={handleAddService}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
+        >
+          <Plus className="w-5 h-5" />
+          {isRTL ? 'إضافة خدمة' : 'Add Service'}
+        </button>
+      </div>
+
+      {/* ===== FILTERS & SEARCH ===== */}
+      <div className="bg-white/5 backdrop-blur-sm border border-purple-300/20 rounded-xl p-6">
+        <div className="grid md:grid-cols-4 gap-4 mb-4">
+          
           {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={language === 'ar' ? 'البحث في الخدمات...' : 'Search services...'}
-                className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-gold-400/50 transition-colors"
-              />
-            </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-purple-300" />
+            <input
+              type="text"
+              placeholder={isRTL ? 'البحث في الخدمات...' : 'Search services...'}
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white/10 border border-purple-300/30 rounded-lg text-white placeholder-purple-300/60 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
           </div>
 
-          {/* Filters */}
-          <div className="flex items-center space-x-4">
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors"
-            >
-              <option value="all">{language === 'ar' ? 'كل الأنواع' : 'All Types'}</option>
-              <option value="tarot">{language === 'ar' ? 'تاروت' : 'Tarot'}</option>
-              <option value="palm">{language === 'ar' ? 'كف' : 'Palm'}</option>
-              <option value="coffee">{language === 'ar' ? 'فنجان' : 'Coffee'}</option>
-              <option value="astrology">{language === 'ar' ? 'فلك' : 'Astrology'}</option>
-              <option value="numerology">{language === 'ar' ? 'أرقام' : 'Numerology'}</option>
-            </select>
-
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors"
-            >
-              <option value="all">{language === 'ar' ? 'كل الحالات' : 'All Status'}</option>
-              <option value="active">{language === 'ar' ? 'نشط' : 'Active'}</option>
-              <option value="inactive">{language === 'ar' ? 'غير نشط' : 'Inactive'}</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <p className="text-gray-400 text-sm">
-            {language === 'ar' 
-              ? `عرض ${filteredServices.length} من ${services.length} خدمة`
-              : `Showing ${filteredServices.length} of ${services.length} services`
-            }
-          </p>
-        </div>
-      </motion.div>
-
-      {/* Services Grid */}
-      <motion.div
-        variants={containerVariants}
-        className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6"
-      >
-        {filteredServices.map((service) => (
-          <motion.div
-            key={service.id}
-            variants={itemVariants}
-            whileHover={{ scale: 1.02, y: -5 }}
-            className="glassmorphism rounded-2xl p-6 border border-white/10 hover:border-gold-400/30 transition-all duration-300 group overflow-hidden relative"
+          {/* Type Filter */}
+          <select
+            value={filters.type}
+            onChange={(e) => handleFilterChange('type', e.target.value)}
+            className="px-4 py-2 bg-white/10 border border-purple-300/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
-            {/* Background gradient */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${getServiceTypeColor(service.type)} opacity-5 group-hover:opacity-10 transition-opacity duration-300`}></div>
-            
-            <div className="relative z-10">
-              {/* Service Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-12 h-12 bg-gradient-to-br ${getServiceTypeColor(service.type)} rounded-xl flex items-center justify-center shadow-lg`}>
-                    <span className="text-2xl">{getServiceTypeIcon(service.type)}</span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-white group-hover:text-gold-300 transition-colors">
-                      {service.name}
+            <option value="" className="bg-gray-800">
+              {isRTL ? 'جميع الأنواع' : 'All Types'}
+            </option>
+            <option value="tarot" className="bg-gray-800">{getServiceTypeLabel('tarot')}</option>
+            <option value="coffee" className="bg-gray-800">{getServiceTypeLabel('coffee')}</option>
+            <option value="dream" className="bg-gray-800">{getServiceTypeLabel('dream')}</option>
+            <option value="numerology" className="bg-gray-800">{getServiceTypeLabel('numerology')}</option>
+            <option value="astrology" className="bg-gray-800">{getServiceTypeLabel('astrology')}</option>
+          </select>
+
+          {/* VIP Filter */}
+          <select
+            value={filters.is_vip}
+            onChange={(e) => handleFilterChange('is_vip', e.target.value)}
+            className="px-4 py-2 bg-white/10 border border-purple-300/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="" className="bg-gray-800">
+              {isRTL ? 'VIP & عادية' : 'VIP & Regular'}
+            </option>
+            <option value="true" className="bg-gray-800">
+              {isRTL ? 'VIP فقط' : 'VIP Only'}
+            </option>
+            <option value="false" className="bg-gray-800">
+              {isRTL ? 'عادية فقط' : 'Regular Only'}
+            </option>
+          </select>
+
+          {/* Status Filter */}
+          <select
+            value={filters.is_active}
+            onChange={(e) => handleFilterChange('is_active', e.target.value)}
+            className="px-4 py-2 bg-white/10 border border-purple-300/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="" className="bg-gray-800">
+              {isRTL ? 'جميع الحالات' : 'All Status'}
+            </option>
+            <option value="true" className="bg-gray-800">
+              {isRTL ? 'نشط' : 'Active'}
+            </option>
+            <option value="false" className="bg-gray-800">
+              {isRTL ? 'غير نشط' : 'Inactive'}
+            </option>
+          </select>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-purple-300">
+            {isRTL 
+              ? `عرض ${services.length} من ${pagination.total} خدمة`
+              : `Showing ${services.length} of ${pagination.total} services`
+            }
+          </div>
+          
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600/50 text-white rounded-lg hover:bg-purple-600/70 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            {isRTL ? 'تحديث' : 'Refresh'}
+          </button>
+        </div>
+      </div>
+
+      {/* ===== ERROR MESSAGE ===== */}
+      {error && (
+        <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4 text-red-300">
+          {error}
+        </div>
+      )}
+
+      {/* ===== SERVICES LIST ===== */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+          <span className="ml-3 text-purple-300">
+            {isRTL ? 'جاري التحميل...' : 'Loading...'}
+          </span>
+        </div>
+      ) : services.length === 0 ? (
+        <div className="text-center py-12">
+          <Users className="w-16 h-16 text-purple-300/50 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">
+            {isRTL ? 'لا توجد خدمات' : 'No Services Found'}
+          </h3>
+          <p className="text-purple-300 mb-6">
+            {isRTL ? 'قم بإضافة خدمة جديدة للبدء' : 'Add a new service to get started'}
+          </p>
+          <button
+            onClick={handleAddService}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            <Plus className="w-5 h-5" />
+            {isRTL ? 'إضافة أول خدمة' : 'Add First Service'}
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-6">
+          {services.map((service) => (
+            <motion.div
+              key={service.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/5 backdrop-blur-sm border border-purple-300/20 rounded-xl p-6 hover:bg-white/10 transition-all"
+            >
+              <div className="flex items-start justify-between">
+                
+                {/* Service Info */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <h3 className="text-xl font-semibold text-white">
+                      {isRTL ? service.name_ar : service.name_en}
                     </h3>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <div className={`w-2 h-2 rounded-full ${service.is_active ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                      <span className={`text-sm ${service.is_active ? 'text-green-400' : 'text-red-400'}`}>
-                        {service.is_active ? (language === 'ar' ? 'نشط' : 'Active') : (language === 'ar' ? 'غير نشط' : 'Inactive')}
+                    
+                    {/* VIP Badge */}
+                    {service.is_vip && (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-full">
+                        <Star className="w-3 h-3" />
+                        VIP
                       </span>
+                    )}
+                    
+                    {/* Status Badge */}
+                    <span className={`
+                      inline-flex items-center px-2 py-1 text-xs font-medium rounded-full
+                      ${service.is_active 
+                        ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                        : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                      }
+                    `}>
+                      {service.is_active ? (isRTL ? 'نشط' : 'Active') : (isRTL ? 'غير نشط' : 'Inactive')}
+                    </span>
+                  </div>
+
+                  <p className="text-purple-300 mb-4 line-clamp-2">
+                    {isRTL ? service.description_ar : service.description_en}
+                  </p>
+
+                  <div className="grid md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-purple-300">{isRTL ? 'النوع:' : 'Type:'}</span>
+                      <span className="text-white ml-2">{getServiceTypeLabel(service.type)}</span>
+                    </div>
+                    <div>
+                      <span className="text-purple-300">{isRTL ? 'السعر:' : 'Price:'}</span>
+                      <span className="text-white ml-2 font-semibold">{formatPrice(service.price)}</span>
+                    </div>
+                    <div>
+                      <span className="text-purple-300">{isRTL ? 'المدة:' : 'Duration:'}</span>
+                      <span className="text-white ml-2">{service.duration_minutes} {isRTL ? 'دقيقة' : 'min'}</span>
+                    </div>
+                    <div>
+                      <span className="text-purple-300">{isRTL ? 'القارئ:' : 'Reader:'}</span>
+                      <span className="text-white ml-2">{service.reader_name || service.reader_display_name}</span>
                     </div>
                   </div>
+
+                  {/* Statistics */}
+                  {(service.total_bookings > 0 || service.total_revenue > 0) && (
+                    <div className="flex items-center gap-6 mt-4 pt-4 border-t border-purple-300/20">
+                      <div className="text-sm">
+                        <span className="text-purple-300">{isRTL ? 'الحجوزات:' : 'Bookings:'}</span>
+                        <span className="text-white ml-2 font-semibold">{service.total_bookings || 0}</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="text-purple-300">{isRTL ? 'الإيرادات:' : 'Revenue:'}</span>
+                        <span className="text-white ml-2 font-semibold">{formatPrice(service.total_revenue || 0)}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                
-                <div className="flex items-center space-x-2">
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 ml-4">
                   <button
-                    onClick={() => handleServiceToggle(service.id, service.is_active)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      service.is_active 
-                        ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
-                        : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                    }`}
-                  >
-                    {service.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  </button>
-                  <button
-                    onClick={() => setEditingService(service)}
-                    className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors"
+                    className="p-2 text-purple-300 hover:text-white hover:bg-purple-600/50 rounded-lg transition-colors"
+                    title={isRTL ? 'تعديل' : 'Edit'}
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleServiceDelete(service.id)}
-                    className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                    className="p-2 text-red-300 hover:text-white hover:bg-red-600/50 rounded-lg transition-colors"
+                    title={isRTL ? 'حذف' : 'Delete'}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-
-              {/* Service Description */}
-              <p className="text-gray-400 text-sm mb-4">{service.description}</p>
-
-              {/* Service Details */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="flex items-center space-x-2">
-                  <DollarSign className="w-4 h-4 text-gold-400" />
-                  <span className="text-white font-semibold">${service.price}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Clock className="w-4 h-4 text-blue-400" />
-                  <span className="text-white">{service.duration_minutes}min</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Users className="w-4 h-4 text-green-400" />
-                  <span className="text-white">{service.assigned_readers} {language === 'ar' ? 'قارئ' : 'readers'}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Star className="w-4 h-4 text-yellow-400" />
-                  <span className="text-white">{service.avg_rating}</span>
-                </div>
-              </div>
-
-              {/* Statistics */}
-              <div className="pt-4 border-t border-white/10">
-                <div className="flex items-center justify-between">
-                  <div className="text-center">
-                    <p className="text-lg font-semibold text-white">{service.total_bookings}</p>
-                    <p className="text-xs text-gray-400">{language === 'ar' ? 'حجز' : 'Bookings'}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-semibold text-green-400">
-                      ${(service.total_bookings * service.price).toLocaleString()}
-                    </p>
-                    <p className="text-xs text-gray-400">{language === 'ar' ? 'إيرادات' : 'Revenue'}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-semibold text-blue-400">
-                      {Math.round(service.total_bookings / service.assigned_readers)}
-                    </p>
-                    <p className="text-xs text-gray-400">{language === 'ar' ? 'متوسط/قارئ' : 'Avg/Reader'}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </motion.div>
-
-      {/* Service Stats Summary */}
-      <motion.div
-        variants={itemVariants}
-        className="glassmorphism rounded-2xl p-8 border border-white/10"
-      >
-        <h3 className="text-2xl font-bold text-gold-300 mb-6">
-          {language === 'ar' ? 'إحصائيات الخدمات' : 'Service Statistics'}
-        </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Settings className="w-8 h-8 text-white" />
-            </div>
-            <p className="text-2xl font-bold text-white">{services.length}</p>
-            <p className="text-gray-400 text-sm">{language === 'ar' ? 'إجمالي الخدمات' : 'Total Services'}</p>
-          </div>
-          
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Eye className="w-8 h-8 text-white" />
-            </div>
-            <p className="text-2xl font-bold text-white">{services.filter(s => s.is_active).length}</p>
-            <p className="text-gray-400 text-sm">{language === 'ar' ? 'خدمات نشطة' : 'Active Services'}</p>
-          </div>
-          
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <Users className="w-8 h-8 text-white" />
-            </div>
-            <p className="text-2xl font-bold text-white">{services.reduce((sum, s) => sum + s.assigned_readers, 0)}</p>
-            <p className="text-gray-400 text-sm">{language === 'ar' ? 'قراء مخصصون' : 'Assigned Readers'}</p>
-          </div>
-          
-          <div className="text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <DollarSign className="w-8 h-8 text-white" />
-            </div>
-            <p className="text-2xl font-bold text-white">
-              ${Math.round(services.reduce((sum, s) => sum + (s.total_bookings * s.price), 0) / 1000)}K
-            </p>
-            <p className="text-gray-400 text-sm">{language === 'ar' ? 'إجمالي الإيرادات' : 'Total Revenue'}</p>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Add/Edit Service Modal */}
-      <AnimatePresence>
-        {(showAddModal || editingService) && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => {
-              setShowAddModal(false);
-              setEditingService(null);
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="glassmorphism rounded-2xl p-8 max-w-2xl w-full border border-white/20 max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gold-300">
-                  {editingService 
-                    ? (language === 'ar' ? 'تعديل الخدمة' : 'Edit Service')
-                    : (language === 'ar' ? 'إضافة خدمة جديدة' : 'Add New Service')
-                  }
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setEditingService(null);
-                  }}
-                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {language === 'ar' ? 'اسم الخدمة (عربي)' : 'Service Name (Arabic)'}
-                  </label>
-                  <input
-                    type="text"
-                    defaultValue={editingService?.name_ar || ''}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {language === 'ar' ? 'اسم الخدمة (إنجليزي)' : 'Service Name (English)'}
-                  </label>
-                  <input
-                    type="text"
-                    defaultValue={editingService?.name_en || ''}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {language === 'ar' ? 'نوع الخدمة' : 'Service Type'}
-                  </label>
-                  <select
-                    defaultValue={editingService?.type || 'tarot'}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors"
-                  >
-                    <option value="tarot">{language === 'ar' ? 'تاروت' : 'Tarot'}</option>
-                    <option value="palm">{language === 'ar' ? 'كف' : 'Palm'}</option>
-                    <option value="coffee">{language === 'ar' ? 'فنجان' : 'Coffee'}</option>
-                    <option value="astrology">{language === 'ar' ? 'فلك' : 'Astrology'}</option>
-                    <option value="numerology">{language === 'ar' ? 'أرقام' : 'Numerology'}</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {language === 'ar' ? 'السعر ($)' : 'Price ($)'}
-                  </label>
-                  <input
-                    type="number"
-                    defaultValue={editingService?.price || ''}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {language === 'ar' ? 'المدة (دقيقة)' : 'Duration (minutes)'}
-                  </label>
-                  <input
-                    type="number"
-                    defaultValue={editingService?.duration_minutes || ''}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    {language === 'ar' ? 'الحالة' : 'Status'}
-                  </label>
-                  <select
-                    defaultValue={editingService?.is_active ? 'active' : 'inactive'}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors"
-                  >
-                    <option value="active">{language === 'ar' ? 'نشط' : 'Active'}</option>
-                    <option value="inactive">{language === 'ar' ? 'غير نشط' : 'Inactive'}</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {language === 'ar' ? 'الوصف (عربي)' : 'Description (Arabic)'}
-                </label>
-                <textarea
-                  rows={3}
-                  defaultValue={editingService?.description_ar || ''}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors resize-none"
-                />
-              </div>
-              
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {language === 'ar' ? 'الوصف (إنجليزي)' : 'Description (English)'}
-                </label>
-                <textarea
-                  rows={3}
-                  defaultValue={editingService?.description_en || ''}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-gold-400/50 transition-colors resize-none"
-                />
-              </div>
-              
-              <div className="flex items-center justify-end space-x-4 mt-8">
-                <button
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setEditingService(null);
-                  }}
-                  className="px-6 py-2 text-gray-400 hover:text-white transition-colors"
-                >
-                  {language === 'ar' ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-gold-500 to-gold-600 text-gray-900 font-medium rounded-lg hover:from-gold-600 hover:to-gold-700 transition-colors">
-                  <Save className="w-4 h-4" />
-                  <span>{language === 'ar' ? 'حفظ' : 'Save'}</span>
-                </button>
-              </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* ===== PAGINATION ===== */}
+      {pagination.pages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <button
+            onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+            disabled={pagination.page === 1}
+            className="px-4 py-2 bg-purple-600/50 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-purple-600/70 transition-colors"
+          >
+            {isRTL ? 'السابق' : 'Previous'}
+          </button>
+          
+          <span className="px-4 py-2 text-purple-300">
+            {isRTL 
+              ? `صفحة ${pagination.page} من ${pagination.pages}`
+              : `Page ${pagination.page} of ${pagination.pages}`
+            }
+          </span>
+          
+          <button
+            onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.pages, prev.page + 1) }))}
+            disabled={pagination.page === pagination.pages}
+            className="px-4 py-2 bg-purple-600/50 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-purple-600/70 transition-colors"
+          >
+            {isRTL ? 'التالي' : 'Next'}
+          </button>
+        </div>
+      )}
+
+      {/* ===== ADD SERVICE MODAL ===== */}
+      <AddServiceModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onServiceAdded={handleServiceAdded}
+      />
+    </div>
   );
 };
 

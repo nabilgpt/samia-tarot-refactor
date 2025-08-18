@@ -80,6 +80,15 @@ const PaymentsAndWallets = () => {
       transition={{ type: "spring", stiffness: 100, damping: 15 }}
       className="space-y-6"
     >
+      {/* Title and Description */}
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
+          {language === 'ar' ? 'إدارة المدفوعات' : 'Payments Management'}
+        </h2>
+        <p className="text-gray-400 mt-1">
+          {language === 'ar' ? 'عرض وإدارة جميع المعاملات المالية في النظام' : 'View and manage all payment transactions in the system'}
+        </p>
+      </div>
       {/* Tab Navigation */}
       <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl p-2">
         <div className="flex flex-wrap gap-2">

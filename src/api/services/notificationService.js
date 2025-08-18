@@ -1,4 +1,4 @@
-const supabase = require('../lib/supabase');
+import { supabase } from '../lib/supabase.js';
 
 
 class NotificationService {

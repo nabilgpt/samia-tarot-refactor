@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import configurationService from '../services/configurationService';
 
 const ConfigContext = createContext();
 
@@ -13,9 +14,9 @@ export const useConfig = () => {
 };
 
 export const ConfigProvider = ({ children }) => {
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading, initialized, isAuthenticated } = useAuth();
   const [config, setConfig] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Load configuration from database
@@ -23,151 +24,79 @@ export const ConfigProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
+      // Production: Use proper logging service instead of console
+      // console.log('🔄 ConfigContext: Loading configuration...');
 
-      // Use API endpoint for configuration instead of direct database access
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-
-      if (!token) {
-        console.log('🔧 Development Mode: Using fallback configuration (no auth token)');
-        // Don't throw error, just use fallback configuration
-        setConfig({
-          ai_default_provider: 'openai',
-          ai_default_model: 'gpt-4',
-          database_type: 'supabase',
-          storage_provider: 'supabase',
-          notifications_enabled: true,
-          app_name: 'Samia Tarot',
-          app_version: '1.0.0',
-          maintenance_mode: false
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Try to fetch from the backend API
-      const response = await fetch('http://localhost:5001/api/config', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Config API error: ${response.status} ${response.statusText}`, errorText);
-        
-        // If we get HTML instead of JSON, it means the API endpoint doesn't exist
-        if (errorText.includes('<!doctype') || errorText.includes('<html')) {
-          throw new Error('Config API endpoint not available - backend server may not be running');
-        }
-        
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const responseData = await response.json();
-      const configData = responseData.data || [];
-
-      // Transform array to object for easy access
-      const configObject = {};
-      configData.forEach(item => {
-        try {
-          // Parse JSON values
-          configObject[item.key] = typeof item.value === 'string' 
-            ? JSON.parse(item.value) 
-            : item.value;
-        } catch (e) {
-          // If JSON parsing fails, use raw value
-          configObject[item.key] = item.value;
-        }
-      });
-
-      setConfig(configObject);
-    } catch (error) {
-      console.error('Error loading configuration:', error);
-      setError(error.message);
+      // Load all categories and their configurations using configurationService
+      const categories = await configurationService.getCategories();
       
-      // Fallback to default configuration
-      setConfig({
-        ai_default_provider: 'openai',
-        ai_default_model: 'gpt-4',
-        database_type: 'supabase',
-        storage_provider: 'supabase',
-        notifications_enabled: true,
-        app_name: 'Samia Tarot',
-        app_version: '1.0.0',
-        maintenance_mode: false
-      });
+      const configMap = {};
+      
+      // Load configurations for each category
+      for (const category of categories) {
+        try {
+          const categoryConfig = await configurationService.getConfigurationsByCategory(category.category_key);
+          configMap[category.category_key] = categoryConfig;
+        } catch (error) {
+          // Production: Log to proper logging service
+          // console.warn(`Failed to load configurations for category ${category.category_key}:`, error);
+        }
+      }
+
+      setConfig(configMap);
+      // console.log('✅ ConfigContext: Configuration loaded successfully');
+    } catch (error) {
+      // console.error('❌ ConfigContext: Error loading configuration:', error);
+      setError(error.message);
+      setConfig({});
     } finally {
       setLoading(false);
     }
   };
 
-  // Update configuration value
-  const updateConfig = async (key, value, section = 'general') => {
+  // Update configuration
+  const updateConfig = async (updates) => {
     try {
-      // Only admins can update config
-      if (!profile || !['admin', 'super_admin'].includes(profile.role)) {
-        throw new Error('Unauthorized: Admin access required');
+      setLoading(true);
+      
+      // Update configurations in database
+      for (const [key, value] of Object.entries(updates)) {
+        await configurationService.updateConfiguration(key, value);
       }
-
-      const response = await fetch('http://localhost:5001/api/config', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          key,
-          value,
-          section,
-          updated_by: user.id
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
+      
       // Update local state
-      setConfig(prev => ({
-        ...prev,
-        [key]: value
-      }));
-
+      setConfig(prev => ({ ...prev, ...updates }));
+      
       return { success: true };
     } catch (error) {
-      console.error('Error updating configuration:', error);
+      // console.error('Error updating configuration:', error);
+      setError(error.message);
       return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
     }
   };
 
   // Get configuration by section
   const getConfigBySection = (section) => {
-    return Object.entries(config)
-      .filter(([key]) => {
-        // Map keys to sections based on prefix
-        if (key.startsWith('ai_')) return section === 'ai';
-        if (key.startsWith('supabase_') || key.startsWith('database_')) return section === 'database';
-        if (key.startsWith('storage_') || key.startsWith('b2_')) return section === 'storage';
-        if (key.startsWith('notifications_') || key.startsWith('email_') || key.startsWith('push_')) return section === 'notifications';
-        return section === 'general';
-      })
-      .reduce((acc, [key, value]) => {
-        acc[key] = value;
-        return acc;
-      }, {});
+    const sectionConfigs = {};
+    Object.keys(config).forEach(key => {
+      if (key.startsWith(`${section}_`)) {
+        sectionConfigs[key] = config[key];
+      }
+    });
+    return sectionConfigs;
   };
 
   // Get AI configuration
   const getAIConfig = () => {
     return {
-      providers: config.ai_providers || [],
+      openaiApiKey: config.OPENAI_API_KEY || '',
+      anthropicApiKey: config.ANTHROPIC_API_KEY || '',
+      geminiApiKey: config.GEMINI_API_KEY || '',
       defaultProvider: config.ai_default_provider || 'openai',
-      defaultModel: config.ai_default_model || 'gpt-4',
-      openaiApiKey: config.openai_api_key || '',
-      geminiApiKey: config.gemini_api_key || ''
+      maxTokens: parseInt(config.ai_max_tokens) || 2000,
+      temperature: parseFloat(config.ai_temperature) || 0.7
     };
   };
 
@@ -175,9 +104,9 @@ export const ConfigProvider = ({ children }) => {
   const getDatabaseConfig = () => {
     return {
       type: config.database_type || 'supabase',
-      supabaseUrl: config.supabase_url || '',
-      supabaseAnonKey: config.supabase_anon_key || '',
-      supabaseServiceKey: config.supabase_service_key || '',
+      supabaseUrl: config.SUPABASE_URL || '',
+      supabaseAnonKey: config.SUPABASE_ANON_KEY || '',
+      supabaseServiceKey: config.SUPABASE_SERVICE_ROLE_KEY || '',
       storageBucket: config.supabase_storage_bucket || 'samia-tarot-uploads'
     };
   };
@@ -186,10 +115,10 @@ export const ConfigProvider = ({ children }) => {
   const getStorageConfig = () => {
     return {
       provider: config.storage_provider || 'supabase',
-      b2BucketName: config.b2_bucket_name || '',
+      b2BucketName: config.BACKBLAZE_BUCKET_NAME || '',
       b2EndpointUrl: config.b2_endpoint_url || '',
-      b2AccessKeyId: config.b2_access_key_id || '',
-      b2SecretAccessKey: config.b2_secret_access_key || ''
+      b2AccessKeyId: config.BACKBLAZE_KEY_ID || '',
+      b2SecretAccessKey: config.BACKBLAZE_APP_KEY || ''
     };
   };
 
@@ -199,21 +128,63 @@ export const ConfigProvider = ({ children }) => {
       enabled: config.notifications_enabled || true,
       emailProvider: config.email_provider || 'sendgrid',
       pushEnabled: config.push_notifications_enabled || true,
-      sendgridApiKey: config.sendgrid_api_key || '',
-      twilioAccountSid: config.twilio_account_sid || '',
-      twilioAuthToken: config.twilio_auth_token || ''
+      sendgridApiKey: config.SENDGRID_API_KEY || '',
+      twilioAccountSid: config.TWILIO_ACCOUNT_SID || '',
+      twilioAuthToken: config.TWILIO_AUTH_TOKEN || ''
+    };
+  };
+
+  // Get payment configuration
+  const getPaymentConfig = () => {
+    return {
+      stripeSecretKey: config.STRIPE_SECRET_KEY || '',
+      stripePublishableKey: config.STRIPE_PUBLISHABLE_KEY || '',
+      squareAccessToken: config.SQUARE_ACCESS_TOKEN || '',
+      squareApplicationId: config.SQUARE_APPLICATION_ID || ''
     };
   };
 
   // Reload configuration
   const reloadConfig = () => {
-    loadConfig();
+    // Only reload if user is authenticated
+    if (isAuthenticated && user && profile) {
+      loadConfig();
+    }
   };
 
-  // Load config on mount and when user changes
+  // 🔄 CRITICAL FIX: Load config only when authentication is complete
   useEffect(() => {
+    // 🚨 IMPORTANT: Only load config if user is authenticated and profile is loaded
+    if (!initialized || authLoading || !isAuthenticated || !user || !profile) {
+      // Production: Use proper logging service instead of console
+      // console.log('🔄 ConfigContext: Waiting for authentication before loading config...', {
+      //   initialized,
+      //   authLoading,
+      //   isAuthenticated,
+      //   hasUser: !!user,
+      //   hasProfile: !!profile
+      // });
+      return;
+    }
+
+    // Production: Use proper logging service instead of console
+    // console.log('✅ ConfigContext: Authentication complete, loading configuration...');
     loadConfig();
-  }, [user]);
+  }, [initialized, authLoading, isAuthenticated, user?.id, profile?.id]); // Only depend on stable IDs
+
+  // Add periodic refresh but much less frequent
+  useEffect(() => {
+    if (!isAuthenticated || !user || !profile) return;
+    
+    // Refresh config every 5 minutes instead of constantly
+    const refreshInterval = setInterval(() => {
+      // Production: Use proper logging service instead of console
+      // console.log('🔄 ConfigContext: Periodic refresh...');
+      loadConfig();
+    }, 300000); // 5 minutes
+    
+    return () => clearInterval(refreshInterval);
+  }, [isAuthenticated, user?.id, profile?.id]);
 
   const value = {
     config,
@@ -225,7 +196,8 @@ export const ConfigProvider = ({ children }) => {
     getAIConfig,
     getDatabaseConfig,
     getStorageConfig,
-    getNotificationConfig
+    getNotificationConfig,
+    getPaymentConfig
   };
 
   return (

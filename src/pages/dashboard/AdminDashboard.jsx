@@ -6,6 +6,8 @@ import { loadSlim } from 'tsparticles-slim';
 import AdminLayout from '../../components/Layout/AdminLayout.jsx';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { getSidebarNavigationItems } from '../../utils/navigationConfig.js';
 
 // Import enhanced tab components
 import DashboardOverview from '../../components/Admin/Enhanced/DashboardOverview';
@@ -18,12 +20,91 @@ import ApprovalQueue from '../../components/Admin/Enhanced/ApprovalQueue';
 import MonitoringAndReports from '../../components/Admin/Enhanced/MonitoringAndReports';
 import Analytics from '../../components/Admin/Enhanced/Analytics';
 import SupportTools from '../../components/Admin/Enhanced/SupportTools';
+import TarotManagement from '../../components/Admin/Enhanced/TarotManagementRefactored';
+import ReviewsManagement from '../../components/Admin/Enhanced/ReviewsManagement';
+
+// Placeholder components for system and account tabs
+const ReadersManagement = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Readers Management</h2>
+    <p className="text-gray-300">Readers management functionality will be implemented here.</p>
+  </div>
+);
+
+const FinancesManagement = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Finances Management</h2>
+    <p className="text-gray-300">Financial management functionality will be implemented here.</p>
+  </div>
+);
+
+const MessagesManagement = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Messages Management</h2>
+    <p className="text-gray-300">Message management functionality will be implemented here.</p>
+  </div>
+);
+
+const ReportsManagement = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Reports Management</h2>
+    <p className="text-gray-300">Reports functionality will be implemented here.</p>
+  </div>
+);
+
+const IncidentsManagement = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Incidents Management</h2>
+    <p className="text-gray-300">Incident management functionality will be implemented here.</p>
+  </div>
+);
+
+const SystemManagement = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold text-white mb-4">System Management</h2>
+    <p className="text-gray-300">System management functionality will be implemented here.</p>
+  </div>
+);
+
+const SecurityManagement = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Security Management</h2>
+    <p className="text-gray-300">Security management functionality will be implemented here.</p>
+  </div>
+);
+
+const ProfileManagement = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Profile Management</h2>
+    <p className="text-gray-300">Profile management functionality will be implemented here.</p>
+  </div>
+);
+
+const SettingsManagement = () => (
+  <div className="p-6">
+    <h2 className="text-2xl font-bold text-white mb-4">Settings Management</h2>
+    <p className="text-gray-300">Settings management functionality will be implemented here.</p>
+  </div>
+);
 
 const AdminDashboard = () => {
   const { t } = useTranslation();
   const { user, profile } = useAuth();
   const { language } = useUI();
+  const { currentLanguage, direction, isRtl } = useLanguage();
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Get ALL navigation items from unified config (main + system + account)  
+  const allNavigationItems = getSidebarNavigationItems(currentLanguage, (tabId) => setActiveTab(tabId));
+  
+  // Convert to tabs format for top navigation
+  const tabNavigationItems = allNavigationItems.map(item => ({
+    key: item.key,
+    tabId: item.tabId || item.key,
+    label: item.label,
+    icon: item.icon,
+    type: item.type
+  }));
 
   // Particle configuration for cosmic background
   const particlesInit = useCallback(async engine => {
@@ -105,6 +186,7 @@ const AdminDashboard = () => {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      // Main tabs
       case 'overview':
         return <DashboardOverview />;
       case 'users':
@@ -115,6 +197,8 @@ const AdminDashboard = () => {
         return <BookingsManagement />;
       case 'payments':
         return <PaymentsAndWallets />;
+      case 'tarot':
+        return <TarotManagement />;
       case 'notifications':
         return <NotificationsSystem />;
       case 'approvals':
@@ -125,13 +209,48 @@ const AdminDashboard = () => {
         return <Analytics />;
       case 'support':
         return <SupportTools />;
+      case 'reviews':
+        return <ReviewsManagement />;
+      
+      // System tabs
+      case 'readers':
+        return <ReadersManagement />;
+      case 'finances':
+        return <FinancesManagement />;
+      case 'messages':
+        return <MessagesManagement />;
+      case 'reports':
+        return <ReportsManagement />;
+      case 'incidents':
+        return <IncidentsManagement />;
+      case 'system':
+        return <SystemManagement />;
+      case 'security':
+        return <SecurityManagement />;
+      
+      // Account tabs
+      case 'profile':
+        return <ProfileManagement />;
+      case 'settings':
+        return <SettingsManagement />;
+      
       default:
         return <DashboardOverview />;
     }
   };
 
+  // Handle tab change from sidebar
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+  };
+
+  // Handle navigation from notifications
+  const handleNavigate = (tabId) => {
+    setActiveTab(tabId);
+  };
+
   return (
-    <AdminLayout>
+    <AdminLayout onTabChange={handleTabChange} activeTab={activeTab} onNavigate={handleNavigate}>
       <div className="min-h-screen relative overflow-hidden">
         {/* Particle Background */}
         <Particles
@@ -150,33 +269,38 @@ const AdminDashboard = () => {
 
         {/* Main Content with Tab Navigation */}
         <div className="relative z-10 p-6">
+          {/* Page Header */}
+          <div className="mb-8 text-center">
+            <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
+              {isRtl ? 'لوحة تحكم المدير' : 'Admin Dashboard'}
+            </h1>
+            <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+              {isRtl ? 'مرحباً بك في نظام إدارة سامية تاروت' : 'Welcome to Samia Tarot Management System'}
+            </p>
+          </div>
+
           {/* Tab Navigation */}
           <div className="mb-8">
-            <div className="flex flex-wrap gap-2 p-2 bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl">
-              {[
-                { id: 'overview', label: language === 'ar' ? 'نظرة عامة' : 'Overview' },
-                { id: 'users', label: language === 'ar' ? 'المستخدمين' : 'Users' },
-                { id: 'services', label: language === 'ar' ? 'الخدمات' : 'Services' },
-                { id: 'bookings', label: language === 'ar' ? 'الحجوزات' : 'Bookings' },
-                { id: 'payments', label: language === 'ar' ? 'المدفوعات' : 'Payments' },
-                { id: 'notifications', label: language === 'ar' ? 'الإشعارات' : 'Notifications' },
-                { id: 'approvals', label: language === 'ar' ? 'الموافقات' : 'Approvals' },
-                { id: 'monitoring', label: language === 'ar' ? 'المراقبة' : 'Monitoring' },
-                { id: 'analytics', label: language === 'ar' ? 'الإحصائيات' : 'Analytics' },
-                { id: 'support', label: language === 'ar' ? 'الدعم' : 'Support' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
-                    activeTab === tab.id
-                      ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 text-red-300 border border-red-400/30'
-                      : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-2xl p-2">
+              <div className="flex flex-wrap gap-2">
+                {tabNavigationItems.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.tabId}
+                      onClick={() => setActiveTab(tab.tabId)}
+                      className={`flex items-center justify-center md:space-x-33 px-3 md:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 min-h-[44px] ${
+                        activeTab === tab.tabId
+                          ? 'bg-gradient-to-r from-red-500/20 to-pink-500/20 text-red-300 border border-red-400/30'
+                          : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5 md:w-4 md:h-4" />
+                      <span className="hidden md:inline ml-2">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
 import { 
   Calendar,
   DollarSign,
@@ -13,16 +12,18 @@ import {
   Activity,
   Zap,
   Gift,
-  Target
+  Target,
+  Sparkles
 } from 'lucide-react';
 import ReaderLayout from '../../components/Layout/ReaderLayout';
 import CosmicCard from '../../components/UI/CosmicCard';
 import CosmicButton from '../../components/UI/CosmicButton';
-import { useUI } from '../../context/UIContext';
+import { useLanguage } from '../../context/LanguageContext';
+import NewSpreadCreator from '../../components/Tarot/NewSpreadCreator';
 
 const ReaderDashboard = () => {
-  const { t } = useTranslation();
-  const { language } = useUI();
+  const { currentLanguage, direction } = useLanguage();
+  const [showSpreadCreator, setShowSpreadCreator] = useState(false);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -51,25 +52,25 @@ const ReaderDashboard = () => {
   const todaySchedule = [
     {
       id: 1,
-      client: language === 'ar' ? 'سارة أحمد' : 'Sarah Ahmed',
+      client: currentLanguage === 'ar' ? 'سارة أحمد' : 'Sarah Ahmed',
       time: '10:00',
-      type: language === 'ar' ? 'قراءة التاروت' : 'Tarot Reading',
+      type: currentLanguage === 'ar' ? 'قراءة التاروت' : 'Tarot Reading',
       duration: '30 min',
       status: 'confirmed'
     },
     {
       id: 2,
-      client: language === 'ar' ? 'محمد علي' : 'Mohamed Ali',
+      client: currentLanguage === 'ar' ? 'محمد علي' : 'Mohamed Ali',
       time: '14:30',
-      type: language === 'ar' ? 'علم التنجيم' : 'Astrology',
+      type: currentLanguage === 'ar' ? 'علم التنجيم' : 'Astrology',
       duration: '45 min',
       status: 'pending'
     },
     {
       id: 3,
-      client: language === 'ar' ? 'فاطمة نور' : 'Fatima Nour',
+      client: currentLanguage === 'ar' ? 'فاطمة نور' : 'Fatima Nour',
       time: '16:00',
-      type: language === 'ar' ? 'علم الأرقام' : 'Numerology',
+      type: currentLanguage === 'ar' ? 'علم الأرقام' : 'Numerology',
       duration: '30 min',
       status: 'confirmed'
     }
@@ -78,45 +79,53 @@ const ReaderDashboard = () => {
   const recentClients = [
     {
       id: 1,
-      name: language === 'ar' ? 'ليلى حسن' : 'Layla Hassan',
+      name: currentLanguage === 'ar' ? 'ليلى حسن' : 'Layla Hassan',
       rating: 5,
-      session: language === 'ar' ? 'قراءة التاروت' : 'Tarot Reading',
-      time: language === 'ar' ? 'منذ ساعتين' : '2 hours ago'
+      session: currentLanguage === 'ar' ? 'قراءة التاروت' : 'Tarot Reading',
+      time: currentLanguage === 'ar' ? 'منذ ساعتين' : '2 hours ago'
     },
     {
       id: 2,
-      name: language === 'ar' ? 'أحمد محمود' : 'Ahmed Mahmoud',
+      name: currentLanguage === 'ar' ? 'أحمد محمود' : 'Ahmed Mahmoud',
       rating: 4,
-      session: language === 'ar' ? 'علم التنجيم' : 'Astrology',
-      time: language === 'ar' ? 'أمس' : 'Yesterday'
+      session: currentLanguage === 'ar' ? 'علم التنجيم' : 'Astrology',
+      time: currentLanguage === 'ar' ? 'أمس' : 'Yesterday'
     }
   ];
 
   const quickActions = [
     {
-      title: language === 'ar' ? 'بدء جلسة مباشرة' : 'Start Live Session',
-      description: language === 'ar' ? 'ابدأ جلسة فورية مع العملاء المتاحين' : 'Start instant session with available clients',
+      title: currentLanguage === 'ar' ? 'إنشاء انتشار جديد' : 'Create New Spread',
+      description: currentLanguage === 'ar' ? 'أنشئ انتشارات مخصصة للتاروت وقدمها للموافقة' : 'Create custom tarot spreads and submit for approval',
+      icon: <Sparkles className="w-6 h-6" />,
+      color: 'from-purple-500 to-pink-500',
+      onClick: () => setShowSpreadCreator(true),
+      isModal: true
+    },
+    {
+      title: currentLanguage === 'ar' ? 'بدء جلسة مباشرة' : 'Start Live Session',
+      description: currentLanguage === 'ar' ? 'ابدأ جلسة فورية مع العملاء المتاحين' : 'Start instant session with available clients',
       icon: <Eye className="w-6 h-6" />,
       color: 'from-cosmic-500 to-purple-500',
       href: '/reader/live-session'
     },
     {
-      title: language === 'ar' ? 'إدارة الجدول' : 'Manage Schedule',
-      description: language === 'ar' ? 'نظم أوقاتك وجلساتك القادمة' : 'Organize your time and upcoming sessions',
+      title: currentLanguage === 'ar' ? 'إدارة الجدول' : 'Manage Schedule',
+      description: currentLanguage === 'ar' ? 'نظم أوقاتك وجلساتك القادمة' : 'Organize your time and upcoming sessions',
       icon: <Calendar className="w-6 h-6" />,
       color: 'from-gold-500 to-yellow-500',
       href: '/reader/schedule'
     },
     {
-      title: language === 'ar' ? 'عرض الأرباح' : 'View Earnings',
-      description: language === 'ar' ? 'تتبع دخلك وإحصائياتك المالية' : 'Track your income and financial stats',
+      title: currentLanguage === 'ar' ? 'عرض الأرباح' : 'View Earnings',
+      description: currentLanguage === 'ar' ? 'تتبع دخلك وإحصائياتك المالية' : 'Track your income and financial stats',
       icon: <DollarSign className="w-6 h-6" />,
       color: 'from-green-500 to-emerald-500',
       href: '/reader/earnings'
     },
     {
-      title: language === 'ar' ? 'الرسائل' : 'Messages',
-      description: language === 'ar' ? 'تواصل مع عملائك والرد على استفساراتهم' : 'Communicate with clients and answer inquiries',
+      title: currentLanguage === 'ar' ? 'الرسائل' : 'Messages',
+      description: currentLanguage === 'ar' ? 'تواصل مع عملائك والرد على استفساراتهم' : 'Communicate with clients and answer inquiries',
       icon: <MessageCircle className="w-6 h-6" />,
       color: 'from-cyan-500 to-blue-500',
       href: '/reader/messages'
@@ -125,28 +134,28 @@ const ReaderDashboard = () => {
 
   const stats = [
     {
-      label: language === 'ar' ? 'جلسات اليوم' : 'Today\'s Sessions',
+      label: currentLanguage === 'ar' ? 'جلسات اليوم' : 'Today\'s Sessions',
       value: '8',
       icon: <Eye className="w-5 h-5" />,
       color: 'text-cosmic-400',
       change: '+2'
     },
     {
-      label: language === 'ar' ? 'الأرباح اليومية' : 'Daily Earnings',
+      label: currentLanguage === 'ar' ? 'الأرباح اليومية' : 'Daily Earnings',
       value: '$240',
       icon: <DollarSign className="w-5 h-5" />,
       color: 'text-green-400',
       change: '+15%'
     },
     {
-      label: language === 'ar' ? 'متوسط التقييم' : 'Avg Rating',
+      label: currentLanguage === 'ar' ? 'متوسط التقييم' : 'Avg Rating',
       value: '4.9',
       icon: <Star className="w-5 h-5" />,
       color: 'text-gold-400',
       change: '+0.1'
     },
     {
-      label: language === 'ar' ? 'العملاء الجدد' : 'New Clients',
+      label: currentLanguage === 'ar' ? 'العملاء الجدد' : 'New Clients',
       value: '12',
       icon: <Users className="w-5 h-5" />,
       color: 'text-pink-400',
@@ -156,17 +165,17 @@ const ReaderDashboard = () => {
 
   const performanceMetrics = [
     {
-      label: language === 'ar' ? 'معدل الاستجابة' : 'Response Rate',
+      label: currentLanguage === 'ar' ? 'معدل الاستجابة' : 'Response Rate',
       value: '98%',
       color: 'bg-green-500'
     },
     {
-      label: language === 'ar' ? 'رضا العملاء' : 'Client Satisfaction',
+      label: currentLanguage === 'ar' ? 'رضا العملاء' : 'Client Satisfaction',
       value: '96%',
       color: 'bg-gold-500'
     },
     {
-      label: language === 'ar' ? 'نسبة الإكمال' : 'Completion Rate',
+      label: currentLanguage === 'ar' ? 'نسبة الإكمال' : 'Completion Rate',
       value: '94%',
       color: 'bg-cosmic-500'
     }
@@ -184,11 +193,11 @@ const ReaderDashboard = () => {
         <motion.div variants={itemVariants} className="text-center">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">
             <span className="bg-gradient-to-r from-cosmic-400 via-purple-400 to-gold-400 bg-clip-text text-transparent">
-              {language === 'ar' ? 'أهلاً بك مدام سامية' : 'Welcome Back, Madame Samia'}
+              {currentLanguage === 'ar' ? 'أهلاً بك مدام سامية' : 'Welcome Back, Madame Samia'}
             </span>
           </h1>
           <p className="text-gray-400 text-lg">
-            {language === 'ar' 
+            {currentLanguage === 'ar' 
               ? 'ساعد عملائك على اكتشاف طريقهم وتحقيق أهدافهم الروحانية' 
               : 'Help your clients discover their path and achieve their spiritual goals'
             }
@@ -222,7 +231,7 @@ const ReaderDashboard = () => {
         {/* Quick Actions */}
         <motion.div variants={itemVariants}>
           <h2 className="text-2xl font-bold mb-6 text-cosmic-300">
-            {language === 'ar' ? 'إجراءات سريعة' : 'Quick Actions'}
+            {currentLanguage === 'ar' ? 'إجراءات سريعة' : 'Quick Actions'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {quickActions.map((action, index) => (
@@ -230,6 +239,7 @@ const ReaderDashboard = () => {
                 key={index}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                onClick={action.onClick}
               >
                 <CosmicCard className="p-6 h-full cursor-pointer" hover glow>
                   <div className={`w-12 h-12 bg-gradient-to-br ${action.color} rounded-xl flex items-center justify-center mb-4`}>
@@ -250,7 +260,7 @@ const ReaderDashboard = () => {
             <CosmicCard className="p-6" variant="primary">
               <h3 className="text-xl font-bold text-white mb-6 flex items-center">
                 <Calendar className="w-6 h-6 mr-3 rtl:mr-0 rtl:ml-3 text-cosmic-400" />
-                {language === 'ar' ? 'جدول اليوم' : 'Today\'s Schedule'}
+                {currentLanguage === 'ar' ? 'جدول اليوم' : 'Today\'s Schedule'}
               </h3>
               <div className="space-y-4">
                 {todaySchedule.map((session) => (
@@ -274,8 +284,8 @@ const ReaderDashboard = () => {
                           : 'bg-yellow-500/20 text-yellow-400'
                       }`}>
                         {session.status === 'confirmed' 
-                          ? (language === 'ar' ? 'مؤكد' : 'Confirmed')
-                          : (language === 'ar' ? 'في الانتظار' : 'Pending')
+                          ? (currentLanguage === 'ar' ? 'مؤكد' : 'Confirmed')
+                          : (currentLanguage === 'ar' ? 'في الانتظار' : 'Pending')
                         }
                       </div>
                     </div>
@@ -283,7 +293,7 @@ const ReaderDashboard = () => {
                 ))}
                 <CosmicButton variant="cosmic" className="w-full">
                   <Calendar className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                  {language === 'ar' ? 'عرض الجدول كاملاً' : 'View Full Schedule'}
+                  {currentLanguage === 'ar' ? 'عرض الجدول كاملاً' : 'View Full Schedule'}
                 </CosmicButton>
               </div>
             </CosmicCard>
@@ -294,7 +304,7 @@ const ReaderDashboard = () => {
             <CosmicCard className="p-6" variant="gold">
               <h3 className="text-xl font-bold text-white mb-6 flex items-center">
                 <TrendingUp className="w-6 h-6 mr-3 rtl:mr-0 rtl:ml-3 text-gold-400" />
-                {language === 'ar' ? 'مؤشرات الأداء' : 'Performance Metrics'}
+                {currentLanguage === 'ar' ? 'مؤشرات الأداء' : 'Performance Metrics'}
               </h3>
               <div className="space-y-6">
                 {performanceMetrics.map((metric, index) => (
@@ -313,7 +323,7 @@ const ReaderDashboard = () => {
                 ))}
                 <CosmicButton variant="secondary" className="w-full">
                   <Activity className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                  {language === 'ar' ? 'عرض التحليلات' : 'View Analytics'}
+                  {currentLanguage === 'ar' ? 'عرض التحليلات' : 'View Analytics'}
                 </CosmicButton>
               </div>
             </CosmicCard>
@@ -327,7 +337,7 @@ const ReaderDashboard = () => {
             <CosmicCard className="p-6" variant="glass">
               <h3 className="text-xl font-bold text-white mb-6 flex items-center">
                 <Users className="w-6 h-6 mr-3 rtl:mr-0 rtl:ml-3 text-cyan-400" />
-                {language === 'ar' ? 'العملاء الحاليون' : 'Recent Clients'}
+                {currentLanguage === 'ar' ? 'العملاء الحاليون' : 'Recent Clients'}
               </h3>
               <div className="space-y-4">
                 {recentClients.map((client) => (
@@ -360,7 +370,7 @@ const ReaderDashboard = () => {
                 ))}
                 <CosmicButton variant="outline" className="w-full">
                   <Users className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                  {language === 'ar' ? 'عرض جميع العملاء' : 'View All Clients'}
+                  {currentLanguage === 'ar' ? 'عرض جميع العملاء' : 'View All Clients'}
                 </CosmicButton>
               </div>
             </CosmicCard>
@@ -371,7 +381,7 @@ const ReaderDashboard = () => {
             <CosmicCard className="p-6" variant="feature">
               <h3 className="text-xl font-bold text-white mb-6 flex items-center">
                 <Target className="w-6 h-6 mr-3 rtl:mr-0 rtl:ml-3 text-green-400" />
-                {language === 'ar' ? 'الأهداف والإنجازات' : 'Goals & Achievements'}
+                {currentLanguage === 'ar' ? 'الأهداف والإنجازات' : 'Goals & Achievements'}
               </h3>
               <div className="space-y-4">
                 <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
@@ -379,10 +389,10 @@ const ReaderDashboard = () => {
                     <Gift className="w-5 h-5 text-green-400" />
                     <div>
                       <h4 className="text-green-400 font-semibold">
-                        {language === 'ar' ? 'إنجاز جديد!' : 'New Achievement!'}
+                        {currentLanguage === 'ar' ? 'إنجاز جديد!' : 'New Achievement!'}
                       </h4>
                       <p className="text-gray-300 text-sm">
-                        {language === 'ar' ? '100 جلسة مكتملة هذا الشهر' : '100 sessions completed this month'}
+                        {currentLanguage === 'ar' ? '100 جلسة مكتملة هذا الشهر' : '100 sessions completed this month'}
                       </p>
                     </div>
                   </div>
@@ -392,10 +402,10 @@ const ReaderDashboard = () => {
                     <Zap className="w-5 h-5 text-gold-400" />
                     <div>
                       <h4 className="text-gold-400 font-semibold">
-                        {language === 'ar' ? 'الهدف الشهري' : 'Monthly Goal'}
+                        {currentLanguage === 'ar' ? 'الهدف الشهري' : 'Monthly Goal'}
                       </h4>
                       <p className="text-gray-300 text-sm">
-                        {language === 'ar' ? '75% - $1,500 من أصل $2,000' : '75% - $1,500 of $2,000'}
+                        {currentLanguage === 'ar' ? '75% - $1,500 من أصل $2,000' : '75% - $1,500 of $2,000'}
                       </p>
                       <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
                         <div className="h-2 rounded-full bg-gold-500" style={{ width: '75%' }}></div>
@@ -408,6 +418,14 @@ const ReaderDashboard = () => {
           </motion.div>
         </div>
       </motion.div>
+
+      {/* New Spread Creator Modal */}
+      {showSpreadCreator && (
+        <NewSpreadCreator 
+          isOpen={showSpreadCreator}
+          onClose={() => setShowSpreadCreator(false)}
+        />
+      )}
     </ReaderLayout>
   );
 };

@@ -342,7 +342,13 @@
     "support": "الدعم",
     "legal": "قانوني",
     "followUs": "تابعنا",
-    "rights": "جميع الحقوق محفوظة"
+    "rights": "جميع الحقوق محفوظة",
+    "contact": "اتصل بنا",
+    "help": "مساعدة",
+    "faq": "الأسئلة الشائعة",
+    "cookies": "سياسة الكوكيز",
+    "privacy": "سياسة الخصوصية",
+    "terms": "الشروط والأحكام"
   },
   "profile": {
     "title": "الملف الشخصي",
@@ -394,7 +400,20 @@
     "title": "المحفظة الإلكترونية",
     "balance": "الرصيد الحالي",
     "addFunds": "إضافة أموال",
-    "transactions": "المعاملات"
+    "transactions": "المعاملات",
+    "paymentMethods": "طرق الدفع",
+    "creditCard": "بطاقة ائتمانية",
+    "cryptocurrency": "عملة رقمية",
+    "totalDeposits": "إجمالي الإيداعات",
+    "totalExpenses": "إجمالي المصروفات",
+    "transactionCount": "عدد المعاملات",
+    "enterAmount": "أدخل المبلغ",
+    "addFundsButton": "إضافة أموال",
+    "description": "الوصف",
+    "date": "التاريخ",
+    "amount": "المبلغ",
+    "status": "الحالة",
+    "type": "النوع"
   },
   "messages": {
     "title": "الرسائل",
@@ -835,7 +854,402 @@
       "status": "الحالة",
       "createdAt": "تاريخ الإنشاء",
       "updatedAt": "تاريخ التحديث",
-      "actions": "الإجراءات"
+      "actions": "الإجراءات",
+      "status": {
+        "active": "نشط",
+        "inactive": "غير نشط"
+      }
+    },
+    "adminSettings": {
+      "notificationSettings": {
+        "title": "إعدادات الإشعارات",
+        "description": "إدارة تفضيلات الإشعارات والتنبيهات",
+        "emailNotifications": "إشعارات البريد الإلكتروني",
+        "emailDescription": "تلقي الإشعارات عبر البريد الإلكتروني",
+        "smsNotifications": "إشعارات الرسائل النصية",
+        "smsDescription": "تلقي الإشعارات عبر الرسائل النصية",
+        "pushNotifications": "الإشعارات الفورية",
+        "pushDescription": "تلقي الإشعارات الفورية في المتصفح",
+        "emergencyAlerts": "تنبيهات الطوارئ",
+        "emergencyDescription": "تلقي تنبيهات فورية للحالات الطارئة",
+        "dailyReports": "التقارير اليومية",
+        "dailyDescription": "تلقي ملخص يومي للأنشطة",
+        "weeklyReports": "التقارير الأسبوعية",
+        "weeklyDescription": "تلقي تقرير أسبوعي مفصل"
+      },
+      "displaySettings": {
+        "title": "إعدادات العرض",
+        "description": "تخصيص مظهر واجهة المستخدم"
+      },
+      "securitySettings": {
+        "title": "إعدادات الأمان",
+        "description": "إدارة إعدادات الأمان والحماية",
+        "twoFactor": "المصادقة الثنائية",
+        "twoFactorDescription": "تفعيل المصادقة الثنائية للحماية الإضافية",
+        "loginAlerts": "تنبيهات تسجيل الدخول",
+        "loginAlertsDescription": "تلقي تنبيهات عند تسجيل الدخول من أجهزة جديدة"
+      },
+      "systemSettings": {
+        "title": "إعدادات النظام",
+        "description": "إدارة إعدادات النظام والنسخ الاحتياطي",
+        "autoBackup": "النسخ الاحتياطي التلقائي",
+        "autoBackupDescription": "تفعيل النسخ الاحتياطي التلقائي للبيانات",
+        "autoUpdate": "التحديث التلقائي",
+        "autoUpdateDescription": "تحديث البيانات تلقائياً في الخلفية"
+      }
+    },
+    "incidents": {
+      "assignees": {
+        "adminSara": "سارة الإدارة",
+        "financeAdmin": "محمد المالية",
+        "securityTeam": "فريق الأمان"
+      }
+    },
+    "analytics": {
+      "totalUsers": "إجمالي المستخدمين",
+      "activeReaders": "القراء النشطين",
+      "completedSessions": "الجلسات المكتملة"
+    },
+    "referralSystem": {
+      "codeGenerated": "سيتم توليد الرمز هنا",
+      "copyCode": "نسخ الرمز"
+    },
+    "notificationRules": {
+      "dynamicVariables": "استخدم {{field_name}} للمتغيرات الديناميكية"
+    },
+    "copilot": {
+      "helpful": "مفيد",
+      "notHelpful": "غير مفيد"
+    },
+    "activityFeed": {
+      "updateNow": "تحديث الآن"
+    },
+    "support": {
+      "searchPlaceholder": "البحث...",
+      "ticketSubject": "أدخل موضوع التذكرة...",
+      "refundBookingId": "أدخل رقم الحجز",
+      "refundReason": "اشرح سبب طلب الاسترداد...",
+      "approvalNotes": "أضف أي ملاحظات أو تعليقات للقارئ...",
+      "moderationReason": "اشرح سبب اتخاذ هذا الإجراء..."
+    },
+    "theme": {
+      "themeLabel": "Theme"
+    },
+    "forms": {
+      "search": {
+        "users": "البحث عن المستخدمين...",
+        "logs": "البحث في السجلات...",
+        "reviews": "البحث في المراجعات...",
+        "readers": "البحث عن القراء...",
+        "messages": "البحث في الرسائل...",
+        "incidents": "البحث في الحوادث...",
+        "reports": "البحث في التقارير...",
+        "escalations": "البحث في التصعيدات...",
+        "content": "البحث بالاسم أو المحتوى أو السبب...",
+        "universal": "البحث..."
+      },
+      "placeholders": {
+        "firstName": "أدخل الاسم الأول",
+        "lastName": "أدخل اسم العائلة",
+        "email": "أدخل عنوان البريد الإلكتروني",
+        "phone": "أدخل رقم الهاتف",
+        "country": "اختر البلد",
+        "password": "أدخل كلمة المرور",
+        "confirmPassword": "تأكيد كلمة المرور",
+        "newPassword": "أدخل كلمة المرور الجديدة (8 أحرف على الأقل)",
+        "enterAmount": "أدخل المبلغ",
+        "enterReason": "أدخل السبب...",
+        "enterDescription": "أدخل الوصف...",
+        "enterTitle": "أدخل العنوان...",
+        "enterSubject": "أدخل الموضوع...",
+        "enterMessage": "أدخل الرسالة...",
+        "enterCode": "أدخل الرمز",
+        "enterUserId": "أدخل معرف المستخدم",
+        "enterVoiceId": "أدخل معرف الصوت",
+        "enterPrompt": "أدخل التعليمة...",
+        "selectOption": "اختر خيار...",
+        "typeMessage": "اكتب رسالة...",
+        "searchGeneric": "البحث...",
+        "question": "ما السؤال الذي تريد الإجابة عليه؟"
+      },
+      "labels": {
+        "firstName": "الاسم الأول",
+        "lastName": "اسم العائلة",
+        "displayName": "الاسم المعروض",
+        "email": "عنوان البريد الإلكتروني",
+        "phone": "رقم الهاتف",
+        "country": "البلد",
+        "password": "كلمة المرور",
+        "confirmPassword": "تأكيد كلمة المرور",
+        "newPassword": "كلمة المرور الجديدة",
+        "amount": "المبلغ",
+        "reason": "السبب",
+        "description": "الوصف",
+        "title": "العنوان",
+        "subject": "الموضوع",
+        "message": "الرسالة",
+        "code": "الرمز",
+        "userId": "معرف المستخدم",
+        "voiceId": "معرف الصوت",
+        "prompt": "التعليمة",
+        "biography": "النبذة الشخصية",
+        "specializations": "التخصصات",
+        "languages": "اللغات",
+        "workingHours": "ساعات العمل",
+        "serviceName": "اسم الخدمة",
+        "serviceType": "نوع الخدمة",
+        "servicePrice": "سعر الخدمة",
+        "serviceDuration": "مدة الخدمة",
+        "serviceDescription": "وصف الخدمة",
+        "question": "السؤال (اختياري)"
+      },
+      "buttons": {
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "update": "تحديث",
+        "delete": "حذف",
+        "add": "إضافة",
+        "create": "إنشاء",
+        "edit": "تعديل",
+        "view": "عرض",
+        "search": "البحث",
+        "filter": "فلترة",
+        "export": "تصدير",
+        "import": "استيراد",
+        "submit": "إرسال",
+        "confirm": "تأكيد",
+        "close": "إغلاق",
+        "back": "رجوع",
+        "next": "التالي",
+        "finish": "إنهاء",
+        "approve": "موافقة",
+        "reject": "رفض",
+        "activate": "تفعيل",
+        "deactivate": "إلغاء التفعيل",
+        "enable": "تمكين",
+        "disable": "تعطيل",
+        "refresh": "تحديث",
+        "reload": "إعادة تحميل",
+        "reset": "إعادة تعيين",
+        "clear": "مسح",
+        "copy": "نسخ",
+        "download": "تنزيل",
+        "upload": "رفع",
+        "send": "إرسال",
+        "login": "تسجيل الدخول",
+        "logout": "تسجيل الخروج",
+        "signup": "إنشاء حساب",
+        "signin": "تسجيل الدخول",
+        "forgotPassword": "نسيت كلمة المرور",
+        "changePassword": "تغيير كلمة المرور",
+        "updateProfile": "تحديث الملف الشخصي",
+        "addReader": "إضافة قارئ",
+        "editReader": "تعديل القارئ",
+        "addService": "إضافة خدمة",
+        "editService": "تعديل الخدمة",
+        "processRefund": "معالجة الاسترداد",
+        "adjustWallet": "تعديل المحفظة",
+        "sendNotification": "إرسال إشعار",
+        "createBackup": "إنشاء نسخة احتياطية",
+        "forceEndSession": "إنهاء الجلسة قسراً",
+        "sendBroadcast": "إرسال بث",
+        "generateCode": "إنشاء رمز",
+        "viewDetails": "عرض التفاصيل",
+        "manageUsers": "إدارة المستخدمين",
+        "manageReaders": "إدارة القراء",
+        "manageServices": "إدارة الخدمات",
+        "managePayments": "إدارة المدفوعات",
+        "manageSettings": "إدارة الإعدادات",
+        "systemHealth": "صحة النظام",
+        "auditLogs": "سجلات التدقيق",
+        "realTimeControls": "التحكم في الوقت الفعلي",
+        "databaseManagement": "إدارة قاعدة البيانات",
+        "financialControls": "التحكم المالي",
+        "emergencyMode": "وضع الطوارئ",
+        "maintenanceMode": "وضع الصيانة"
+      },
+      "validation": {
+        "required": "هذا الحقل مطلوب",
+        "email": "يرجى إدخال عنوان بريد إلكتروني صحيح",
+        "phone": "يرجى إدخال رقم هاتف صحيح",
+        "password": "يجب أن تكون كلمة المرور 8 أحرف على الأقل",
+        "confirmPassword": "كلمات المرور غير متطابقة",
+        "minLength": "يجب أن يكون على الأقل {{min}} أحرف",
+        "maxLength": "يجب أن يكون أقل من {{max}} أحرف",
+        "numeric": "يجب أن يكون رقم صحيح",
+        "positive": "يجب أن يكون رقم موجب",
+        "invalidCode": "رمز غير صحيح",
+        "invalidUserId": "معرف مستخدم غير صحيح",
+        "invalidAmount": "مبلغ غير صحيح",
+        "selectOption": "يرجى اختيار خيار"
+      }
+    },
+    "roles": {
+      "client": "عميل",
+      "reader": "قارئ", 
+      "admin": "مدير",
+      "monitor": "مراقب",
+      "superAdmin": "مدير عام"
+    },
+    "userManagement": {
+      "filters": {
+        "allRoles": "جميع الأدوار",
+        "allStatus": "جميع الحالات"
+      },
+      "editUser": "تعديل ملف المستخدم"
+    },
+    "contact": {
+      "sendMessage": "أرسل رسالة",
+      "formDescription": "املأ النموذج أدناه وسنتواصل معك في أقرب وقت ممكن",
+      "sending": "جاري الإرسال...",
+      "sendButton": "إرسال الرسالة",
+      "success": "تم إرسال رسالتك بنجاح! سنتواصل معك قريباً",
+      "error": "حدث خطأ في إرسال الرسالة. يرجى المحاولة مرة أخرى",
+      "form": {
+        "name": "الاسم",
+        "namePlaceholder": "اسمك الكامل",
+        "email": "البريد الإلكتروني",
+        "emailPlaceholder": "بريدك الإلكتروني",
+        "phone": "رقم الهاتف",
+        "phonePlaceholder": "رقم هاتفك",
+        "subject": "الموضوع",
+        "subjectPlaceholder": "موضوع الرسالة",
+        "message": "الرسالة",
+        "messagePlaceholder": "اكتب رسالتك هنا..."
+      }
+    },
+    "admin": {
+      "readers": {
+        "title": "إدارة القراء",
+        "subtitle": "إدارة القراء والموافقة على الطلبات ومراقبة الأداء",
+        "addReader": "إضافة قارئ جديد",
+        "search": "البحث عن قراء...",
+        "filter": "تصفية حسب الحالة",
+        "all": "الكل",
+        "active": "نشط",
+        "pending": "في الانتظار",
+        "inactive": "غير نشط",
+        "suspended": "معلق",
+        "stats": {
+          "totalReaders": "إجمالي القراء",
+          "pendingApprovals": "في انتظار الموافقة",
+          "activeReaders": "القراء النشطون",
+          "totalEarnings": "إجمالي الأرباح"
+        },
+        "table": {
+          "reader": "القارئ",
+          "specializations": "التخصصات",
+          "rating": "التقييم",
+          "sessions": "الجلسات",
+          "earnings": "الأرباح",
+          "status": "الحالة",
+          "actions": "الإجراءات"
+        },
+        "actions": {
+          "edit": "تعديل",
+          "view": "عرض",
+          "approve": "موافقة",
+          "suspend": "تعليق",
+          "activate": "تفعيل",
+          "deactivate": "إلغاء التفعيل",
+          "delete": "حذف"
+        },
+        "addModal": {
+          "title": "إضافة قارئ جديد",
+          "email": "البريد الإلكتروني",
+          "firstName": "الاسم الأول",
+          "lastName": "اسم العائلة",
+          "displayName": "الاسم المعروض",
+          "phone": "الهاتف",
+          "country": "البلد",
+          "timezone": "المنطقة الزمنية",
+          "bio": "النبذة الشخصية",
+          "specializations": "التخصصات",
+          "languages": "اللغات",
+          "cancel": "إلغاء",
+          "create": "إنشاء القارئ",
+          "creating": "جاري إنشاء القارئ...",
+          "emailRequired": "البريد الإلكتروني مطلوب",
+          "nameRequired": "الاسم مطلوب"
+        },
+        "editModal": {
+          "title": "تعديل القارئ",
+          "save": "حفظ التغييرات",
+          "saving": "جاري الحفظ..."
+        },
+        "specializations": {
+          "tarot": "التاروت",
+          "coffee": "قراءة القهوة",
+          "dream": "تفسير الأحلام",
+          "numerology": "علم الأرقام",
+          "astrology": "علم التنجيم",
+          "general_reading": "قراءة عامة",
+          "relationship": "العلاقات",
+          "career": "المهنة",
+          "spiritual": "روحاني"
+        },
+        "languages": {
+          "ar": "العربية",
+          "en": "الإنجليزية",
+          "fr": "الفرنسية"
+        }
+      }
     }
+  },
+  "layout": {
+    "logout": "تسجيل الخروج",
+    "online": "متصل",
+    "loading": "جاري التحميل...",
+    "searchPlaceholder": "البحث..."
+  },
+  "navigation": {
+    "dashboard": "لوحة التحكم",
+    "users": "إدارة المستخدمين",
+    "readers": "إدارة القراء",
+    "finances": "التقارير المالية",
+    "analytics": "الإحصائيات",
+    "reviews": "المراجعات",
+    "messages": "الرسائل",
+    "reports": "التقارير",
+    "incidents": "الحوادث",
+    "system": "النظام",
+    "security": "الأمان",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "monitoring": "لوحة المراقبة",
+    "liveMonitoring": "المراقبة المباشرة",
+    "sessionMonitoring": "مراقبة الجلسات",
+    "messageMonitoring": "مراقبة الرسائل",
+    "contentReview": "مراجعة المحتوى",
+    "userMonitoring": "مراقبة المستخدمين",
+    "reviewModeration": "تقييم المراجعات",
+    "logs": "السجلات",
+    "readerProfile": "الملف الشخصي",
+    "services": "الخدمات",
+    "tarotSpreads": "انتشارات التاروت",
+    "workingHours": "ساعات العمل",
+    "bookings": "المواعيد",
+    "rewards": "المكافآت",
+    "earnings": "الأرباح",
+    "clientDashboard": "الرئيسية",
+    "favoriteReaders": "القراء المفضلون",
+    "myReviews": "تقييماتي",
+    "wallet": "المحفظة",
+    "home": "الرئيسية",
+    "chat": "الرسائل",
+    "feedback": "التقييمات"
+  },
+  "descriptions": {
+    "readerDashboard": "الصفحة الرئيسية للقارئ",
+    "manageProfile": "إدارة الملف الشخصي",
+    "manageServices": "إدارة الخدمات المقدمة",
+    "manageSpreads": "إدارة انتشارات التاروت",
+    "manageAvailability": "إدارة ساعات العمل",
+    "manageAppointments": "إدارة المواعيد",
+    "chatWithClients": "التواصل مع العملاء",
+    "rewardsSystem": "نظام المكافآت",
+    "trackEarnings": "تتبع الأرباح",
+    "clientFeedback": "تقييمات العملاء",
+    "performanceAnalytics": "إحصائيات الأداء"
   }
 } 

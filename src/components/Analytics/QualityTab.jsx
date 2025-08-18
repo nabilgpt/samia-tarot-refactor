@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AnalyticsAPI } from '../../api/analyticsApi.js';
+import api from '../../services/frontendApi.js';
 import { 
   Star, 
   Clock, 
@@ -36,13 +36,13 @@ const QualityTab = ({ dateRange, loading, setLoading }) => {
     setLoading(true);
     try {
       // Load quality metrics
-      const qualityResult = await AnalyticsAPI.getQualityMetrics(dateRange.start, dateRange.end);
+      const qualityResult = await api.getQualityMetrics(dateRange.start, dateRange.end);
       if (qualityResult.success) {
         setQualityMetrics(qualityResult.data);
       }
 
       // Load reader performance
-      const performanceResult = await AnalyticsAPI.getReaderPerformance(dateRange.start, dateRange.end);
+      const performanceResult = await api.getReaderPerformance(dateRange.start, dateRange.end);
       if (performanceResult.success) {
         setReaderPerformance(performanceResult.data);
       }

@@ -1,0 +1,747 @@
+{
+  "external_services": {},
+  "payment_integrations": {
+    "services_detected": [
+      "@stripe/react-stripe-js",
+      "@stripe/stripe-js",
+      "square",
+      "stripe"
+    ],
+    "stripe_configured": true,
+    "square_configured": true,
+    "multiple_providers": true
+  },
+  "ai_services": {
+    "services_detected": [
+      "openai"
+    ],
+    "openai_configured": true,
+    "multiple_providers": false,
+    "models_variety": false
+  },
+  "communication_services": {
+    "services_detected": [
+      "nodemailer",
+      "socket.io",
+      "socket.io-client",
+      "twilio"
+    ],
+    "realtime_enabled": true,
+    "sms_enabled": true,
+    "email_configured": true
+  },
+  "database_integrations": {
+    "services_detected": [
+      "@supabase/supabase-js",
+      "pg",
+      "redis"
+    ],
+    "primary_database": "supabase",
+    "caching_enabled": true,
+    "orm_used": false
+  },
+  "cloud_services": {},
+  "security_services": {
+    "services_detected": [
+      "bcryptjs",
+      "cors",
+      "express-rate-limit",
+      "express-validator",
+      "helmet",
+      "jsonwebtoken"
+    ],
+    "rate_limiting": true,
+    "validation": true,
+    "security_headers": true,
+    "cors_configured": true
+  },
+  "monitoring_services": {
+    "services_detected": [
+      "@sentry/browser",
+      "@sentry/react",
+      "@sentry/tracing",
+      "morgan",
+      "winston"
+    ],
+    "error_tracking": true,
+    "logging": true,
+    "performance_monitoring": false
+  },
+  "dependencies_analysis": {
+    "total_dependencies": 89,
+    "categorized_dependencies": {
+      "payment_services": {
+        "@stripe/react-stripe-js": "^2.8.2",
+        "@stripe/stripe-js": "^4.8.0",
+        "square": "^43.0.0",
+        "stripe": "^13.11.0"
+      },
+      "ai_services": {
+        "openai": "^4.24.1"
+      },
+      "communication": {
+        "nodemailer": "^6.9.7",
+        "socket.io": "^4.7.4",
+        "socket.io-client": "^4.8.1",
+        "twilio": "^4.19.0"
+      },
+      "database": {
+        "@supabase/supabase-js": "^2.50.3",
+        "pg": "^8.16.3",
+        "redis": "^4.6.10"
+      },
+      "cloud_storage": {
+        "sharp": "^0.32.6"
+      },
+      "monitoring": {
+        "@sentry/browser": "^8.0.0",
+        "@sentry/react": "^8.55.0",
+        "@sentry/tracing": "^7.120.3",
+        "morgan": "^1.10.0",
+        "winston": "^3.11.0"
+      },
+      "security": {
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "express-rate-limit": "^6.11.2",
+        "express-validator": "^7.2.1",
+        "helmet": "^7.2.0",
+        "jsonwebtoken": "^9.0.2"
+      },
+      "testing": {
+        "@testing-library/dom": "^9.3.4",
+        "@testing-library/jest-dom": "^6.6.3",
+        "@testing-library/react": "^16.0.1",
+        "@testing-library/user-event": "^14.5.2",
+        "babel-jest": "^29.7.0",
+        "jest": "^29.7.0",
+        "jest-environment-jsdom": "^29.7.0",
+        "jest-transform-stub": "^2.0.0",
+        "supertest": "^6.3.3"
+      }
+    },
+    "all_dependencies": {
+      "@emailjs/browser": "^4.4.1",
+      "@sentry/browser": "^8.0.0",
+      "@sentry/react": "^8.55.0",
+      "@sentry/tracing": "^7.120.3",
+      "@stripe/react-stripe-js": "^2.8.2",
+      "@stripe/stripe-js": "^4.8.0",
+      "@supabase/supabase-js": "^2.50.3",
+      "@testing-library/dom": "^9.3.4",
+      "@vitejs/plugin-react": "^4.3.3",
+      "bcryptjs": "^2.4.3",
+      "clsx": "^2.1.1",
+      "compression": "^1.7.4",
+      "cors": "^2.8.5",
+      "date-fns": "^4.1.0",
+      "decimal.js": "^10.4.3",
+      "dotenv": "^16.5.0",
+      "express": "^4.18.2",
+      "express-rate-limit": "^6.11.2",
+      "express-validator": "^7.2.1",
+      "framer-motion": "^11.11.17",
+      "helmet": "^7.2.0",
+      "i18next": "^25.2.1",
+      "joi": "^17.13.3",
+      "jsonwebtoken": "^9.0.2",
+      "lucide-react": "^0.454.0",
+      "moment-timezone": "^0.5.43",
+      "morgan": "^1.10.0",
+      "multer": "^1.4.5-lts.1",
+      "node-cron": "^4.1.1",
+      "nodemailer": "^6.9.7",
+      "openai": "^4.24.1",
+      "pg": "^8.16.3",
+      "react": "^18.3.1",
+      "react-dom": "^18.3.1",
+      "react-google-recaptcha": "^3.1.0",
+      "react-hot-toast": "^2.5.2",
+      "react-i18next": "^15.5.2",
+      "react-icons": "^5.5.0",
+      "react-router-dom": "^6.28.0",
+      "react-select": "^5.8.3",
+      "react-toastify": "^11.0.5",
+      "react-tsparticles": "^2.12.2",
+      "recharts": "^2.15.3",
+      "redis": "^4.6.10",
+      "sharp": "^0.32.6",
+      "socket.io": "^4.7.4",
+      "socket.io-client": "^4.8.1",
+      "square": "^43.0.0",
+      "stripe": "^13.11.0",
+      "tailwind-merge": "^3.3.0",
+      "tsparticles-slim": "^2.12.0",
+      "twilio": "^4.19.0",
+      "uuid": "^9.0.1",
+      "validator": "^13.11.0",
+      "vite": "^5.4.10",
+      "web-vitals": "^4.2.4",
+      "winston": "^3.11.0",
+      "@babel/core": "^7.26.0",
+      "@babel/preset-env": "^7.26.0",
+      "@babel/preset-react": "^7.25.9",
+      "@eslint/js": "^9.13.0",
+      "@testing-library/jest-dom": "^6.6.3",
+      "@testing-library/react": "^16.0.1",
+      "@testing-library/user-event": "^14.5.2",
+      "@types/react": "^18.3.12",
+      "@types/react-dom": "^18.3.1",
+      "autoprefixer": "^10.4.21",
+      "axios": "^1.7.8",
+      "babel-jest": "^29.7.0",
+      "concurrently": "^9.2.0",
+      "eslint": "^9.13.0",
+      "eslint-config-node": "^4.1.0",
+      "eslint-plugin-react": "^7.37.2",
+      "eslint-plugin-react-hooks": "^5.0.0",
+      "eslint-plugin-react-refresh": "^0.4.14",
+      "globals": "^15.11.0",
+      "identity-obj-proxy": "^3.0.0",
+      "jest": "^29.7.0",
+      "jest-environment-jsdom": "^29.7.0",
+      "jest-transform-stub": "^2.0.0",
+      "jsdom": "^26.1.0",
+      "nodemon": "^3.0.1",
+      "postcss": "^8.5.4",
+      "supertest": "^6.3.3",
+      "swagger-jsdoc": "^6.2.8",
+      "swagger-ui-express": "^5.0.0",
+      "tailwindcss": "^3.4.17",
+      "vitest": "^3.2.2",
+      "webpack-bundle-analyzer": "^4.9.0"
+    }
+  },
+  "environment_variables": {
+    "total_env_vars": 21,
+    "all_env_vars": [
+      "USER",
+      "FRONTEND_URL",
+      "VITE_TURN_SERVER_CREDENTIAL",
+      "NODE_ENV",
+      "RECAPTCHA_MIN_SCORE",
+      "HOSTNAME",
+      "TWILIO_ACCOUNT_SID",
+      "RECAPTCHA_SECRET_KEY",
+      "VITE_TURN_SERVER_URL",
+      "DATABASE_URL",
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_URL",
+      "STAGING_URL",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "PRODUCTION_URL",
+      "VITE_TURN_SERVER_USERNAME",
+      "USERNAME",
+      "VITE_SUPABASE_ANON_KEY",
+      "VITE_SUPABASE_URL",
+      "PORT",
+      "CI"
+    ],
+    "categorized_env_vars": {
+      "payment": [],
+      "ai": [],
+      "communication": [
+        "TWILIO_ACCOUNT_SID"
+      ],
+      "database": [
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "VITE_SUPABASE_ANON_KEY",
+        "VITE_SUPABASE_URL"
+      ],
+      "security": [
+        "RECAPTCHA_SECRET_KEY",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "VITE_SUPABASE_ANON_KEY"
+      ],
+      "monitoring": []
+    }
+  },
+  "recommendations": [
+    {
+      "type": "Data Management",
+      "priority": "Medium",
+      "message": "Ensure Supabase backup and disaster recovery procedures are in place."
+    },
+    {
+      "type": "Configuration",
+      "priority": "Low",
+      "message": "Large number of environment variables (21). Consider using a secrets management solution."
+    }
+  ],
+  "service_configurations": {
+    "src\\api\\config\\environment.js": {
+      "payment": {
+        "stripe": {
+          "publishable_key_present": true,
+          "secret_key_present": true,
+          "webhook_configured": true,
+          "test_mode": false
+        },
+        "square": {
+          "app_id_present": false,
+          "access_token_present": true,
+          "environment_configured": true
+        }
+      },
+      "ai": {
+        "openai": {
+          "api_key_present": true,
+          "organization_configured": true,
+          "models_specified": true,
+          "streaming_enabled": false
+        }
+      },
+      "communication": {
+        "twilio": {
+          "account_sid_present": true,
+          "auth_token_present": true,
+          "phone_number_configured": true,
+          "services_used": [
+            "SMS",
+            "Voice",
+            "Video"
+          ]
+        }
+      },
+      "database": {
+        "supabase": {
+          "url_present": true,
+          "anon_key_present": true,
+          "service_role_present": true,
+          "rls_configured": true,
+          "realtime_enabled": true
+        },
+        "redis": {
+          "url_configured": true,
+          "password_protected": true,
+          "clustering": false,
+          "persistence": false
+        }
+      }
+    },
+    "src\\api\\config\\secureEnvironment.js": {
+      "payment": {
+        "stripe": {
+          "publishable_key_present": false,
+          "secret_key_present": true,
+          "webhook_configured": false,
+          "test_mode": false
+        }
+      },
+      "ai": {
+        "openai": {
+          "api_key_present": true,
+          "organization_configured": false,
+          "models_specified": false,
+          "streaming_enabled": false
+        }
+      },
+      "communication": {
+        "twilio": {
+          "account_sid_present": false,
+          "auth_token_present": true,
+          "phone_number_configured": false,
+          "services_used": []
+        }
+      },
+      "database": {
+        "supabase": {
+          "url_present": true,
+          "anon_key_present": true,
+          "service_role_present": true,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\api\\config\\stripe.js": {
+      "payment": {
+        "stripe": {
+          "publishable_key_present": true,
+          "secret_key_present": true,
+          "webhook_configured": true,
+          "test_mode": true
+        }
+      }
+    },
+    "src\\lib\\apiSecurity.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\lib\\storage.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\lib\\supabase.js": {
+      "database": {
+        "supabase": {
+          "url_present": true,
+          "anon_key_present": true,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "node_modules\\tailwindcss\\src\\lib\\defaultExtractor.js": {
+      "payment": {
+        "square": {
+          "app_id_present": false,
+          "access_token_present": false,
+          "environment_configured": false
+        }
+      }
+    },
+    "src\\services\\aiReadingService.js": {
+      "ai": {
+        "openai": {
+          "api_key_present": true,
+          "organization_configured": false,
+          "models_specified": true,
+          "streaming_enabled": false
+        }
+      }
+    },
+    "src\\services\\aiWatchdogService.js": {
+      "communication": {
+        "socketio": {
+          "cors_configured": false,
+          "namespace_used": false,
+          "authentication": false,
+          "clustering": false
+        }
+      },
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": true
+        }
+      }
+    },
+    "src\\services\\api.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\bilingualSettingsService.js": {
+      "ai": {
+        "openai": {
+          "api_key_present": false,
+          "organization_configured": false,
+          "models_specified": false,
+          "streaming_enabled": false
+        },
+        "anthropic": {
+          "api_key_present": false,
+          "claude_models": false
+        }
+      }
+    },
+    "src\\services\\configService.js": {
+      "ai": {
+        "openai": {
+          "api_key_present": false,
+          "organization_configured": false,
+          "models_specified": false,
+          "streaming_enabled": false
+        },
+        "anthropic": {
+          "api_key_present": false,
+          "claude_models": true
+        }
+      },
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\configurationService.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\emergencyAlertsService.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\enhancedProvidersService.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\frontendApi.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": true,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\monitoringService.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\notificationSchedulerService.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\openaiService.js": {
+      "ai": {
+        "openai": {
+          "api_key_present": false,
+          "organization_configured": false,
+          "models_specified": false,
+          "streaming_enabled": false
+        }
+      }
+    },
+    "src\\services\\paymentMethodService.js": {
+      "payment": {
+        "stripe": {
+          "publishable_key_present": false,
+          "secret_key_present": false,
+          "webhook_configured": false,
+          "test_mode": false
+        },
+        "square": {
+          "app_id_present": false,
+          "access_token_present": false,
+          "environment_configured": false
+        }
+      },
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\providerTestingService.js": {
+      "ai": {
+        "openai": {
+          "api_key_present": false,
+          "organization_configured": true,
+          "models_specified": false,
+          "streaming_enabled": false
+        },
+        "anthropic": {
+          "api_key_present": false,
+          "claude_models": true
+        }
+      }
+    },
+    "src\\services\\recordingService.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\sessionLogger.js": {
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": false,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\systemSecretsService.js": {
+      "payment": {
+        "stripe": {
+          "publishable_key_present": false,
+          "secret_key_present": true,
+          "webhook_configured": false,
+          "test_mode": false
+        }
+      },
+      "ai": {
+        "openai": {
+          "api_key_present": false,
+          "organization_configured": false,
+          "models_specified": false,
+          "streaming_enabled": false
+        }
+      },
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": true,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\ttsService.js": {
+      "ai": {
+        "openai": {
+          "api_key_present": true,
+          "organization_configured": false,
+          "models_specified": false,
+          "streaming_enabled": false
+        }
+      },
+      "database": {
+        "supabase": {
+          "url_present": false,
+          "anon_key_present": false,
+          "service_role_present": false,
+          "rls_configured": true,
+          "realtime_enabled": false
+        }
+      }
+    },
+    "src\\services\\webrtcService.js": {
+      "communication": {
+        "twilio": {
+          "account_sid_present": true,
+          "auth_token_present": false,
+          "phone_number_configured": false,
+          "services_used": [
+            "Video"
+          ]
+        }
+      }
+    }
+  },
+  "external_apis": {
+    "total_external_apis": 30,
+    "service_apis": [
+      "qhgpxvuijdkdgqiuehqp.supabase.co",
+      "suxgmyeqzqmkxydsgkng.supabase.co",
+      "samia-tarot.com,https:",
+      "www.google.com",
+      "aws.amazon.com",
+      "samia-tarot.com",
+      "backup.samia-tarot.com",
+      "api.openai.com",
+      "supabase.com",
+      "abc123.supabase.co)",
+      "staging.samia-tarot.com",
+      "cloud.google.com",
+      "squareup.com",
+      "stripe.com",
+      "placeholder@sentry.io",
+      "anthropic.com",
+      "uuseflmielktdcltzwzt.supabase.co",
+      "dashboard.stripe.com",
+      "abc123.supabase.co",
+      "elevenlabs.io",
+      "vitejs.dev",
+      "paypal.com",
+      "tronscan.org",
+      "openai.com",
+      "playwright.dev",
+      "azure.microsoft.com"
+    ],
+    "all_external_apis": [
+      "qhgpxvuijdkdgqiuehqp.supabase.co",
+      "suxgmyeqzqmkxydsgkng.supabase.co",
+      "samia-tarot.com,https:",
+      "www.google.com",
+      "aws.amazon.com",
+      "samia-tarot.com",
+      "localhost:5001",
+      "backup.samia-tarot.com",
+      "api.openai.com",
+      "127.0.0.1:3000",
+      "localhost:${PORT}",
+      "supabase.com",
+      "abc123.supabase.co)",
+      "localhost:3000",
+      "staging.samia-tarot.com",
+      "cloud.google.com",
+      "squareup.com",
+      "stripe.com",
+      "placeholder@sentry.io",
+      "anthropic.com",
+      "uuseflmielktdcltzwzt.supabase.co",
+      "dashboard.stripe.com",
+      "abc123.supabase.co",
+      "elevenlabs.io",
+      "vitejs.dev",
+      "paypal.com",
+      "tronscan.org",
+      "openai.com",
+      "playwright.dev",
+      "azure.microsoft.com"
+    ]
+  }
+}

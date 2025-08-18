@@ -24,8 +24,8 @@ const Footer = () => {
 
   const supportLinks = [
     { key: 'contact', path: '/contact', label: t('footer.contact') },
-    { key: 'help', path: '/help', label: 'مساعدة' },
-    { key: 'faq', path: '/faq', label: 'الأسئلة الشائعة' },
+    { key: 'help', path: '/help', label: t('footer.help') },
+    { key: 'faq', path: '/faq', label: t('footer.faq') },
     { key: 'support', path: '/support', label: t('footer.support') }
   ];
 
@@ -42,7 +42,7 @@ const Footer = () => {
       label: t('footer.terms'),
       external: true
     },
-    { key: 'cookies', path: '/cookies', label: 'سياسة الكوكيز' }
+    { key: 'cookies', path: '/cookies', label: t('footer.cookies') }
   ];
 
   const socialLinks = [

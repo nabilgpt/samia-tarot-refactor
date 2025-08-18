@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+@import './styles/rtl-support.css';
+@import './styles/mobile-dropdown-fixes.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -247,6 +251,38 @@ p {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--gold-primary) var(--bg-secondary);
+}
+
+/* -----------------------------------------------------------------------------
+   Hidden Scrollbar Utilities - Cross-browser Support
+   ----------------------------------------------------------------------------- */
+.hide-scrollbar {
+  scrollbar-width: none !important;      /* Firefox */
+  -ms-overflow-style: none !important;   /* IE 10+ */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;              /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Additional cosmic theme compatible scrollbar hiding */
+.cosmic-scrollbar-hidden {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.cosmic-scrollbar-hidden::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Ensure smooth scrolling for hidden scrollbars */
+.hide-scrollbar,
+.cosmic-scrollbar-hidden {
+  scroll-behavior: smooth;
 }
 
 /* -----------------------------------------------------------------------------
@@ -678,4 +714,108 @@ a:hover {
 ::-moz-selection {
   background: var(--cosmic-primary);
   color: var(--text-inverse);
+}
+
+/* -----------------------------------------------------------------------------
+   🂠 Hidden Card Styles for Tarot Spread Manager
+   ----------------------------------------------------------------------------- */
+.hidden-card {
+  opacity: 0.7;
+  filter: grayscale(20%);
+  transition: all 0.3s ease;
+}
+
+.hidden-card:hover {
+  opacity: 0.9;
+  filter: grayscale(10%);
+}
+
+.tarot-card-label {
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Cosmic Form Field Styling for Bilingual Components */
+.cosmic-form-field label {
+  @apply text-gold-300 font-semibold;
+}
+
+.cosmic-form-field input,
+.cosmic-form-field textarea,
+.cosmic-form-field select {
+  @apply bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 
+         focus:border-gold-400 focus:ring-2 focus:ring-gold-400/20 
+         transition-all duration-300 rounded-xl;
+}
+
+.cosmic-form-field input:hover,
+.cosmic-form-field textarea:hover,
+.cosmic-form-field select:hover {
+  @apply border-gray-500;
+}
+
+.cosmic-form-field input:focus,
+.cosmic-form-field textarea:focus,
+.cosmic-form-field select:focus {
+  @apply ring-gold-400/30 border-gold-400;
+}
+
+.cosmic-form-field .error {
+  @apply text-red-400 text-sm;
+} 
+
+/* Force solid background for search results panel - FINAL SOLUTION */
+.search-results-solid-bg {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  z-index: 9999 !important;
+  isolation: isolate !important;
+  /* Additional overrides to ensure solid background */
+  background-image: none !important;
+  background-attachment: scroll !important;
+  background-blend-mode: normal !important;
+}
+
+.search-results-solid-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0f172a;
+  opacity: 1;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Ensure no parent can override the search panel opacity */
+.search-results-solid-bg * {
+  opacity: 1 !important;
+}
+
+/* Remove any glassmorphism effects from search results */
+.search-results-solid-bg,
+.search-results-solid-bg * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ULTRA STRONG CSS for search results panel - FORCE SOLID BACKGROUND */
+div[style*="backgroundColor: #0f172a"] {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-image: none !important;
+  background-blend-mode: normal !important;
+}
+
+/* Force solid background for any search results container */
+.absolute.top-full div[style*="backgroundColor"] {
+  background: #0f172a !important;
+  background-color: #0f172a !important;
+  opacity: 1 !important;
 } 

@@ -7,90 +7,16 @@
  * - Other roles: No access
  */
 
-import { supabase } from '../lib/supabase';
-
-// Mock payment methods data for development
-const mockPaymentMethods = [
-  {
-    id: 1,
-    method: 'stripe',
-    enabled: true,
-    countries: ['US', 'CA', 'UK', 'AU'],
-    details: { name: 'Stripe', description: 'Credit/Debit Cards' },
-    fees: { percentage: 2.9, fixed: 0.30 },
-    processing_time: 'Instant',
-    auto_confirm: true,
-    requires_receipt: false,
-    display_order: 1,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: 2,
-    method: 'paypal',
-    enabled: true,
-    countries: ['US', 'CA', 'UK', 'AU', 'DE', 'FR'],
-    details: { name: 'PayPal', description: 'PayPal Payments' },
-    fees: { percentage: 3.49, fixed: 0.49 },
-    processing_time: 'Instant',
-    auto_confirm: false,
-    requires_receipt: false,
-    display_order: 2,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: 3,
-    method: 'bank_transfer',
-    enabled: false,
-    countries: ['US', 'CA'],
-    details: { name: 'Bank Transfer', description: 'Direct Bank Transfer' },
-    fees: { percentage: 0, fixed: 0 },
-    processing_time: '1-3 business days',
-    auto_confirm: false,
-    requires_receipt: true,
-    display_order: 3,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z'
-  }
-];
-
-const mockPaymentRegions = [
-  { code: 'US', name: 'United States', currency: 'USD', enabled: true },
-  { code: 'CA', name: 'Canada', currency: 'CAD', enabled: true },
-  { code: 'UK', name: 'United Kingdom', currency: 'GBP', enabled: true },
-  { code: 'AU', name: 'Australia', currency: 'AUD', enabled: true },
-  { code: 'DE', name: 'Germany', currency: 'EUR', enabled: true },
-  { code: 'FR', name: 'France', currency: 'EUR', enabled: true }
-];
+import { supabase } from './lib/supabase.js';
 
 class PaymentSettingsAPI {
   
   /**
-   * Check if we're in mock mode
-   */
-  static isInMockMode() {
-    return !import.meta.env.VITE_SUPABASE_URL || 
-           import.meta.env.VITE_SUPABASE_URL.includes('localhost') ||
-           window.location.hostname === 'localhost';
-  }
-
-  /**
-   * Get all payment methods (Admin & Super Admin only)
+   * Get all payment methods with their settings
    * @returns {Promise<Object>} API response with payment methods
    */
   static async getPaymentMethods() {
     try {
-      // Check if we're in mock mode
-      if (this.isInMockMode()) {
-        console.log('🔧 Mock mode: Returning payment methods data');
-        return {
-          success: true,
-          data: mockPaymentMethods,
-          timestamp: new Date().toISOString()
-        };
-      }
-
       const { data, error } = await supabase
         .from('payment_settings')
         .select('*')
@@ -105,17 +31,6 @@ class PaymentSettingsAPI {
       };
     } catch (error) {
       console.error('Error fetching payment methods:', error);
-      
-      // Fallback to mock data if database fails
-      if (error.message?.includes('table') || error.message?.includes('Invalid API key')) {
-        console.log('🔧 Falling back to mock payment methods data');
-        return {
-          success: true,
-          data: mockPaymentMethods,
-          timestamp: new Date().toISOString()
-        };
-      }
-
       return {
         success: false,
         error: error.message || 'Failed to fetch payment methods'
@@ -200,7 +115,7 @@ class PaymentSettingsAPI {
           ...updateData,
           updated_at: new Date().toISOString()
         };
-      } else if (userRole === 'admin') {
+      } else if (['admin', 'super_admin'].includes(userRole)) {
         // Admin can only enable/disable
         if (updateData.enabled !== undefined) {
           finalUpdateData = {
@@ -318,37 +233,15 @@ class PaymentSettingsAPI {
   }
 
   /**
-   * Get payment regions
-   * @returns {Promise<Object>} API response with payment regions
+   * Get payment regions/countries
+   * @returns {Promise<Object>} API response with regions
    */
   static async getPaymentRegions() {
     try {
-      // Mock data for development
-      const mockRegions = [
-        { code: 'US', name: 'United States', currency: 'USD', enabled: true },
-        { code: 'CA', name: 'Canada', currency: 'CAD', enabled: true },
-        { code: 'UK', name: 'United Kingdom', currency: 'GBP', enabled: true },
-        { code: 'AU', name: 'Australia', currency: 'AUD', enabled: true },
-        { code: 'DE', name: 'Germany', currency: 'EUR', enabled: true },
-        { code: 'FR', name: 'France', currency: 'EUR', enabled: true }
-      ];
-
-      // Check if we're in mock mode or if database fails
-      if (!import.meta.env.VITE_SUPABASE_URL || 
-          import.meta.env.VITE_SUPABASE_URL.includes('localhost') ||
-          window.location.hostname === 'localhost') {
-        console.log('🔧 Mock mode: Returning payment regions data');
-        return {
-          success: true,
-          data: mockRegions,
-          timestamp: new Date().toISOString()
-        };
-      }
-
       const { data, error } = await supabase
         .from('payment_regions')
         .select('*')
-        .order('region', { ascending: true });
+        .order('name', { ascending: true });
 
       if (error) throw error;
 
@@ -359,25 +252,6 @@ class PaymentSettingsAPI {
       };
     } catch (error) {
       console.error('Error fetching payment regions:', error);
-      
-      // Fallback to mock data if database fails
-      if (error.message?.includes('table') || error.message?.includes('Invalid API key')) {
-        console.log('🔧 Falling back to mock payment regions data');
-        const mockRegions = [
-          { code: 'US', name: 'United States', currency: 'USD', enabled: true },
-          { code: 'CA', name: 'Canada', currency: 'CAD', enabled: true },
-          { code: 'UK', name: 'United Kingdom', currency: 'GBP', enabled: true },
-          { code: 'AU', name: 'Australia', currency: 'AUD', enabled: true },
-          { code: 'DE', name: 'Germany', currency: 'EUR', enabled: true },
-          { code: 'FR', name: 'France', currency: 'EUR', enabled: true }
-        ];
-        return {
-          success: true,
-          data: mockRegions,
-          timestamp: new Date().toISOString()
-        };
-      }
-
       return {
         success: false,
         error: error.message || 'Failed to fetch payment regions'

@@ -3,11 +3,18 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { UIProvider } from './context/UIContext';
 import { ConfigProvider } from './context/ConfigContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { initializeSupabase } from './lib/supabase';
+import { initializeMonitoring } from './utils/monitoring.jsx';
 import ErrorBoundary from './components/ErrorBoundary';
+import dashboardHealthMonitor from './utils/dashboardHealthMonitor';
+import systemIntegration from './utils/systemIntegration';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import QuickCommandPalette from './components/Admin/QuickCommandPalette';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import './styles/toast-styles.css';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -38,28 +45,32 @@ import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 import AdminMessagesPage from './pages/admin/AdminMessagesPage';
 import AdminReportsPage from './pages/admin/AdminReportsPage';
 import AdminIncidentsPage from './pages/admin/AdminIncidentsPage';
-import AdminSystemPage from './pages/admin/AdminSystemPage';
 import AdminSecurityPage from './pages/admin/AdminSecurityPage';
 import AdminProfilePage from './pages/admin/AdminProfilePage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
-import ThemeDemo from './pages/ThemeDemo';
-import SupabaseTest from './components/SupabaseTest';
-import RoleDemo from './components/RoleDemo';
-import RoleBasedAccessTest from './tests/security/RoleBasedAccessTest';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import './i18n';
 import './styles/recaptcha.css';
 import './styles/form-overrides.css';
+import './styles/layout-fixes.css';
+import { getAdminRoles } from './utils/roleHelpers';
 
 // Automatic Dashboard Router Component
 const DashboardRouter = () => {
-  const { profile, loading, initialized } = useAuth();
+  const { user, profile, loading, initialized, isAuthenticated } = useAuth();
   
-  console.log('🔄 DashboardRouter - Profile:', profile?.role);
+  console.log('🔄 DashboardRouter State:', {
+    user: user ? user.email : null,
+    profile: profile ? profile.role : null,
+    loading,
+    initialized,
+    isAuthenticated
+  });
   
-  // Show loading while checking profile
-  if (loading || !initialized) {
+  // Show loading while checking authentication and profile
+  if (loading || !initialized || !isAuthenticated) {
+    console.log('🔄 DashboardRouter: Showing loading state...');
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
         <div className="text-center">
@@ -80,40 +91,90 @@ const DashboardRouter = () => {
     );
   }
 
+  // Wait for profile to load
+  if (!profile) {
+    console.log('🔄 DashboardRouter: Waiting for profile to load...');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative mb-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-400"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-purple-400/20"></div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-gray-300 text-lg font-medium">
+              Loading profile...
+            </p>
+            <p className="text-gray-500 text-sm">
+              Fetching your role and permissions
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Redirect based on user role
-  if (profile?.role) {
-    const dashboardPaths = {
-      client: '/dashboard/client',
-      reader: '/dashboard/reader', 
-      admin: '/dashboard/admin',
-      monitor: '/dashboard/monitor',
-      super_admin: '/dashboard/super-admin'
-    };
-    
-    const targetPath = dashboardPaths[profile.role];
-    console.log(`🎯 DashboardRouter: Redirecting ${profile.role} to ${targetPath}`);
-    
-    if (targetPath) {
-      return <Navigate to={targetPath} replace />;
-    }
+  const dashboardPaths = {
+    client: '/dashboard/client',
+    reader: '/dashboard/reader', 
+    admin: '/dashboard/admin',
+    monitor: '/dashboard/monitor',
+    super_admin: '/dashboard/super-admin'
+  };
+  
+  const targetPath = dashboardPaths[profile.role];
+  console.log(`🎯 DashboardRouter: Redirecting ${profile.role} to ${targetPath}`);
+  
+  if (targetPath) {
+    return <Navigate to={targetPath} replace />;
   }
   
   // Fallback to client dashboard
-  console.log('⚠️ DashboardRouter: No role found, defaulting to client dashboard');
+  console.log('⚠️ DashboardRouter: Unknown role, defaulting to client dashboard');
   return <Navigate to="/dashboard/client" replace />;
+};
+
+// BilingualToastContainer component
+const BilingualToastContainer = () => {
+  const { currentLanguage } = useLanguage();
+  
+  return (
+    <ToastContainer
+      position={currentLanguage === 'ar' ? 'top-left' : 'top-right'}
+      autoClose={3000}
+      hideProgressBar={false}
+      newestOnTop={false}
+      closeOnClick
+      rtl={currentLanguage === 'ar'}
+      pauseOnFocusLoss
+      draggable
+      pauseOnHover
+      theme="dark"
+      toastClassName="backdrop-blur-sm"
+      bodyClassName="text-sm"
+      progressClassName="bg-purple-500"
+    />
+  );
 };
 
 function App() {
   useEffect(() => {
+    // Initialize core systems
     initializeSupabase();
+    initializeMonitoring();
   }, []);
 
   return (
     <ErrorBoundary>
+      <LanguageProvider>
       <UIProvider>
         <AuthProvider>
           <ConfigProvider>
-            <Router>
+            <Router future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}>
               <QuickCommandPalette />
               <Routes>
                 <Route path="/" element={<Layout />}>
@@ -139,23 +200,7 @@ function App() {
                     } 
                   />
                   
-                  {/* Demo/Test Routes (should be protected in production) */}
-                  <Route path="test" element={
-                    <ProtectedRoute requiredRoles={['admin', 'super_admin']}>
-                      <SupabaseTest />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="demo" element={
-                    <ProtectedRoute requiredRoles={['admin', 'super_admin']}>
-                      <RoleDemo />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="security-test" element={
-                    <ProtectedRoute requiredRoles={['admin', 'super_admin']}>
-                      <RoleBasedAccessTest />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="theme-demo" element={<ThemeDemo />} />
+                  {/* Demo/Test Routes removed during cleanup */}
                   
                   {/* Protected User Pages - Require Authentication */}
                   <Route path="profile" element={
@@ -217,7 +262,7 @@ function App() {
                   <Route 
                     path="dashboard/admin" 
                     element={
-                      <ProtectedRoute requiredRoles={['admin']} showUnauthorized={true}>
+                      <ProtectedRoute requiredRoles={getAdminRoles()} showUnauthorized={true}>
                         <AdminDashboard />
                       </ProtectedRoute>
                     } 
@@ -241,7 +286,7 @@ function App() {
                   
                   {/* Admin Routes */}
                   <Route path="admin/users" element={
-                    <ProtectedRoute requiredRoles={['admin']}>
+                    <ProtectedRoute requiredRoles={getAdminRoles()}>
                       <AdminUsersPage />
                     </ProtectedRoute>
                   } />
@@ -256,7 +301,7 @@ function App() {
                     </ProtectedRoute>
                   } />
                   <Route path="admin/analytics" element={
-                    <ProtectedRoute requiredRoles={['admin']}>
+                    <ProtectedRoute requiredRoles={getAdminRoles()}>
                       <AdminAnalyticsPage />
                     </ProtectedRoute>
                   } />
@@ -271,18 +316,13 @@ function App() {
                     </ProtectedRoute>
                   } />
                   <Route path="admin/reports" element={
-                    <ProtectedRoute requiredRoles={['admin']}>
+                    <ProtectedRoute requiredRoles={getAdminRoles()}>
                       <AdminReportsPage />
                     </ProtectedRoute>
                   } />
                   <Route path="admin/incidents" element={
                     <ProtectedRoute requiredRoles={['admin']}>
                       <AdminIncidentsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="admin/system" element={
-                    <ProtectedRoute requiredRoles={['admin']}>
-                      <AdminSystemPage />
                     </ProtectedRoute>
                   } />
                   <Route path="admin/security" element={
@@ -296,7 +336,7 @@ function App() {
                     </ProtectedRoute>
                   } />
                   <Route path="admin/settings" element={
-                    <ProtectedRoute requiredRoles={['admin']}>
+                    <ProtectedRoute requiredRoles={getAdminRoles()}>
                       <AdminSettingsPage />
                     </ProtectedRoute>
                   } />
@@ -318,10 +358,12 @@ function App() {
                   } />
                 </Route>
               </Routes>
+                <BilingualToastContainer />
             </Router>
           </ConfigProvider>
         </AuthProvider>
       </UIProvider>
+      </LanguageProvider>
     </ErrorBoundary>
   );
 }

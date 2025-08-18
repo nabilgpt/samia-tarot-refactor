@@ -6,6 +6,7 @@ import { loadSlim } from 'tsparticles-slim';
 import MonitorLayout from '../../components/Layout/MonitorLayout.jsx';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
+import api from '../../services/frontendApi.js';
 
 // Import monitor components
 import MonitorLiveSessions from '../../components/Monitor/MonitorLiveSessions';
@@ -112,16 +113,35 @@ const MonitorDashboard = () => {
 
   const loadDashboardStats = async () => {
     try {
-      // Mock data for demonstration - would be replaced with MonitorAPI.getDashboardStats()
-      setStats({
-        active_sessions: 12,
-        pending_approvals: 8,
-        unresolved_violations: 3,
-        unread_notifications: 5,
-        flagged_sessions: 2
-      });
+      const response = await api.get('/admin/stats');
+      
+      if (response.data.success) {
+        setStats({
+          active_sessions: response.data.data.bookings?.pending || 0,
+          pending_approvals: response.data.data.readers?.inactive || 0,
+          unresolved_violations: 0, // This would come from violations API
+          unread_notifications: 0, // This would come from notifications API
+          flagged_sessions: response.data.data.bookings?.cancelled || 0
+        });
+      } else {
+        console.error('Failed to load stats:', response.data.error);
+        setStats({
+          active_sessions: 0,
+          pending_approvals: 0,
+          unresolved_violations: 0,
+          unread_notifications: 0,
+          flagged_sessions: 0
+        });
+      }
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
+      setStats({
+        active_sessions: 0,
+        pending_approvals: 0,
+        unresolved_violations: 0,
+        unread_notifications: 0,
+        flagged_sessions: 0
+      });
     }
   };
 

@@ -1,12 +1,14 @@
-const express = require('express');
-const router = express.Router();
-const rateLimit = require('express-rate-limit');
+import express from 'express';
+import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 
 // Initialize Supabase client
-const { supabase } = require('./lib/supabase.js');
+import { supabase } from './lib/supabase.js';
 
 // Import authentication middleware
-const { authenticateToken } = require('./middleware/auth.js');
+import { authenticateToken } from './middleware/auth.js';
+
+const router = express.Router();
 
 // Auth-specific rate limits
 const authRateLimit = rateLimit({
@@ -44,12 +46,28 @@ router.post('/login', authRateLimit, async (req, res) => {
       });
     }
     
+    // 🔥 CRITICAL FIX: Generate JWT token for frontend
+    const jwtPayload = {
+      user_id: data.user.id,
+      email: data.user.email,
+      role: data.user.role || data.user.user_metadata?.role || 'client',
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
+    };
+    
+    const jwtSecret = process.env.JWT_SECRET || '17b58aaac837fe02ebc43c5e13784d59a67ca98c0af98950427f188db90f2dc1';
+    const jwtToken = jwt.sign(jwtPayload, jwtSecret);
+    
+    console.log('🎉 [AUTH] JWT token generated for:', data.user.email);
+    console.log('🔑 [AUTH] Token length:', jwtToken.length);
+    
     res.json({
       success: true,
       data: {
         user: data.user,
         session: data.session
       },
+      token: jwtToken, // ✅ CRITICAL: JWT token for frontend localStorage
       message: 'تم تسجيل الدخول بنجاح'
     });
     
@@ -106,4 +124,4 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router; 
+export default router; 

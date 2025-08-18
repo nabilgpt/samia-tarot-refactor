@@ -98,7 +98,7 @@ const aiGenerationSchema = Joi.object({
 // Create AI model (Admin only)
 router.post('/models',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   validateRequest(aiModelSchema),
   async (req, res) => {
     try {
@@ -202,7 +202,7 @@ router.get('/models/:id',
 // Update AI model
 router.put('/models/:id',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   validateRequest(aiModelSchema.fork(['model_name', 'model_type', 'version'], schema => schema.optional())),
   async (req, res) => {
     try {
@@ -243,7 +243,7 @@ router.put('/models/:id',
 // Delete AI model
 router.delete('/models/:id',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -277,7 +277,7 @@ router.delete('/models/:id',
 // Create AI prompt
 router.post('/prompts',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   validateRequest(aiPromptSchema),
   async (req, res) => {
     try {
@@ -344,7 +344,7 @@ router.get('/models/:modelId/prompts',
 // Update AI prompt
 router.put('/prompts/:id',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   validateRequest(aiPromptSchema.fork(['ai_model_id', 'prompt_name', 'prompt_template', 'prompt_type'], schema => schema.optional())),
   async (req, res) => {
     try {
@@ -705,7 +705,7 @@ router.get('/feedback/analytics',
 // Create learning path
 router.post('/learning-paths',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   validateRequest(learningPathSchema),
   async (req, res) => {
     try {
@@ -924,7 +924,7 @@ router.get('/my-enrollments',
 // Add content to learning path
 router.post('/learning-paths/:id/content',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   validateRequest(courseContentSchema.fork(['learning_path_id'], schema => schema.optional())),
   async (req, res) => {
     try {
@@ -1094,7 +1094,7 @@ router.post('/generate-reading',
       // Build the AI prompt based on reading type
       let aiPrompt;
       switch (reading_type) {
-        case 'card_interpretation':
+        case 'card_interpretation': {
           if (!cards || cards.length === 0) {
             return res.status(400).json({
               error: 'Cards are required for card interpretation',
@@ -1104,6 +1104,7 @@ router.post('/generate-reading',
           const card = cards[0];
           aiPrompt = tarotPrompts.cardInterpretation(card.name, card.position, question || prompt);
           break;
+        }
         
         case 'full_reading':
           if (!cards || cards.length === 0) {
@@ -1348,7 +1349,7 @@ router.get('/usage-stats',
 // Test OpenAI connection (Admin only)
 router.get('/test-connection',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   async (req, res) => {
     try {
       const testResponse = await openai.chat.completions.create({

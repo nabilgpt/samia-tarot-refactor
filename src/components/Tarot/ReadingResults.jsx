@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BookOpen, 
   Star, 
@@ -12,13 +12,54 @@ import {
   Share2,
   Download,
   Eye,
-  EyeOff
+  EyeOff,
+  Shield,
+  AlertCircle,
+  Users,
+  Sparkles,
+  Target,
+  CheckCircle
 } from 'lucide-react';
 import TarotCard from './TarotCard.jsx';
+import { useAuth } from '../../context/AuthContext';
+import { useUI } from '../../context/UIContext';
 
 const ReadingResults = ({ reading, spread, onComplete }) => {
+  const { profile } = useAuth();
+  const { language } = useUI();
   const [activeTab, setActiveTab] = useState('interpretation');
   const [showCardDetails, setShowCardDetails] = useState(false);
+  const [savedToProfile, setSavedToProfile] = useState(false);
+
+  // Role-based access control
+  const isReader = profile?.role === 'reader';
+  const isAdmin = ['admin', 'super_admin'].includes(profile?.role);
+  const canAccessAIContent = isReader || isAdmin;
+
+  // AI content protection logging
+  useEffect(() => {
+    if (reading?.confidence_score || reading?.ai_insights) {
+      // Log AI content access attempt
+      const logAIAccess = async () => {
+        try {
+          await fetch('/api/ai-audit/log-access', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              component: 'ReadingResults',
+              user_role: profile?.role,
+              ai_fields_present: ['confidence_score', 'ai_insights'],
+              access_granted: canAccessAIContent,
+              timestamp: new Date().toISOString()
+            })
+          });
+        } catch (error) {
+          console.error('Failed to log AI access:', error);
+        }
+      };
+      logAIAccess();
+    }
+  }, [reading, profile?.role, canAccessAIContent]);
 
   const tabs = [
     { id: 'interpretation', label: 'Interpretation', icon: BookOpen },
@@ -30,88 +71,90 @@ const ReadingResults = ({ reading, spread, onComplete }) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 mb-6"
     >
-      {/* Overall Reading */}
-      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-purple-600" />
-          Overall Reading
-        </h3>
-        
-        {reading.overall_interpretation ? (
-          <div className="prose prose-gray max-w-none">
-            <p className="text-gray-700 leading-relaxed">
-              {reading.overall_interpretation}
-            </p>
-            {reading.overall_interpretation_ar && (
-              <p className="text-gray-600 mt-4 italic border-t pt-4">
-                {reading.overall_interpretation_ar}
-              </p>
-            )}
+      <h3 className="text-xl font-semibold text-gray-900 mb-4">Reading Interpretation</h3>
+      
+      {/* Human interpretation always visible */}
+      {reading.overall_interpretation && (
+        <div className="mb-6">
+          <h4 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            Reader Interpretation
+          </h4>
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-gray-700 leading-relaxed">{reading.overall_interpretation}</p>
           </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p>Reading interpretation is being prepared...</p>
-          </div>
-        )}
-      </div>
-
-      {/* Energy Reading */}
-      {reading.energy_reading && (
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
-          <h3 className="text-lg font-semibold text-purple-900 mb-3 flex items-center gap-2">
-            <Star className="w-5 h-5" />
-            Energy Reading
-          </h3>
-          <p className="text-purple-800">{reading.energy_reading}</p>
         </div>
       )}
 
-      {/* Advice */}
-      {reading.advice && (
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
-          <h3 className="text-lg font-semibold text-green-900 mb-3 flex items-center gap-2">
-            <Lightbulb className="w-5 h-5" />
-            Guidance & Advice
-          </h3>
-          <p className="text-green-800">{reading.advice}</p>
-          {reading.advice_ar && (
-            <p className="text-green-700 mt-3 italic border-t border-green-200 pt-3">
-              {reading.advice_ar}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Reading Metadata */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-          <div className="text-center">
-            <div className="text-gray-500">Reading Type</div>
-            <div className="font-medium capitalize">{reading.reading_type}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-gray-500">Spread</div>
-            <div className="font-medium">{spread?.name}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-gray-500">Cards Drawn</div>
-            <div className="font-medium">{reading.cards_drawn?.length || 0}</div>
-          </div>
-          {reading.confidence_score && (
-            <div className="text-center">
-              <div className="text-gray-500">AI Confidence</div>
-              <div className="font-medium">{Math.round(reading.confidence_score * 100)}%</div>
+      {/* AI content - ONLY for authorized users */}
+      {canAccessAIContent && reading.ai_insights && (
+        <div className="mb-6">
+          {/* CRITICAL: Reader warning overlay */}
+          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 mb-4">
+            <div className="flex items-center gap-2 text-red-800">
+              <Shield className="w-5 h-5" />
+              <span className="font-bold">⚠️ ASSISTANT DRAFT – NOT FOR CLIENT DELIVERY</span>
             </div>
-          )}
+            <p className="text-red-700 text-sm mt-1">
+              This AI-generated content is for reader reference only. Do not share with clients.
+            </p>
+          </div>
+
+          <h4 className="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <Brain className="w-5 h-5 text-purple-600" />
+            AI Assistant Insights
+          </h4>
+          
+          {/* Copy-paste prevention wrapper */}
+          <div 
+            className="relative"
+            onCopy={(e) => e.preventDefault()}
+            onContextMenu={(e) => e.preventDefault()}
+            style={{ 
+              userSelect: 'none', 
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none'
+            }}
+          >
+            {/* Semi-transparent overlay to prevent selection */}
+            <div className="absolute inset-0 bg-transparent z-10 pointer-events-none" />
+            
+            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200 relative">
+              <p className="text-gray-700 leading-relaxed">{reading.ai_insights}</p>
+              
+              {/* Watermark */}
+              <div className="absolute top-2 right-2 text-xs text-purple-400 font-mono opacity-50">
+                AI-DRAFT
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Unauthorized access warning */}
+      {!canAccessAIContent && (reading.confidence_score || reading.ai_insights) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center gap-2 text-yellow-800">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-semibold">Access Restricted</span>
+          </div>
+          <p className="text-yellow-700 text-sm mt-1">
+            AI insights are only available to authorized readers. Your access attempt has been logged.
+          </p>
+        </div>
+      )}
     </motion.div>
   );
 
   const renderAIInsights = () => {
+    // Block AI insights for unauthorized users completely
+    if (!canAccessAIContent) {
+      return null;
+    }
+
     const insights = reading.ai_insights;
     
     if (!insights) {
@@ -129,110 +172,144 @@ const ReadingResults = ({ reading, spread, onComplete }) => {
         animate={{ opacity: 1, y: 0 }}
         className="space-y-6"
       >
-        {/* Overall Energy */}
-        {insights.overall_energy && (
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Star className="w-5 h-5 text-yellow-600" />
-              Overall Energy
-            </h3>
-            <p className="text-gray-700">{insights.overall_energy}</p>
+        {/* CRITICAL: AI Content Warning Header */}
+        <div className="bg-red-100 border-2 border-red-300 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-red-800 mb-2">
+            <Shield className="w-6 h-6" />
+            <span className="font-bold text-lg">⚠️ CONFIDENTIAL AI DRAFT</span>
           </div>
-        )}
+          <p className="text-red-700 font-medium">
+            The content below is AI-generated and strictly for reader reference only. 
+            Sharing this content with clients is prohibited and monitored.
+          </p>
+        </div>
 
-        {/* Key Themes */}
-        {insights.key_themes && insights.key_themes.length > 0 && (
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Heart className="w-5 h-5 text-pink-600" />
-              Key Themes
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {insights.key_themes.map((theme, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-medium"
-                >
-                  {theme}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Card Relationships */}
-        {insights.card_relationships && (
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
-              Card Relationships
-            </h3>
-            <p className="text-gray-700">{insights.card_relationships}</p>
-          </div>
-        )}
-
-        {/* Timeline Insights */}
-        {insights.timeline_insights && (
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-indigo-600" />
-              Timeline Insights
-            </h3>
-            <p className="text-gray-700">{insights.timeline_insights}</p>
-          </div>
-        )}
-
-        {/* Opportunities & Warnings */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {insights.opportunities && (
-            <div className="bg-green-50 rounded-lg p-6 border border-green-200">
-              <h3 className="text-lg font-semibold text-green-900 mb-3 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                Opportunities
+        {/* Copy-protected AI insights */}
+        <div 
+          onCopy={(e) => e.preventDefault()}
+          onContextMenu={(e) => e.preventDefault()}
+          onSelectStart={(e) => e.preventDefault()}
+          style={{ 
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            MozUserSelect: 'none',
+            msUserSelect: 'none',
+            WebkitTouchCallout: 'none'
+          }}
+        >
+          {/* Overall Energy */}
+          {insights.overall_energy && (
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 relative">
+              <div className="absolute top-2 right-2 text-xs text-red-500 font-bold">AI-DRAFT</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Star className="w-5 h-5 text-yellow-600" />
+                Overall Energy
               </h3>
-              <p className="text-green-800">{insights.opportunities}</p>
+              <p className="text-gray-700">{insights.overall_energy}</p>
             </div>
           )}
 
-          {insights.warnings && (
-            <div className="bg-yellow-50 rounded-lg p-6 border border-yellow-200">
-              <h3 className="text-lg font-semibold text-yellow-900 mb-3 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" />
-                Cautions
+          {/* Key Themes */}
+          {insights.key_themes && insights.key_themes.length > 0 && (
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 relative">
+              <div className="absolute top-2 right-2 text-xs text-red-500 font-bold">AI-DRAFT</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Heart className="w-5 h-5 text-pink-600" />
+                Key Themes
               </h3>
-              <p className="text-yellow-800">{insights.warnings}</p>
+              <div className="flex flex-wrap gap-2">
+                {insights.key_themes.map((theme, index) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-medium"
+                  >
+                    {theme}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Card Relationships */}
+          {insights.card_relationships && (
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 relative">
+              <div className="absolute top-2 right-2 text-xs text-red-500 font-bold">AI-DRAFT</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-600" />
+                Card Relationships
+              </h3>
+              <p className="text-gray-700">{insights.card_relationships}</p>
+            </div>
+          )}
+
+          {/* Timeline Insights */}
+          {insights.timeline_insights && (
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 relative">
+              <div className="absolute top-2 right-2 text-xs text-red-500 font-bold">AI-DRAFT</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-indigo-600" />
+                Timeline Insights
+              </h3>
+              <p className="text-gray-700">{insights.timeline_insights}</p>
+            </div>
+          )}
+
+          {/* Opportunities & Warnings */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {insights.opportunities && (
+              <div className="bg-green-50 rounded-lg p-6 border border-green-200 relative">
+                <div className="absolute top-2 right-2 text-xs text-red-500 font-bold">AI-DRAFT</div>
+                <h3 className="text-lg font-semibold text-green-900 mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Opportunities
+                </h3>
+                <p className="text-green-800">{insights.opportunities}</p>
+              </div>
+            )}
+
+            {insights.warnings && (
+              <div className="bg-yellow-50 rounded-lg p-6 border border-yellow-200 relative">
+                <div className="absolute top-2 right-2 text-xs text-red-500 font-bold">AI-DRAFT</div>
+                <h3 className="text-lg font-semibold text-yellow-900 mb-3 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" />
+                  Cautions
+                </h3>
+                <p className="text-yellow-800">{insights.warnings}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Spiritual Guidance */}
+          {insights.spiritual_guidance && (
+            <div className="bg-purple-50 rounded-lg p-6 border border-purple-200 relative">
+              <div className="absolute top-2 right-2 text-xs text-red-500 font-bold">AI-DRAFT</div>
+              <h3 className="text-lg font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                <Star className="w-5 h-5" />
+                Spiritual Guidance
+              </h3>
+              <p className="text-purple-800">{insights.spiritual_guidance}</p>
+            </div>
+          )}
+
+          {/* Outcome Probability */}
+          {insights.outcome_probability && (
+            <div className="bg-gray-50 rounded-lg p-4 relative">
+              <div className="absolute top-2 right-2 text-xs text-red-500 font-bold">AI-DRAFT</div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700 font-medium">Outcome Probability:</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  insights.outcome_probability === 'high' 
+                    ? 'bg-green-100 text-green-700'
+                    : insights.outcome_probability === 'medium'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-red-100 text-red-700'
+                }`}>
+                  {insights.outcome_probability.toUpperCase()}
+                </span>
+              </div>
             </div>
           )}
         </div>
-
-        {/* Spiritual Guidance */}
-        {insights.spiritual_guidance && (
-          <div className="bg-purple-50 rounded-lg p-6 border border-purple-200">
-            <h3 className="text-lg font-semibold text-purple-900 mb-3 flex items-center gap-2">
-              <Star className="w-5 h-5" />
-              Spiritual Guidance
-            </h3>
-            <p className="text-purple-800">{insights.spiritual_guidance}</p>
-          </div>
-        )}
-
-        {/* Outcome Probability */}
-        {insights.outcome_probability && (
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-700 font-medium">Outcome Probability:</span>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                insights.outcome_probability === 'high' 
-                  ? 'bg-green-100 text-green-700'
-                  : insights.outcome_probability === 'medium'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-red-100 text-red-700'
-              }`}>
-                {insights.outcome_probability.toUpperCase()}
-              </span>
-            </div>
-          </div>
-        )}
       </motion.div>
     );
   };
@@ -291,9 +368,9 @@ const ReadingResults = ({ reading, spread, onComplete }) => {
                 </div>
 
                 {cardData.interpretation && (
-                  <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-                    <h6 className="font-medium text-purple-900 mb-1">Interpretation</h6>
-                    <p className="text-sm text-purple-800">{cardData.interpretation}</p>
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <h6 className="font-medium text-blue-900 mb-1">Interpretation</h6>
+                    <p className="text-blue-800 text-sm">{cardData.interpretation}</p>
                   </div>
                 )}
               </div>

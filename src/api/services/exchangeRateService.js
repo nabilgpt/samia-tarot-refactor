@@ -3,11 +3,11 @@
 // =============================================================================
 // Handles currency conversion, exchange rate fetching, and formatting
 
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase client
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://uuseflmielktdcltzwzt.supabase.co';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || 'https://uuseflmielktdcltzwzt.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 let supabase;
 try {

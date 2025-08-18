@@ -4,6 +4,7 @@
 // ===============================================
 
 const Joi = require('joi');
+const crypto = require('crypto');
 
 // ===============================================
 // ENVIRONMENT SCHEMA VALIDATION
@@ -97,9 +98,11 @@ const envSchema = Joi.object({
   SENDGRID_FROM_EMAIL: Joi.string().email().optional(),
   
   // SMS Services
-  SMS_SERVICE_PROVIDER: Joi.string().valid('twilio', 'aws-sns', 'vonage').default('twilio'),
+  SMS_SERVICE_PROVIDER: Joi.string().valid('twilio', 'vonage').default('twilio'),
+  TWILIO_PHONE_NUMBER: Joi.string().optional(),
   VONAGE_API_KEY: Joi.string().optional(),
   VONAGE_API_SECRET: Joi.string().optional(),
+  VONAGE_PHONE_NUMBER: Joi.string().optional(),
   
   // Push Notifications
   FCM_SERVER_KEY: Joi.string().optional(),
@@ -109,12 +112,6 @@ const envSchema = Joi.object({
   APNS_BUNDLE_ID: Joi.string().optional(),
   
   // File Storage
-  AWS_ACCESS_KEY_ID: Joi.string().optional(),
-  AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
-  AWS_REGION: Joi.string().default('us-east-1'),
-  AWS_S3_BUCKET: Joi.string().optional(),
-  
-  // Cloudinary (Alternative)
   CLOUDINARY_CLOUD_NAME: Joi.string().optional(),
   CLOUDINARY_API_KEY: Joi.string().optional(),
   CLOUDINARY_API_SECRET: Joi.string().optional(),
@@ -166,7 +163,18 @@ const envSchema = Joi.object({
   TEST_USER_EMAIL: Joi.string().email().optional(),
   TEST_USER_PASSWORD: Joi.string().optional(),
   TEST_READER_EMAIL: Joi.string().email().optional(),
-  TEST_READER_PASSWORD: Joi.string().optional()
+  TEST_READER_PASSWORD: Joi.string().optional(),
+  
+  // AWS Configuration (Legacy - Deprecated)
+  AWS_ACCESS_KEY_ID: Joi.string().optional(),
+  AWS_SECRET_ACCESS_KEY: Joi.string().optional(),
+  AWS_REGION: Joi.string().default('us-east-1'),
+  
+  // Backblaze B2 Configuration (Primary Storage)
+  B2_APPLICATION_KEY_ID: Joi.string().optional(),
+  B2_APPLICATION_KEY: Joi.string().optional(),
+  B2_BACKUP_BUCKET_NAME: Joi.string().optional(),
+  B2_STORAGE_BUCKET_NAME: Joi.string().optional()
 }).unknown();
 
 // ===============================================
@@ -334,18 +342,18 @@ const config = {
 
   // File Storage
   storage: {
-    aws: {
-      accessKeyId: envVars.AWS_ACCESS_KEY_ID,
-      secretAccessKey: envVars.AWS_SECRET_ACCESS_KEY,
-      region: envVars.AWS_REGION,
-      bucket: envVars.AWS_S3_BUCKET,
-      enabled: !!(envVars.AWS_ACCESS_KEY_ID && envVars.AWS_SECRET_ACCESS_KEY && envVars.AWS_S3_BUCKET)
-    },
     cloudinary: {
       cloudName: envVars.CLOUDINARY_CLOUD_NAME,
       apiKey: envVars.CLOUDINARY_API_KEY,
       apiSecret: envVars.CLOUDINARY_API_SECRET,
       enabled: !!(envVars.CLOUDINARY_CLOUD_NAME && envVars.CLOUDINARY_API_KEY && envVars.CLOUDINARY_API_SECRET)
+    },
+    backblazeB2: {
+      applicationKeyId: envVars.B2_APPLICATION_KEY_ID,
+      applicationKey: envVars.B2_APPLICATION_KEY,
+      backupBucketName: envVars.B2_BACKUP_BUCKET_NAME,
+      storageBucketName: envVars.B2_STORAGE_BUCKET_NAME,
+      enabled: !!(envVars.B2_APPLICATION_KEY_ID && envVars.B2_APPLICATION_KEY && envVars.B2_BACKUP_BUCKET_NAME)
     }
   },
 
@@ -411,6 +419,14 @@ const config = {
     userPassword: envVars.TEST_USER_PASSWORD,
     readerEmail: envVars.TEST_READER_EMAIL,
     readerPassword: envVars.TEST_READER_PASSWORD
+  },
+
+  // Backblaze B2 Configuration (Primary Storage)
+  b2: {
+    applicationKeyId: envVars.B2_APPLICATION_KEY_ID,
+    applicationKey: envVars.B2_APPLICATION_KEY,
+    backupBucketName: envVars.B2_BACKUP_BUCKET_NAME,
+    storageBucketName: envVars.B2_STORAGE_BUCKET_NAME
   }
 };
 
@@ -455,8 +471,8 @@ const getConfigurationStatus = () => {
       sendgrid: config.email.sendgrid.enabled
     },
     storage: {
-      aws: config.storage.aws.enabled,
-      cloudinary: config.storage.cloudinary.enabled
+      cloudinary: config.storage.cloudinary.enabled,
+      backblazeB2: config.storage.backblazeB2.enabled
     }
   };
 
@@ -477,19 +493,12 @@ const getConfigurationStatus = () => {
 // ===============================================
 
 module.exports = {
-  config,
-  validateServiceConfig,
-  getConfigurationStatus,
-  
-  // Convenience getters
-  isProduction: () => config.app.env === 'production',
-  isDevelopment: () => config.app.env === 'development',
-  isTestEnvironment: () => config.app.env === 'test',
-  
-  // Service availability checkers
-  hasPaymentGateway: () => config.payments.stripe.enabled || config.payments.square.enabled,
-  hasWebRTC: () => config.communication.webrtc.agora.enabled || config.communication.webrtc.twilio.enabled,
-  hasAI: () => config.ai.openai.enabled || config.ai.google.enabled,
-  hasEmailService: () => config.email.smtp.enabled || config.email.sendgrid.enabled,
-  hasFileStorage: () => config.storage.aws.enabled || config.storage.cloudinary.enabled
+    ...config,
+    validateServiceConfig,
+    getConfigurationStatus,
+    hasEmailService: () => config.email.smtp.enabled || config.email.sendgrid.enabled,
+    hasPaymentProcessing: () => config.payments.stripe.enabled || config.payments.square.enabled,
+    hasSMSService: () => config.communication.sms.twilio.enabled || config.communication.sms.vonage.enabled,
+    hasFileStorage: () => config.storage.backblazeB2.enabled || config.storage.cloudinary.enabled,
+    hasAIServices: () => config.ai.openai.enabled || config.ai.elevenlabs.enabled
 }; 

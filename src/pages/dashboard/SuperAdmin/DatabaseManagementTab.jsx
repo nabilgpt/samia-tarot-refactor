@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import SuperAdminAPI from '../../../api/superAdminApi.js';
+import api from '../../../services/frontendApi.js';
 import {
   CircleStackIcon,
   TableCellsIcon,
@@ -40,7 +40,7 @@ const DatabaseManagementTab = () => {
     call_sessions: { name: 'Call Sessions', icon: '📞', color: 'indigo' },
     call_recordings: { name: 'Call Recordings', icon: '🎙️', color: 'gray' },
     emergency_call_logs: { name: 'Emergency Logs', icon: '🚨', color: 'red' },
-    super_admin_audit_logs: { name: 'Audit Logs', icon: '📋', color: 'yellow' },
+    admin_audit_logs: { name: 'Audit Logs', icon: '📋', color: 'yellow' },
     impersonation_sessions: { name: 'Impersonation Sessions', icon: '👁️', color: 'orange' },
     system_settings: { name: 'System Settings', icon: '⚙️', color: 'gray' }
   };
@@ -52,7 +52,7 @@ const DatabaseManagementTab = () => {
   const loadDatabaseStats = async () => {
     try {
       setLoading(true);
-      const result = await SuperAdminAPI.getDatabaseStats();
+      const result = await api.getDatabaseStats();
       if (result.success) {
         setStats(result.data);
         setTables(Object.keys(result.data).map(table => ({
@@ -152,6 +152,7 @@ const DatabaseManagementTab = () => {
   };
 
   const getTotalRecords = () => {
+    if (!stats || typeof stats !== 'object') return 0;
     return Object.values(stats).reduce((total, count) => {
       return total + (typeof count === 'number' ? count : 0);
     }, 0);
@@ -288,7 +289,7 @@ const DatabaseManagementTab = () => {
                         {table.displayName || table.name}
                       </h4>
                       <p className="text-cosmic-300 text-sm">
-                        {typeof table.count === 'number' ? table.count.toLocaleString() : table.count} records
+                        {typeof table.count === 'number' ? table.count.toLocaleString() : (typeof table.count === 'object' ? JSON.stringify(table.count) : table.count)} records
                       </p>
                     </div>
                   </div>

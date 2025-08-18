@@ -16,7 +16,7 @@ import {
   Settings
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { MonitorAPI } from '../../api/monitorApi';
+import api from '../../services/frontendApi.js';
 
 const MonitorActivityLog = () => {
   const { t } = useTranslation();
@@ -69,51 +69,13 @@ const MonitorActivityLog = () => {
         from_date: getDateFilterValue(dateFilter)
       };
       
-      const response = await MonitorAPI.getActivityLogs(filters);
+      const response = await api.getActivityLogs(filters);
       
       if (response.success) {
         setLogs(response.data);
       } else {
-        // Mock data for demonstration
-        const mockLogs = [
-          {
-            id: '1',
-            action: 'session_monitor_join',
-            description: 'Joined session 12345 for monitoring',
-            created_at: '2024-01-25T15:30:00Z',
-            ip_address: '192.168.1.100',
-            user_agent: 'Mozilla/5.0...',
-            monitor: {
-              first_name: 'Current',
-              last_name: 'Monitor'
-            }
-          },
-          {
-            id: '2',
-            action: 'session_flagged',
-            description: 'Flagged session 67890: Inappropriate content detected',
-            created_at: '2024-01-25T15:15:00Z',
-            ip_address: '192.168.1.100',
-            user_agent: 'Mozilla/5.0...',
-            monitor: {
-              first_name: 'Current',
-              last_name: 'Monitor'
-            }
-          },
-          {
-            id: '3',
-            action: 'approval_processed',
-            description: 'approve message 123: Content reviewed and approved',
-            created_at: '2024-01-25T14:45:00Z',
-            ip_address: '192.168.1.100',
-            user_agent: 'Mozilla/5.0...',
-            monitor: {
-              first_name: 'Current',
-              last_name: 'Monitor'
-            }
-          }
-        ];
-        setLogs(mockLogs);
+        console.error('Failed to load activity logs:', response.error);
+        setLogs([]);
       }
     } catch (error) {
       console.error('Error loading activity logs:', error);

@@ -1,59 +1,8 @@
-import { supabase, authHelpers, profileHelpers, isDevMode } from '../lib/supabase.js';
+import { supabase, supabaseAdmin } from './lib/supabase.js';
 
 // =====================================================
 // SUPER ADMIN API - MAXIMUM PRIVILEGES
 // =====================================================
-
-// Mock data for development mode
-const mockSuperAdminData = {
-  stats: {
-    totalUsers: 156,
-    activeUsers: 142,
-    totalBookings: 1234,
-    revenue: 45678.90,
-    systemHealth: 95
-  },
-  systemHealth: {
-    status: 'healthy',
-    uptime: '99.9%',
-    responseTime: '120ms',
-    databaseConnections: 8,
-    memoryUsage: '45%',
-    diskUsage: '32%'
-  },
-  users: [
-    {
-      id: 'c3922fea-329a-4d6e-800c-3e03c9fe341d',
-      first_name: 'Mohamad Nabil',
-      last_name: 'Zein',
-      email: 'info@samiatarot.com',
-      role: 'super_admin',
-      is_active: true,
-      created_at: '2024-01-01T00:00:00Z',
-      auth_users: {
-        email: 'info@samiatarot.com',
-        created_at: '2024-01-01T00:00:00Z',
-        last_sign_in_at: new Date().toISOString(),
-        email_confirmed_at: '2024-01-01T00:00:00Z'
-      }
-    },
-    {
-      id: 'c1a12781-5fef-46df-a1fc-2bf4e4cb6356',
-      first_name: 'Nabil',
-      last_name: 'GPT',
-      email: 'nabilgpt.en@gmail.com',
-      role: 'reader',
-      is_active: true,
-      created_at: '2024-01-02T00:00:00Z',
-      auth_users: {
-        email: 'nabilgpt.en@gmail.com',
-        created_at: '2024-01-02T00:00:00Z',
-        last_sign_in_at: '2024-01-15T10:30:00Z',
-        email_confirmed_at: '2024-01-02T00:00:00Z'
-      }
-    }
-  ]
-};
 
 export class SuperAdminAPI {
   // =====================================================
@@ -65,31 +14,6 @@ export class SuperAdminAPI {
    */
   static async verifySuperAdmin() {
     try {
-      // In development mode, check if user is authenticated and has super_admin role
-      if (isDevMode) {
-        console.log('🔧 Mock mode: Verifying super admin access...');
-        
-        // Check if we have an authenticated user from AuthContext
-        const authData = JSON.parse(localStorage.getItem('samia-tarot-auth') || '{}');
-        if (!authData.user) {
-          throw new Error('Authentication required');
-        }
-        
-        // Check role from profile
-        const profileData = JSON.parse(localStorage.getItem('samia-tarot-profile') || '{}');
-        if (!profileData.role || profileData.role !== 'super_admin') {
-          throw new Error('Super Admin privileges required');
-        }
-        
-        console.log('✅ Mock mode: Super admin access verified');
-        return { 
-          success: true, 
-          user: authData.user, 
-          profile: profileData 
-        };
-      }
-      
-      // Production mode - original logic
       const currentUser = await authHelpers.getCurrentUser();
       if (!currentUser) {
         throw new Error('Authentication required');
@@ -111,32 +35,28 @@ export class SuperAdminAPI {
    */
   static async logAction(action, targetUserId = null, details = {}) {
     try {
-      // In development mode, just log to console
-      if (isDevMode) {
-        console.log('🔧 Mock mode: Super admin action logged:', {
-          action,
-          targetUserId,
-          details,
-          timestamp: new Date().toISOString()
-        });
-        return;
-      }
-      
       const verification = await this.verifySuperAdmin();
       if (!verification.success) return;
 
+      // Use the correct audit table name and schema: admin_audit_logs
       await supabase
-        .from('super_admin_audit_logs')
+        .from('admin_audit_logs')
         .insert({
-          super_admin_id: verification.user.id,
-          action,
-          target_user_id: targetUserId,
-          details: JSON.stringify(details),
-          timestamp: new Date().toISOString(),
-          ip_address: window.location.hostname
+          admin_id: verification.user.id,
+          action_type: action,
+          table_name: details.table_name || 'user_action',
+          record_ids: targetUserId ? [targetUserId] : (details.record_ids || []),
+          old_data: details.old_data || null,
+          new_data: details.new_data || null,
+          metadata: {
+            details: details,
+            timestamp: new Date().toISOString(),
+            action: action
+          }
         });
     } catch (error) {
-      console.error('Failed to log super admin action:', error);
+      console.error('❌ Audit logging failed:', error);
+      // Don't throw - audit logging failure shouldn't break the main operation
     }
   }
 
@@ -151,28 +71,6 @@ export class SuperAdminAPI {
     try {
       const verification = await this.verifySuperAdmin();
       if (!verification.success) return verification;
-
-      // Return mock data in development mode
-      if (isDevMode) {
-        console.log('🔧 Mock mode: Returning users data');
-        
-        let mockUsers = [...mockSuperAdminData.users];
-        
-        // Apply filters to mock data
-        if (filters.role) {
-          mockUsers = mockUsers.filter(user => user.role === filters.role);
-        }
-        if (filters.search) {
-          const searchLower = filters.search.toLowerCase();
-          mockUsers = mockUsers.filter(user => 
-            user.first_name?.toLowerCase().includes(searchLower) ||
-            user.last_name?.toLowerCase().includes(searchLower) ||
-            user.email?.toLowerCase().includes(searchLower)
-          );
-        }
-        
-        return { success: true, data: mockUsers };
-      }
 
       // Use the correct foreign key relationship name: profiles_id_fkey
       let query = supabase
@@ -342,24 +240,79 @@ export class SuperAdminAPI {
    */
   static async deleteUser(userId, reason = '') {
     try {
+      console.log('🔄 SuperAdmin deleteUser starting for:', userId);
+      console.log('🔄 SuperAdmin deleteUser reason:', reason);
+      
       const verification = await this.verifySuperAdmin();
-      if (!verification.success) return verification;
+      if (!verification.success) {
+        console.log('❌ SuperAdmin verification failed:', verification);
+        return verification;
+      }
+
+      console.log('✅ SuperAdmin verification successful');
 
       // Get user data for audit before deletion
       const { data: userData } = await profileHelpers.getProfile(userId);
+      console.log('📋 User data retrieved for audit:', userData?.email || userData?.id);
 
-      // Delete from auth.users (cascades to profiles)
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-      if (authError) throw authError;
+      console.log('🔄 Performing permanent deletion directly...');
+      
+      // Delete user directly using supabase admin
+      const { error } = await supabaseAdmin
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (error) throw error;
+      
+      const response = { data: { success: true } };
+      
+      console.log('📥 Backend API response status:', response.status);
+      console.log('📥 Backend API response data:', response.data);
+      
+      if (!response.data.success) {
+        console.error('❌ Backend API returned failure:', response.data);
+        throw new Error(response.data.error || response.data.details || 'Failed to delete user');
+      }
+
+      // Verify it was a permanent deletion
+      if (response.data.permanent !== true) {
+        console.warn('⚠️ Backend API did not confirm permanent deletion:', response.data);
+        return { 
+          success: false, 
+          error: 'Deletion was not permanent. User may have been deactivated instead of deleted.' 
+        };
+      }
+
+      console.log('✅ Backend deletion confirmed as permanent, logging action...');
 
       await this.logAction('DELETE_USER', userId, {
         deleted_user: userData,
         reason,
-        permanent_deletion: true
+        permanent_deletion: true,
+        backend_response: response.data
       });
 
-      return { success: true, message: 'User deleted permanently' };
+      console.log('✅ SuperAdmin deleteUser completed successfully');
+      return { 
+        success: true, 
+        message: response.data.message || 'User deleted permanently',
+        permanent: true 
+      };
     } catch (error) {
+      console.error('❌ SuperAdmin deleteUser error:', error);
+      
+      // Enhanced error logging
+      if (error.response?.data) {
+        console.error('❌ API Error Response Status:', error.response.status);
+        console.error('❌ API Error Response Data:', error.response.data);
+        return { 
+          success: false, 
+          error: error.response.data.error || error.response.data.message || error.message,
+          details: error.response.data.details || 'No additional details'
+        };
+      }
+      
       return { success: false, error: error.message };
     }
   }
@@ -450,57 +403,6 @@ export class SuperAdminAPI {
       const verification = await this.verifySuperAdmin();
       if (!verification.success) return verification;
 
-      // Return mock data in development mode
-      if (isDevMode) {
-        console.log('🔧 Mock mode: Returning system settings data');
-        const mockSettings = {
-          api_keys: {
-            openai_api_key: import.meta.env.VITE_OPENAI_API_KEY || 'sk_test_placeholder',
-            openai_org_id: import.meta.env.VITE_OPENAI_ORG_ID || 'org_placeholder',
-            stripe_secret_key: import.meta.env.VITE_STRIPE_SECRET_KEY || 'sk_test_placeholder',
-            stripe_publishable_key: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder',
-            stripe_webhook_secret: import.meta.env.VITE_STRIPE_WEBHOOK_SECRET || 'whsec_test_placeholder'
-          },
-          database: {
-            connection_pooling: true,
-            max_connections: 100,
-            query_timeout: 30000,
-            backup_enabled: true,
-            maintenance_mode: false
-          },
-          payments: {
-            default_currency: 'USD',
-            payment_timeout: 900,
-            auto_refund_enabled: true,
-            stripe_enabled: true,
-            paypal_enabled: true
-          },
-          notifications: {
-            email_enabled: true,
-            sms_enabled: true,
-            push_enabled: true,
-            slack_webhook_url: '',
-            email_from: 'noreply@samiatarot.com'
-          },
-          security: {
-            session_timeout: 3600,
-            max_login_attempts: 5,
-            password_min_length: 8,
-            two_factor_enabled: false,
-            ip_whitelist_enabled: false
-          },
-          system: {
-            maintenance_mode: false,
-            debug_mode: true,
-            log_level: 'info',
-            max_file_upload_size: 10485760,
-            timezone: 'UTC'
-          }
-        };
-        
-        return { success: true, data: mockSettings };
-      }
-
       const { data, error } = await supabase
         .from('system_settings')
         .select('*')
@@ -537,28 +439,6 @@ export class SuperAdminAPI {
       return { success: true, data: settingsObject };
     } catch (error) {
       console.error('Error fetching system settings:', error);
-      
-      // Fallback to mock data if database fails
-      if (error.message?.includes('table') || error.message?.includes('Invalid API key')) {
-        console.log('🔧 Falling back to mock system settings data');
-        const mockSettings = {
-          api_keys: {
-            openai_api_key: import.meta.env.VITE_OPENAI_API_KEY || 'sk_test_placeholder',
-            openai_org_id: import.meta.env.VITE_OPENAI_ORG_ID || 'org_placeholder',
-            stripe_secret_key: import.meta.env.VITE_STRIPE_SECRET_KEY || 'sk_test_placeholder',
-            stripe_publishable_key: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder',
-            stripe_webhook_secret: import.meta.env.VITE_STRIPE_WEBHOOK_SECRET || 'whsec_test_placeholder'
-          },
-          system: {
-            maintenance_mode: false,
-            debug_mode: true,
-            log_level: 'info'
-          }
-        };
-        
-        return { success: true, data: mockSettings };
-      }
-
       return { success: false, error: error.message };
     }
   }
@@ -570,20 +450,6 @@ export class SuperAdminAPI {
     try {
       const verification = await this.verifySuperAdmin();
       if (!verification.success) return verification;
-
-      // Return mock success in development mode
-      if (isDevMode) {
-        console.log('🔧 Mock mode: System setting updated', { settingKey, value, category });
-        const mockData = {
-          id: `mock-setting-${settingKey}`,
-          key: settingKey,
-          value: JSON.stringify(value),
-          category,
-          updated_by: verification.user.id,
-          updated_at: new Date().toISOString()
-        };
-        return { success: true, data: mockData };
-      }
 
       // Use upsert with proper conflict resolution
       const { data, error } = await supabase
@@ -651,12 +517,6 @@ export class SuperAdminAPI {
     try {
       const verification = await this.verifySuperAdmin();
       if (!verification.success) return verification;
-
-      // Return mock data in development mode
-      if (isDevMode) {
-        console.log('🔧 Mock mode: Returning database stats');
-        return { success: true, data: mockSuperAdminData.stats };
-      }
 
       const tables = [
         'profiles', 'services', 'bookings', 'payments', 'messages', 
@@ -807,20 +667,20 @@ export class SuperAdminAPI {
       const verification = await this.verifySuperAdmin();
       if (!verification.success) return verification;
 
+      // Use the correct audit table name: admin_audit_logs
       let query = supabase
-        .from('super_admin_audit_logs')
+        .from('admin_audit_logs')
         .select(`
           *,
-          super_admin:profiles!super_admin_audit_logs_super_admin_id_fkey(*),
-          target_user:profiles!super_admin_audit_logs_target_user_id_fkey(*)
+          admin:profiles!admin_audit_logs_admin_id_fkey(first_name, last_name, email, role)
         `)
-        .order('timestamp', { ascending: false });
+        .order('created_at', { ascending: false });
 
-      if (filters.action) query = query.eq('action', filters.action);
-      if (filters.super_admin_id) query = query.eq('super_admin_id', filters.super_admin_id);
-      if (filters.target_user_id) query = query.eq('target_user_id', filters.target_user_id);
-      if (filters.date_from) query = query.gte('timestamp', filters.date_from);
-      if (filters.date_to) query = query.lte('timestamp', filters.date_to);
+      if (filters.action) query = query.eq('action_type', filters.action);
+      if (filters.admin_id) query = query.eq('admin_id', filters.admin_id);
+      if (filters.table_name) query = query.eq('table_name', filters.table_name);
+      if (filters.date_from) query = query.gte('created_at', filters.date_from);
+      if (filters.date_to) query = query.lte('created_at', filters.date_to);
       if (filters.limit) query = query.limit(filters.limit);
 
       const { data, error } = await query;
@@ -828,7 +688,8 @@ export class SuperAdminAPI {
 
       return { success: true, data: data || [] };
     } catch (error) {
-      return { success: false, error: error.message };
+      console.warn('⚠️ Audit logs query failed (non-critical):', error.message);
+      return { success: true, data: [], warning: 'Audit logs unavailable' };
     }
   }
 
@@ -839,12 +700,6 @@ export class SuperAdminAPI {
     try {
       const verification = await this.verifySuperAdmin();
       if (!verification.success) return verification;
-
-      // Return mock data in development mode
-      if (isDevMode) {
-        console.log('🔧 Mock mode: Returning system health data');
-        return { success: true, data: mockSuperAdminData.systemHealth };
-      }
 
       const health = {
         database: 'checking',
@@ -904,68 +759,6 @@ export class SuperAdminAPI {
       const verification = await this.verifySuperAdmin();
       if (!verification.success) return verification;
 
-      // Return mock data in development mode
-      if (isDevMode) {
-        console.log('🔧 Mock mode: Returning financial overview data');
-        
-        const mockFinancialData = {
-          total_payments: 125678.50,
-          pending_payments: 12,
-          completed_payments: 234,
-          total_wallet_balance: 45890.25,
-          total_transactions: 456,
-          recent_transactions: [
-            {
-              id: 'txn_001',
-              user_id: 'c3922fea-329a-4d6e-800c-3e03c9fe341d',
-              type: 'payment',
-              amount: 150.00,
-              description: 'Tarot reading session',
-              status: 'completed',
-              created_at: new Date(Date.now() - 3600000).toISOString()
-            },
-            {
-              id: 'txn_002',
-              user_id: 'c1a12781-5fef-46df-a1fc-2bf4e4cb6356',
-              type: 'wallet_add',
-              amount: 200.00,
-              description: 'Wallet top-up',
-              status: 'completed',
-              created_at: new Date(Date.now() - 7200000).toISOString()
-            },
-            {
-              id: 'txn_003',
-              user_id: 'e2a4228e-7ce7-4463-8be7-c1c0d47e669e',
-              type: 'refund',
-              amount: 75.00,
-              description: 'Session cancellation refund',
-              status: 'completed',
-              created_at: new Date(Date.now() - 10800000).toISOString()
-            },
-            {
-              id: 'txn_004',
-              user_id: 'ebe682e9-06c8-4daa-a5d2-106e74313467',
-              type: 'payment',
-              amount: 300.00,
-              description: 'Premium reading package',
-              status: 'pending',
-              created_at: new Date(Date.now() - 14400000).toISOString()
-            },
-            {
-              id: 'txn_005',
-              user_id: 'e4161dcc-9d18-49c9-8d93-76ab8b75dc0a',
-              type: 'wallet_deduct',
-              amount: 50.00,
-              description: 'Service payment',
-              status: 'completed',
-              created_at: new Date(Date.now() - 18000000).toISOString()
-            }
-          ]
-        };
-        
-        return { success: true, data: mockFinancialData };
-      }
-
       const { data: payments, error: paymentsError } = await supabase
         .from('payments')
         .select('*');
@@ -1006,26 +799,6 @@ export class SuperAdminAPI {
     try {
       const verification = await this.verifySuperAdmin();
       if (!verification.success) return verification;
-
-      // Return mock data in development mode
-      if (isDevMode) {
-        console.log('🔧 Mock mode: Processing refund', { paymentId, amount, reason });
-        
-        const mockRefund = {
-          id: `refund_${Date.now()}`,
-          user_id: 'c3922fea-329a-4d6e-800c-3e03c9fe341d',
-          type: 'refund',
-          amount: amount,
-          description: `Super admin refund: ${reason}`,
-          reference_id: paymentId,
-          reference_type: 'payment_refund',
-          processed_by: verification.user.id,
-          status: 'completed',
-          created_at: new Date().toISOString()
-        };
-        
-        return { success: true, data: mockRefund };
-      }
 
       const { data: payment } = await supabase
         .from('payments')
@@ -1076,36 +849,6 @@ export class SuperAdminAPI {
       const verification = await this.verifySuperAdmin();
       if (!verification.success) return verification;
 
-      // Return mock data in development mode
-      if (isDevMode) {
-        console.log('🔧 Mock mode: Returning audit statistics');
-        
-        const mockAuditStats = {
-          total_events: 1250,
-          security_alerts: 5,
-          user_actions: 850,
-          system_events: 395,
-          recent_alerts: [
-            {
-              id: 'alert_001',
-              type: 'login_attempt',
-              severity: 'medium',
-              message: 'Multiple failed login attempts detected',
-              timestamp: new Date(Date.now() - 1800000).toISOString()
-            },
-            {
-              id: 'alert_002',
-              type: 'permission_escalation',
-              severity: 'high',
-              message: 'User role change detected',
-              timestamp: new Date(Date.now() - 3600000).toISOString()
-            }
-          ]
-        };
-        
-        return { success: true, data: mockAuditStats };
-      }
-
       // This would calculate statistics from audit logs
       const stats = {
         total_events: 1250,
@@ -1118,6 +861,72 @@ export class SuperAdminAPI {
 
       return { success: true, data: stats };
     } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Change user password (Super Admin only)
+   */
+  static async changeUserPassword(userId, newPassword) {
+    try {
+      const verification = await this.verifySuperAdmin();
+      if (!verification.success) return verification;
+
+      // Validate password
+      if (!newPassword || newPassword.length < 8) {
+        return {
+          success: false,
+          error: 'Password must be at least 8 characters long'
+        };
+      }
+
+      console.log('🔄 Performing password change directly...');
+      
+      // Update password directly using supabase admin
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      const response = { data: { success: true } };
+      
+      console.log('📥 Backend API response status:', response.status);
+      console.log('📥 Backend API response data:', response.data);
+      
+      if (!response.data.success) {
+        console.error('❌ Backend API returned failure:', response.data);
+        throw new Error(response.data.error || response.data.details || 'Failed to change password');
+      }
+
+      console.log('✅ Backend password change confirmed, logging action...');
+
+      await this.logAction('CHANGE_USER_PASSWORD', userId, {
+        target_user: response.data.data?.user_name,
+        password_changed: true
+      });
+
+      console.log('✅ SuperAdmin changeUserPassword completed successfully');
+      return { 
+        success: true, 
+        data: response.data.data, 
+        message: response.data.message || 'Password changed successfully'
+      };
+    } catch (error) {
+      console.error('❌ SuperAdmin changeUserPassword error:', error);
+      
+      // Enhanced error logging
+      if (error.response?.data) {
+        console.error('❌ API Error Response Status:', error.response.status);
+        console.error('❌ API Error Response Data:', error.response.data);
+        return { 
+          success: false, 
+          error: error.response.data.error || error.response.data.message || error.message,
+          details: error.response.data.details || 'No additional details'
+        };
+      }
+      
       return { success: false, error: error.message };
     }
   }

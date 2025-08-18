@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
+import bilingualCategoryService from '../../services/bilingualCategoryService';
 
 const MoroccanSpreadSelector = ({ onSpreadSelect, selectedSpread, showCustom = true }) => {
   const { t } = useTranslation();
@@ -31,20 +32,11 @@ const MoroccanSpreadSelector = ({ onSpreadSelect, selectedSpread, showCustom = t
   const [spreads, setSpreads] = useState([]);
   const [systemSpreads, setSystemSpreads] = useState([]);
   const [customSpreads, setCustomSpreads] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [showSystemOnly, setShowSystemOnly] = useState(false);
-
-  const categories = [
-    { id: 'all', name: 'All Categories', name_ar: 'جميع الفئات', icon: Grid, color: 'purple' },
-    { id: 'general', name: 'General', name_ar: 'عام', icon: Star, color: 'purple' },
-    { id: 'love', name: 'Love & Relationships', name_ar: 'الحب والعلاقات', icon: Heart, color: 'pink' },
-    { id: 'career', name: 'Career & Money', name_ar: 'المهنة والمال', icon: Briefcase, color: 'blue' },
-    { id: 'spiritual', name: 'Spiritual Journey', name_ar: 'الرحلة الروحية', icon: Sparkles, color: 'purple' },
-    { id: 'health', name: 'Health & Wellness', name_ar: 'الصحة والعافية', icon: Zap, color: 'green' },
-    { id: 'finance', name: 'Finance', name_ar: 'مالية', icon: Home, color: 'gold' }
-  ];
 
   const difficulties = [
     { id: 'all', name: 'All Levels', name_ar: 'جميع المستويات', icon: Grid },
@@ -54,8 +46,34 @@ const MoroccanSpreadSelector = ({ onSpreadSelect, selectedSpread, showCustom = t
   ];
 
   useEffect(() => {
+    loadCategories();
     loadSpreads();
   }, []);
+
+  const loadCategories = async () => {
+    try {
+      // Wait for category service to be ready
+      if (!bilingualCategoryService.isReady()) {
+        await bilingualCategoryService.initialize();
+      }
+      
+      const categoryData = bilingualCategoryService.getCategories(language, 'moroccan');
+      setCategories(categoryData);
+      
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      // Fallback categories if service fails
+      setCategories([
+        { id: 'all', name: 'All Categories', name_ar: 'جميع الفئات', icon: Grid, color: 'purple' },
+        { id: 'general', name: 'General', name_ar: 'عام', icon: Star, color: 'purple' },
+        { id: 'love', name: 'Love & Relationships', name_ar: 'الحب والعلاقات', icon: Heart, color: 'pink' },
+        { id: 'career', name: 'Career & Money', name_ar: 'المهنة والمال', icon: Briefcase, color: 'blue' },
+        { id: 'spiritual', name: 'Spiritual Journey', name_ar: 'الرحلة الروحية', icon: Sparkles, color: 'purple' },
+        { id: 'health', name: 'Health & Wellness', name_ar: 'الصحة والعافية', icon: Zap, color: 'green' },
+        { id: 'flexible', name: 'Flexible', name_ar: 'مرن', icon: Wand2, color: 'orange' }
+      ]);
+    }
+  };
 
   const loadSpreads = async () => {
     setIsLoading(true);
@@ -80,12 +98,26 @@ const MoroccanSpreadSelector = ({ onSpreadSelect, selectedSpread, showCustom = t
 
   const getCategoryIcon = (categoryId) => {
     const category = categories.find(c => c.id === categoryId);
-    return category ? category.icon : Star;
+    if (category && category.icon) {
+      return category.icon;
+    }
+    
+    // Fallback to service or default icon
+    const iconName = bilingualCategoryService.getCategoryIcon(categoryId);
+    const iconMap = {
+      Grid, Star, Heart, Briefcase, Sparkles, Zap, Wand2, Home
+    };
+    return iconMap[iconName] || Star;
   };
 
   const getCategoryColor = (categoryId) => {
     const category = categories.find(c => c.id === categoryId);
-    return category ? category.color : 'purple';
+    if (category && category.color) {
+      return category.color;
+    }
+    
+    // Fallback to service or default color
+    return bilingualCategoryService.getCategoryColor(categoryId);
   };
 
   const getDifficultyIcon = (difficultyId) => {

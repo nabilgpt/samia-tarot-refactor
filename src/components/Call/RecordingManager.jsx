@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { CallAPI } from '../../api/callApi.js';
+import api from '../../services/frontendApi.js';
 import { 
   Play, 
   Pause, 
@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Clock
 } from 'lucide-react';
+import { hasAdminOrMonitorAccess, hasAdminAccess } from '../../utils/roleHelpers';
 
 const RecordingManager = ({ callSessionId, className = '' }) => {
   const { user, profile } = useAuth();
@@ -27,7 +28,7 @@ const RecordingManager = ({ callSessionId, className = '' }) => {
   const [volume, setVolume] = useState(1);
   const [error, setError] = useState(null);
 
-  const isAdminOrMonitor = profile?.role === 'admin' || profile?.role === 'monitor';
+  const isAdminOrMonitor = hasAdminOrMonitorAccess(profile?.role);
 
   useEffect(() => {
     if (callSessionId && isAdminOrMonitor) {
@@ -38,7 +39,7 @@ const RecordingManager = ({ callSessionId, className = '' }) => {
   const loadRecordings = async () => {
     try {
       setLoading(true);
-      const result = await CallAPI.getCallRecordings(callSessionId);
+      const result = await api.getCallRecordings(callSessionId);
       if (result.success) {
         setRecordings(result.data);
       } else {
@@ -248,7 +249,7 @@ const RecordingManager = ({ callSessionId, className = '' }) => {
                     </button>
 
                     {/* Delete (Admin only) */}
-                    {profile?.role === 'admin' && (
+                    {hasAdminAccess(profile?.role) && (
                       <button
                         onClick={() => handleDelete(recording)}
                         className="p-2 text-red-600 hover:bg-red-100 rounded-full transition-colors"

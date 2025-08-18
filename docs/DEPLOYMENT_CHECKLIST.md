@@ -1,5 +1,34 @@
 # 🚀 SAMIA TAROT Platform - Go-Live Checklist
 
+## 🚨 CRITICAL SECURITY VERIFICATION
+
+### **MANDATORY FIRST STEP**: Security Policy Compliance
+- [ ] ✅ **Read and verify compliance with [`ENVIRONMENT_SECURITY_POLICY.md`](../ENVIRONMENT_SECURITY_POLICY.md)**
+- [ ] ✅ **Confirm NO API keys in `.env` except the 8 allowed variables**
+- [ ] ✅ **Verify all credentials managed via Super Admin Dashboard only**
+- [ ] ✅ **Test error handling for missing credentials**
+
+## 🔒 ENVIRONMENT SECURITY CHECKLIST
+
+### .env File Validation:
+- [ ] ✅ Contains ONLY these variables:
+  - `SUPABASE_URL`
+  - `SUPABASE_ANON_KEY` 
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `NODE_ENV`
+  - `PORT`
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+  - `JWT_SECRET`
+- [ ] ✅ NO other credentials present
+- [ ] ✅ NO OpenAI, ElevenLabs, OAuth, or payment keys
+
+### Credential Management Verification:
+- [ ] ✅ All API keys stored in Super Admin Dashboard
+- [ ] ✅ Runtime credential loading from database working
+- [ ] ✅ Proper error messages when credentials missing
+- [ ] ✅ No hardcoded credentials in source code
+
 ## 📋 **Pre-Deployment Checklist**
 
 ### ✅ **Database & Infrastructure**

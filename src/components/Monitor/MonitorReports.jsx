@@ -24,7 +24,7 @@ import {
   Plus
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { MonitorAPI } from '../../api/monitorApi';
+import api from '../../services/frontendApi.js';
 
 const MonitorReports = ({ onStatsUpdate }) => {
   const { t } = useTranslation();
@@ -77,7 +77,7 @@ const MonitorReports = ({ onStatsUpdate }) => {
   const loadReports = async () => {
     try {
       setLoading(true);
-      const response = await MonitorAPI.getViolationReports({
+      const response = await api.getViolationReports({
         status: statusFilter !== 'all' ? statusFilter : undefined,
         severity: severityFilter !== 'all' ? severityFilter : undefined
       });
@@ -85,88 +85,8 @@ const MonitorReports = ({ onStatsUpdate }) => {
       if (response.success) {
         setReports(response.data);
       } else {
-        // Mock data for demonstration
-        const mockReports = [
-          {
-            id: '1',
-            violation_type: 'inappropriate_content',
-            status: 'open',
-            severity: 'high',
-            description: 'User posted inappropriate content during session',
-            created_at: '2024-01-25T15:30:00Z',
-            updated_at: '2024-01-25T15:30:00Z',
-            reporter: {
-              first_name: 'Ahmed',
-              last_name: 'Al-Rashid',
-              avatar_url: null
-            },
-            reported_user: {
-              first_name: 'John',
-              last_name: 'Doe',
-              avatar_url: null,
-              role: 'client'
-            },
-            assigned_monitor: null,
-            internal_notes: []
-          },
-          {
-            id: '2',
-            violation_type: 'harassment',
-            status: 'investigating',
-            severity: 'critical',
-            description: 'Multiple reports of harassment from this user',
-            created_at: '2024-01-25T14:15:00Z',
-            updated_at: '2024-01-25T16:00:00Z',
-            reporter: {
-              first_name: 'Fatima',
-              last_name: 'Al-Zahra',
-              avatar_url: null
-            },
-            reported_user: {
-              first_name: 'Jane',
-              last_name: 'Smith',
-              avatar_url: null,
-              role: 'reader'
-            },
-            assigned_monitor: {
-              first_name: 'Monitor',
-              last_name: 'User'
-            },
-            internal_notes: [
-              {
-                id: 'note1',
-                note: 'Investigating user history',
-                created_at: '2024-01-25T16:00:00Z'
-              }
-            ]
-          },
-          {
-            id: '3',
-            violation_type: 'spam',
-            status: 'resolved',
-            severity: 'medium',
-            description: 'Spam messages sent to multiple users',
-            created_at: '2024-01-25T12:00:00Z',
-            updated_at: '2024-01-25T13:30:00Z',
-            reporter: {
-              first_name: 'System',
-              last_name: 'Auto',
-              avatar_url: null
-            },
-            reported_user: {
-              first_name: 'Spam',
-              last_name: 'User',
-              avatar_url: null,
-              role: 'client'
-            },
-            assigned_monitor: {
-              first_name: 'Monitor',
-              last_name: 'User'
-            },
-            internal_notes: []
-          }
-        ];
-        setReports(mockReports);
+        console.error('Failed to load violation reports:', response.status);
+        setReports([]);
       }
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -238,7 +158,7 @@ const MonitorReports = ({ onStatsUpdate }) => {
   const handleUpdateStatus = async (reportId, newStatus) => {
     try {
       setProcessing(true);
-      const response = await MonitorAPI.updateViolationReport(reportId, { status: newStatus });
+      const response = await api.updateViolationReport(reportId, { status: newStatus });
       
       if (response.success) {
         showSuccess(language === 'ar' ? 'تم تحديث حالة التقرير' : 'Report status updated');
@@ -259,7 +179,7 @@ const MonitorReports = ({ onStatsUpdate }) => {
 
     try {
       setProcessing(true);
-      const response = await MonitorAPI.addInternalNote(selectedReport.id, internalNote);
+      const response = await api.addInternalNote(selectedReport.id, internalNote);
       
       if (response.success) {
         showSuccess(language === 'ar' ? 'تمت إضافة الملاحظة' : 'Note added successfully');

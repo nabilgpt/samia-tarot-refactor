@@ -3,8 +3,6 @@
 // =============================================================================
 // AI-powered content moderation and user behavior analysis
 
-const { supabaseAdmin: supabase } = require('../lib/supabase.js');
-
 // =============================================================================
 // CONTENT MODERATION FUNCTIONS
 // =============================================================================
@@ -12,7 +10,7 @@ const { supabaseAdmin: supabase } = require('../lib/supabase.js');
 // Moderate text content
 const moderateTextContent = async (req, res) => {
   try {
-    const { content, content_type, user_id } = req.body;
+    // // // const { content, content_type, user_id } = req.body;
     
     // Basic profanity and inappropriate content detection
     const moderationResult = {

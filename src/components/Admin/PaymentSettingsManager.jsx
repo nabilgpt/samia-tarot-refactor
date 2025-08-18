@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
-import PaymentSettingsAPI from '../../api/paymentSettingsApi';
+import api from '../../services/frontendApi.js';
 import PaymentMethodModal from './PaymentMethodModal';
 import {
   CurrencyDollarIcon,
@@ -52,7 +52,7 @@ const PaymentSettingsManager = () => {
       setLoading(true);
       
       // Load payment methods
-      const methodsResult = await PaymentSettingsAPI.getPaymentMethods();
+      const methodsResult = await api.getPaymentMethods();
       if (methodsResult.success) {
         setPaymentMethods(methodsResult.data || []);
       } else {
@@ -93,7 +93,7 @@ const PaymentSettingsManager = () => {
       }
 
       // Load payment regions
-      const regionsResult = await PaymentSettingsAPI.getPaymentRegions();
+      const regionsResult = await api.getPaymentRegions();
       if (regionsResult.success) {
         setPaymentRegions(regionsResult.data || []);
       } else {
@@ -127,7 +127,7 @@ const PaymentSettingsManager = () => {
   const handleToggleMethod = async (method) => {
     try {
       setSaving(true);
-      const result = await PaymentSettingsAPI.togglePaymentMethod(method);
+      const result = await api.togglePaymentMethod(method);
       
       if (result.success) {
         showSuccess(result.message);
@@ -146,7 +146,7 @@ const PaymentSettingsManager = () => {
   const handleCreateMethod = async (methodData) => {
     try {
       setSaving(true);
-      const result = await PaymentSettingsAPI.createPaymentMethod(methodData);
+      const result = await api.createPaymentMethod(methodData);
       
       if (result.success) {
         showSuccess(result.message);
@@ -167,7 +167,7 @@ const PaymentSettingsManager = () => {
   const handleUpdateMethod = async (method, updateData) => {
     try {
       setSaving(true);
-      const result = await PaymentSettingsAPI.updatePaymentMethod(method, updateData, profile?.role);
+      const result = await api.updatePaymentMethod(method, updateData, profile?.role);
       
       if (result.success) {
         showSuccess(result.message);
@@ -193,7 +193,7 @@ const PaymentSettingsManager = () => {
 
     try {
       setSaving(true);
-      const result = await PaymentSettingsAPI.deletePaymentMethod(method);
+      const result = await api.deletePaymentMethod(method);
       
       if (result.success) {
         showSuccess(result.message);

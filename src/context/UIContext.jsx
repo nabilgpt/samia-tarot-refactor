@@ -4,9 +4,7 @@ import { useTranslation } from 'react-i18next';
 const UIContext = createContext();
 
 const initialState = {
-  theme: 'dark', // Always default to dark
-  language: 'ar',
-  direction: 'rtl',
+  theme: 'dark',
   sidebarOpen: false,
   loading: false,
   notifications: [],
@@ -20,68 +18,38 @@ const initialState = {
 const uiReducer = (state, action) => {
   switch (action.type) {
     case 'SET_THEME':
-      return {
-        ...state,
-        theme: action.payload
-      };
+      return { ...state, theme: action.payload };
     case 'TOGGLE_THEME':
-      return {
-        ...state,
-        theme: state.theme === 'dark' ? 'light' : 'dark'
-      };
-    case 'SET_LANGUAGE':
-      return {
-        ...state,
-        language: action.payload,
-        direction: action.payload === 'ar' ? 'rtl' : 'ltr'
-      };
+      return { ...state, theme: state.theme === 'dark' ? 'light' : 'dark' };
     case 'TOGGLE_SIDEBAR':
-      return {
-        ...state,
-        sidebarOpen: !state.sidebarOpen
-      };
+      return { ...state, sidebarOpen: !state.sidebarOpen };
     case 'SET_SIDEBAR':
-      return {
-        ...state,
-        sidebarOpen: action.payload
-      };
+      return { ...state, sidebarOpen: action.payload };
     case 'SET_LOADING':
-      return {
-        ...state,
-        loading: action.payload
-      };
+      return { ...state, loading: action.payload };
     case 'ADD_NOTIFICATION':
-      return {
-        ...state,
-        notifications: [...state.notifications, action.payload]
-      };
+      return { ...state, notifications: [...state.notifications, action.payload] };
     case 'REMOVE_NOTIFICATION':
-      return {
-        ...state,
-        notifications: state.notifications.filter(n => n.id !== action.payload)
-      };
+      return { ...state, notifications: state.notifications.filter(n => n.id !== action.payload) };
     case 'CLEAR_NOTIFICATIONS':
-      return {
-        ...state,
-        notifications: []
-      };
+      return { ...state, notifications: [] };
     case 'OPEN_MODAL':
-      return {
-        ...state,
-        modal: {
-          isOpen: true,
-          type: action.payload.type,
-          data: action.payload.data
-        }
+      return { 
+        ...state, 
+        modal: { 
+          isOpen: true, 
+          type: action.payload.type, 
+          data: action.payload.data 
+        } 
       };
     case 'CLOSE_MODAL':
-      return {
-        ...state,
-        modal: {
-          isOpen: false,
-          type: null,
-          data: null
-        }
+      return { 
+        ...state, 
+        modal: { 
+          isOpen: false, 
+          type: null, 
+          data: null 
+        } 
       };
     default:
       return state;
@@ -92,91 +60,55 @@ export const UIProvider = ({ children }) => {
   const [state, dispatch] = useReducer(uiReducer, initialState);
   const { i18n } = useTranslation();
 
-  // Apply theme to document with enhanced cosmic effects
+  // Theme management only - NO LANGUAGE MANAGEMENT
   const applyTheme = (theme) => {
-    const html = document.documentElement;
+    const root = document.documentElement;
     const body = document.body;
     
-    // Remove any existing theme classes from both html and body
-    html.classList.remove('dark', 'light');
-    body.classList.remove('dark', 'light');
+    // Remove all theme classes
+    body.className = body.className.replace(/theme-\w+/g, '');
     
-    // Add the new theme class to both html and body for maximum compatibility
-    html.classList.add(theme);
-    body.classList.add(theme);
+    // Add current theme class
+    body.classList.add(`theme-${theme}`);
     
-    // Set data attribute for CSS variables
-    html.setAttribute('data-theme', theme);
-    body.setAttribute('data-theme', theme);
-    
-    // Update CSS variables for cosmic theme with enhanced day/night palettes
-    const root = document.documentElement;
     if (theme === 'dark') {
-      // Dark cosmic theme variables (Night Mode)
-      root.style.setProperty('--bg-primary', '#0f172a');
-      root.style.setProperty('--bg-secondary', '#1e293b');
-      root.style.setProperty('--bg-tertiary', '#334155');
-      root.style.setProperty('--bg-card', 'rgba(30, 41, 59, 0.8)');
-      root.style.setProperty('--bg-glass', 'rgba(51, 65, 85, 0.1)');
-      root.style.setProperty('--bg-input', 'rgba(51, 65, 85, 0.5)');
+      // Dark mode CSS variables
+      root.style.setProperty('--bg-primary', '#0a0a0a');
+      root.style.setProperty('--bg-secondary', '#1a1a1a');
+      root.style.setProperty('--bg-tertiary', '#2a2a2a');
       root.style.setProperty('--text-primary', '#ffffff');
-      root.style.setProperty('--text-secondary', '#e2e8f0');
-      root.style.setProperty('--text-muted', '#94a3b8');
-      root.style.setProperty('--text-inverse', '#1e293b');
-      root.style.setProperty('--cosmic-glow', 'rgba(217, 70, 239, 0.4)');
-      root.style.setProperty('--gold-glow', 'rgba(251, 191, 36, 0.4)');
-      root.style.setProperty('--cosmic-primary', '#d946ef');
-      root.style.setProperty('--cosmic-secondary', '#8b5cf6');
-      root.style.setProperty('--gold-primary', '#fbbf24');
-      root.style.setProperty('--gold-secondary', '#f59e0b');
+      root.style.setProperty('--text-secondary', '#b0b0b0');
+      root.style.setProperty('--text-tertiary', '#808080');
+      root.style.setProperty('--border-primary', '#404040');
+      root.style.setProperty('--border-secondary', '#2a2a2a');
+      root.style.setProperty('--accent-primary', '#8b5cf6');
+      root.style.setProperty('--accent-secondary', '#a855f7');
+      root.style.setProperty('--accent-gold', '#d97706');
+      root.style.setProperty('--accent-cosmic', '#8b5cf6');
+      root.style.setProperty('--border-cosmic', 'rgba(139, 92, 246, 0.6)');
+      root.style.setProperty('--shadow-cosmic', '0 0 30px rgba(139, 92, 246, 0.3)');
+      root.style.setProperty('--shadow-gold', '0 0 20px rgba(217, 119, 6, 0.3)');
       
-      // Night mode particle and animation variables
-      root.style.setProperty('--particle-opacity', '0.8');
-      root.style.setProperty('--particle-size', '2px');
-      root.style.setProperty('--particle-glow', 'rgba(217, 70, 239, 0.6)');
-      root.style.setProperty('--orb-opacity-primary', '0.3');
-      root.style.setProperty('--orb-opacity-secondary', '0.25');
-      root.style.setProperty('--orb-opacity-tertiary', '0.2');
-      
-      root.style.setProperty('--border-color', 'rgba(251, 191, 36, 0.2)');
-      root.style.setProperty('--border-cosmic', 'rgba(217, 70, 239, 0.3)');
-      root.style.setProperty('--shadow-cosmic', '0 0 50px rgba(217, 70, 239, 0.3)');
-      root.style.setProperty('--shadow-gold', '0 0 30px rgba(251, 191, 36, 0.3)');
-      
-      // Night mode gradients
-      root.style.setProperty('--bg-gradient', 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)');
-      root.style.setProperty('--cosmic-gradient', 'linear-gradient(135deg, rgba(217, 70, 239, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)');
-      root.style.setProperty('--orb-gradient-primary', 'radial-gradient(circle, #d946ef 0%, transparent 70%)');
-      root.style.setProperty('--orb-gradient-secondary', 'radial-gradient(circle, #fbbf24 0%, transparent 70%)');
-      root.style.setProperty('--orb-gradient-tertiary', 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)');
+      // Dark mode gradients
+      root.style.setProperty('--bg-gradient', 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2a2a2a 100%)');
+      root.style.setProperty('--cosmic-gradient', 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)');
+      root.style.setProperty('--orb-gradient-primary', 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)');
+      root.style.setProperty('--orb-gradient-secondary', 'radial-gradient(circle, #d97706 0%, transparent 70%)');
+      root.style.setProperty('--orb-gradient-tertiary', 'radial-gradient(circle, #a855f7 0%, transparent 70%)');
     } else {
-      // Light cosmic theme variables (Day Mode)
-      root.style.setProperty('--bg-primary', '#f8fafc');
-      root.style.setProperty('--bg-secondary', '#e2e8f0');
-      root.style.setProperty('--bg-tertiary', '#cbd5e1');
-      root.style.setProperty('--bg-card', 'rgba(248, 250, 252, 0.9)');
-      root.style.setProperty('--bg-glass', 'rgba(226, 232, 240, 0.2)');
-      root.style.setProperty('--bg-input', 'rgba(203, 213, 225, 0.5)');
-      root.style.setProperty('--text-primary', '#1e293b');
-      root.style.setProperty('--text-secondary', '#475569');
-      root.style.setProperty('--text-muted', '#64748b');
-      root.style.setProperty('--text-inverse', '#ffffff');
-      root.style.setProperty('--cosmic-glow', 'rgba(139, 92, 246, 0.3)');
-      root.style.setProperty('--gold-glow', 'rgba(217, 119, 6, 0.3)');
-      root.style.setProperty('--cosmic-primary', '#8b5cf6');
-      root.style.setProperty('--cosmic-secondary', '#a855f7');
-      root.style.setProperty('--gold-primary', '#d97706');
-      root.style.setProperty('--gold-secondary', '#ea580c');
-      
-      // Day mode particle and animation variables
-      root.style.setProperty('--particle-opacity', '0.4');
-      root.style.setProperty('--particle-size', '1.5px');
-      root.style.setProperty('--particle-glow', 'rgba(139, 92, 246, 0.4)');
-      root.style.setProperty('--orb-opacity-primary', '0.1');
-      root.style.setProperty('--orb-opacity-secondary', '0.08');
-      root.style.setProperty('--orb-opacity-tertiary', '0.06');
-      
-      root.style.setProperty('--border-color', 'rgba(217, 119, 6, 0.3)');
+      // Light mode CSS variables
+      root.style.setProperty('--bg-primary', '#ffffff');
+      root.style.setProperty('--bg-secondary', '#f8fafc');
+      root.style.setProperty('--bg-tertiary', '#e2e8f0');
+      root.style.setProperty('--text-primary', '#1a1a1a');
+      root.style.setProperty('--text-secondary', '#4a4a4a');
+      root.style.setProperty('--text-tertiary', '#6a6a6a');
+      root.style.setProperty('--border-primary', '#e2e8f0');
+      root.style.setProperty('--border-secondary', '#cbd5e1');
+      root.style.setProperty('--accent-primary', '#8b5cf6');
+      root.style.setProperty('--accent-secondary', '#a855f7');
+      root.style.setProperty('--accent-gold', '#d97706');
+      root.style.setProperty('--accent-cosmic', '#8b5cf6');
       root.style.setProperty('--border-cosmic', 'rgba(139, 92, 246, 0.4)');
       root.style.setProperty('--shadow-cosmic', '0 0 30px rgba(139, 92, 246, 0.2)');
       root.style.setProperty('--shadow-gold', '0 0 20px rgba(217, 119, 6, 0.2)');
@@ -208,13 +140,11 @@ export const UIProvider = ({ children }) => {
     }, 0);
   };
 
-  // Load saved preferences on mount with guaranteed dark default
+  // Load saved theme preferences on mount
   useEffect(() => {
     // ALWAYS default to dark if no preference is saved
     const savedTheme = localStorage.getItem('samia_theme');
     const finalTheme = savedTheme || 'dark'; // Force dark as default
-    
-    const savedLanguage = localStorage.getItem('samia_language') || 'ar';
 
     // Apply theme first
     applyTheme(finalTheme);
@@ -225,16 +155,8 @@ export const UIProvider = ({ children }) => {
       localStorage.setItem('samia_theme', 'dark');
     }
     
-    // Apply language
-    dispatch({ type: 'SET_LANGUAGE', payload: savedLanguage });
-    
-    // Update i18n language
-    i18n.changeLanguage(savedLanguage);
-    
-    // Update HTML attributes for RTL/LTR
-    document.documentElement.setAttribute('dir', savedLanguage === 'ar' ? 'rtl' : 'ltr');
-    document.documentElement.setAttribute('lang', savedLanguage);
-  }, [i18n]);
+    // ⚠️ LANGUAGE IS NOW MANAGED BY LanguageContext ONLY
+  }, []);
 
   const setTheme = (theme) => {
     localStorage.setItem('samia_theme', theme);
@@ -249,16 +171,7 @@ export const UIProvider = ({ children }) => {
     dispatch({ type: 'TOGGLE_THEME' });
   };
 
-  const setLanguage = (language) => {
-    localStorage.setItem('samia_language', language);
-    i18n.changeLanguage(language);
-    
-    const direction = language === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.setAttribute('dir', direction);
-    document.documentElement.setAttribute('lang', language);
-    
-    dispatch({ type: 'SET_LANGUAGE', payload: language });
-  };
+  // ⚠️ LANGUAGE FUNCTIONS REMOVED - USE LanguageContext INSTEAD
 
   const toggleSidebar = () => {
     dispatch({ type: 'TOGGLE_SIDEBAR' });
@@ -351,7 +264,7 @@ export const UIProvider = ({ children }) => {
     ...state,
     setTheme,
     toggleTheme,
-    setLanguage,
+    // ⚠️ setLanguage REMOVED - USE LanguageContext
     toggleSidebar,
     setSidebar,
     setLoading,

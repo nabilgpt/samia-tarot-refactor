@@ -180,7 +180,7 @@ const SupportTools = () => {
         className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
       >
         <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-violet-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
             {language === 'ar' ? 'أدوات الدعم' : 'Support Tools'}
           </h2>
           <p className="text-gray-400 mt-1">

@@ -3,7 +3,7 @@
 // API Layer for Reader Schedule Management with Approval Workflow
 // =====================================================
 
-import { supabase } from '../lib/supabase.js';
+import { supabase } from './lib/supabase.js';
 
 export const WorkingHoursAPI = {
   // =====================================================

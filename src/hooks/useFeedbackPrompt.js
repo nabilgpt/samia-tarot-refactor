@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { serviceFeedbackAPI } from '../api/serviceFeedbackApi';
+import { useState } from 'react';
+import api from '../services/frontendApi.js';
 
 /**
  * Hook to manage feedback prompts after service completion
@@ -19,7 +19,7 @@ export const useFeedbackPrompt = () => {
     if (!booking || !serviceType) return;
 
     try {
-      const response = await serviceFeedbackAPI.checkFeedbackRequired(booking.id);
+      const response = await api.checkFeedbackRequired(booking.id);
       
       if (response.success && response.data?.feedback_required) {
         setFeedbackBooking(booking);
@@ -55,7 +55,7 @@ export const useFeedbackPrompt = () => {
    * Handle successful feedback submission
    * @param {Object} submittedFeedback - The submitted feedback data
    */
-  const handleFeedbackSubmitted = (submittedFeedback) => {
+  const handleFeedbackSubmitted = (/*submittedFeedback*/) => {
     // Modal will auto-close, just clean up state
     setFeedbackBooking(null);
     setFeedbackServiceType(null);

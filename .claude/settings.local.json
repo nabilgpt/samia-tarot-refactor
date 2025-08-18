@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git config:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

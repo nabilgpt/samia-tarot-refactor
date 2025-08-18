@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { UserAPI } from '../../api/userApi.js';
+import api from '../../services/frontendApi.js';
 
 const SquarePayment = ({ service, amount, onPaymentSuccess, onPaymentError, onBack, bookingId }) => {
   const { user, profile } = useAuth();
@@ -89,7 +89,7 @@ const SquarePayment = ({ service, amount, onPaymentSuccess, onPaymentError, onBa
         const paymentData = await paymentResponse.json();
 
         // Create payment record in our database
-        const paymentResult = await UserAPI.createPayment({
+        const paymentResult = await api.createPayment({
           booking_id: bookingId,
           user_id: user.id,
           amount: amount,

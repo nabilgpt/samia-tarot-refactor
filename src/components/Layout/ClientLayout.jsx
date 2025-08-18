@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../context/LanguageContext';
 import { 
   Home, 
   Calendar,
@@ -15,21 +15,21 @@ import { getDashboardRoleConfig, getDashboardQuickStats } from '../../utils/dash
 import { useUI } from '../../context/UIContext';
 
 const ClientLayout = ({ children }) => {
-  const { t } = useTranslation();
+  const { currentLanguage, direction, isRtl, getLocalizedText } = useLanguage();
   const { language } = useUI();
 
   const roleConfig = getDashboardRoleConfig('client', language);
   const quickStats = getDashboardQuickStats('client', language);
 
   const navigation = [
-    { name: language === 'ar' ? 'الرئيسية' : 'Dashboard', href: '/client', icon: Home },
-    { name: language === 'ar' ? 'الحجوزات' : 'Bookings', href: '/client/bookings', icon: Calendar },
-    { name: language === 'ar' ? 'القراء المفضلون' : 'Favorite Readers', href: '/client/favorites', icon: Heart },
-    { name: language === 'ar' ? 'تقييماتي' : 'My Reviews', href: '/client/reviews', icon: Star },
-    { name: language === 'ar' ? 'الرسائل' : 'Messages', href: '/client/messages', icon: MessageCircle },
-    { name: language === 'ar' ? 'المحفظة' : 'Wallet', href: '/client/wallet', icon: CreditCard },
-    { name: language === 'ar' ? 'الملف الشخصي' : 'Profile', href: '/client/profile', icon: User },
-    { name: language === 'ar' ? 'الإعدادات' : 'Settings', href: '/client/settings', icon: Settings },
+    { name: getLocalizedText('navigation.clientDashboard'), href: '/client', icon: Home },
+    { name: getLocalizedText('navigation.bookings'), href: '/client/bookings', icon: Calendar },
+    { name: getLocalizedText('navigation.favoriteReaders'), href: '/client/favorites', icon: Heart },
+    { name: getLocalizedText('navigation.myReviews'), href: '/client/reviews', icon: Star },
+    { name: getLocalizedText('navigation.messages'), href: '/client/messages', icon: MessageCircle },
+    { name: getLocalizedText('navigation.wallet'), href: '/client/wallet', icon: CreditCard },
+    { name: getLocalizedText('navigation.profile'), href: '/client/profile', icon: User },
+    { name: getLocalizedText('navigation.settings'), href: '/client/settings', icon: Settings },
   ];
 
   return (

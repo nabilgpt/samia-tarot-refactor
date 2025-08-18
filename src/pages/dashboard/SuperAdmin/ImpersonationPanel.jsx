@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import SuperAdminAPI from '../../../api/superAdminApi.js';
+import api from '../../../services/frontendApi.js';
 import {
   UserIcon,
   MagnifyingGlassIcon,
@@ -31,7 +31,7 @@ const ImpersonationPanel = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const result = await SuperAdminAPI.getAllUsers({
+      const result = await api.getAllUsers({
         search: searchTerm,
         role: roleFilter,
         limit: 50
@@ -61,7 +61,7 @@ const ImpersonationPanel = () => {
   const handleImpersonateUser = async () => {
     try {
       setLoading(true);
-      const result = await SuperAdminAPI.impersonateUser(selectedUser.id);
+      const result = await api.impersonateUser(selectedUser.id);
       if (result.success) {
         setMessage('Impersonation session started successfully');
         setShowConfirmModal(false);
@@ -97,7 +97,7 @@ const ImpersonationPanel = () => {
 
   const handleEndImpersonation = async (sessionId) => {
     try {
-      const result = await SuperAdminAPI.endImpersonation(sessionId);
+      const result = await api.endImpersonation(sessionId);
       if (result.success) {
         setMessage('Impersonation session ended');
         localStorage.removeItem('impersonation_session');

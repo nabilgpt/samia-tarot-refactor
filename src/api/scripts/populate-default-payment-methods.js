@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require('../lib/supabase');
+import { supabaseAdmin } from '../lib/supabase.js';
 
 // =====================================================
 // DEFAULT PAYMENT METHODS CONFIGURATION
@@ -198,11 +198,11 @@ const DEFAULT_PAYMENT_METHODS = [
     countries: ['LB'],
     details: {
       description: 'OMT Lebanon Money Transfer',
-      icon: 'building-2',
-      color: '#1E40AF',
-      local_currency: 'LBP',
-      region_specific: true,
-      country: 'Lebanon'
+      icon: 'building-bank',
+      color: '#0066CC',
+      requires_id: true,
+      transfer_type: 'domestic',
+      local_service: true
     },
     fees: {
       range: '2-5',
@@ -221,19 +221,18 @@ const DEFAULT_PAYMENT_METHODS = [
     details: {
       description: 'Whish Money Digital Wallet',
       icon: 'wallet',
-      color: '#8B5CF6',
-      local_currency: 'LBP',
-      region_specific: true,
-      country: 'Lebanon',
-      digital_wallet: true
+      color: '#FF4500',
+      digital_wallet: true,
+      local_service: true
     },
     fees: {
       percentage: 1.5,
-      description: 'Transaction fee'
+      currency: 'USD',
+      description: 'Digital wallet fee'
     },
     processing_time: 'Instant',
-    auto_confirm: false,
-    requires_receipt: true,
+    auto_confirm: true,
+    requires_receipt: false,
     display_order: 10
   },
   {
@@ -242,24 +241,23 @@ const DEFAULT_PAYMENT_METHODS = [
     countries: ['LB'],
     details: {
       description: 'Bank of Beirut Direct Transfer',
-      icon: 'building-2',
-      color: '#059669',
-      local_currency: 'LBP',
-      region_specific: true,
-      country: 'Lebanon',
-      bank_transfer: true
+      icon: 'building-bank',
+      color: '#003366',
+      bank_transfer: true,
+      local_service: true
     },
     fees: {
-      fixed: 0,
-      description: 'No additional fees'
+      fixed: 2.00,
+      currency: 'USD',
+      description: 'Bank transfer fee'
     },
-    processing_time: '1-2 business days',
+    processing_time: '1-2 hours',
     auto_confirm: false,
     requires_receipt: true,
     display_order: 11
   },
 
-  // In-App Wallet
+  // Platform Wallet
   {
     method: 'wallet',
     enabled: true,
@@ -267,14 +265,13 @@ const DEFAULT_PAYMENT_METHODS = [
     details: {
       description: 'SAMIA In-App Wallet',
       icon: 'wallet',
-      color: '#7C3AED',
-      instant_payment: true,
-      internal_system: true,
-      balance_based: true
+      color: '#8B5CF6',
+      platform_wallet: true,
+      requires_topup: true
     },
     fees: {
-      fixed: 0,
-      description: 'No fees'
+      percentage: 0,
+      description: 'No fees for wallet payments'
     },
     processing_time: 'Instant',
     auto_confirm: true,
@@ -284,7 +281,7 @@ const DEFAULT_PAYMENT_METHODS = [
 ];
 
 // =====================================================
-// POPULATION FUNCTIONS
+// HELPER FUNCTIONS
 // =====================================================
 
 /**
@@ -297,7 +294,7 @@ async function isPaymentSettingsEmpty() {
       .select('*', { count: 'exact', head: true });
 
     if (error) {
-      console.error('Error checking payment_settings:', error);
+      console.error('Error checking payment_settings table:', error);
       return false;
     }
 
@@ -504,7 +501,7 @@ async function main() {
 }
 
 // Export functions for use in other scripts
-module.exports = {
+export {
   populateDefaultPaymentMethods,
   addNewPaymentMethods,
   verifyPaymentMethodsSetup,
@@ -512,6 +509,6 @@ module.exports = {
 };
 
 // Run if called directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 } 

@@ -16,7 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { MonitorAPI } from '../../api/monitorApi';
+import api from '../../services/frontendApi.js';
 
 const MonitorNotifications = () => {
   const { t } = useTranslation();
@@ -64,51 +64,13 @@ const MonitorNotifications = () => {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const response = await MonitorAPI.getNotifications();
+      const response = await api.getNotifications();
       
       if (response.success) {
         setNotifications(response.data);
       } else {
-        // Mock data for demonstration
-        const mockNotifications = [
-          {
-            id: '1',
-            type: 'monitor_alert',
-            title: 'High Priority Session Needs Monitoring',
-            message: 'A session has been flagged for urgent monitoring due to multiple reports',
-            read: false,
-            created_at: '2024-01-25T15:30:00Z',
-            priority: 'high'
-          },
-          {
-            id: '2',
-            type: 'session_flagged',
-            title: 'Session Flagged for Review',
-            message: 'Session 12345 has been flagged by another monitor for inappropriate content',
-            read: false,
-            created_at: '2024-01-25T14:45:00Z',
-            priority: 'medium'
-          },
-          {
-            id: '3',
-            type: 'urgent_review',
-            title: 'Urgent Content Review Required',
-            message: 'Multiple users have reported the same content. Immediate review needed.',
-            read: true,
-            created_at: '2024-01-25T13:20:00Z',
-            priority: 'critical'
-          },
-          {
-            id: '4',
-            type: 'system_alert',
-            title: 'System Maintenance Notice',
-            message: 'Scheduled maintenance will occur tonight from 2:00 AM to 4:00 AM',
-            read: true,
-            created_at: '2024-01-25T10:00:00Z',
-            priority: 'low'
-          }
-        ];
-        setNotifications(mockNotifications);
+        console.error('Failed to load notifications:', response.status);
+        setNotifications([]);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -169,7 +131,7 @@ const MonitorNotifications = () => {
 
   const handleMarkAsRead = async (notificationId) => {
     try {
-      const response = await MonitorAPI.markNotificationRead(notificationId);
+      const response = await api.markNotificationRead(notificationId);
       
       if (response.success) {
         setNotifications(prev => 

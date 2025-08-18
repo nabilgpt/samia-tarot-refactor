@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TarotAPI } from '../../api/tarotApi.js';
+import api from '../../services/frontendApi.js';
 import { 
   ArrowLeft, 
   Star, 
@@ -29,8 +29,8 @@ const SpreadSelector = ({ category, onSpreadSelect, onBack }) => {
 
     try {
       const result = category === 'all' 
-        ? await TarotAPI.getAllSpreads()
-        : await TarotAPI.getSpreadsByCategory(category);
+        ? await api.getAllSpreads()
+        : await api.getSpreadsByCategory(category);
 
       if (result.success) {
         setSpreads(result.data);

@@ -1,46 +1,30 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { 
-  Home, 
-  Users,
-  Shield,
-  User,
-  Star,
-  MessageCircle,
-  Settings,
-  BarChart3,
-  DollarSign,
-  AlertTriangle,
-  FileText,
-  Database,
-  Eye
-} from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 import UnifiedDashboardLayout from './UnifiedDashboardLayout';
 import { getDashboardRoleConfig, getDashboardQuickStats } from '../../utils/dashboardRoleConfigs.jsx';
+import { getSidebarNavigationItems } from '../../utils/navigationConfig.js';
 import { useUI } from '../../context/UIContext';
 
-const AdminLayout = ({ children, onEmergencyAlertsClick }) => {
-  const { t } = useTranslation();
-  const { language } = useUI();
+const AdminLayout = ({ children, onEmergencyAlertsClick, onTabChange, activeTab }) => {
+  const { currentLanguage, direction, isRtl } = useLanguage();
+  const { } = useUI(); // Removed language - using LanguageContext instead
 
-  const roleConfig = getDashboardRoleConfig('admin', language);
-  const quickStats = getDashboardQuickStats('admin', language);
+  const roleConfig = getDashboardRoleConfig('admin', currentLanguage);
+  const quickStats = getDashboardQuickStats('admin', currentLanguage);
 
-  const navigation = [
-    { name: language === 'ar' ? 'لوحة التحكم' : 'Dashboard', href: '/admin', icon: Home },
-    { name: language === 'ar' ? 'إدارة المستخدمين' : 'User Management', href: '/admin/users', icon: Users },
-    { name: language === 'ar' ? 'إدارة القراء' : 'Reader Management', href: '/admin/readers', icon: Eye },
-    { name: language === 'ar' ? 'التقارير المالية' : 'Financial Reports', href: '/admin/finances', icon: DollarSign },
-    { name: language === 'ar' ? 'الإحصائيات' : 'Analytics', href: '/admin/analytics', icon: BarChart3 },
-    { name: language === 'ar' ? 'المراجعات' : 'Reviews', href: '/admin/reviews', icon: Star },
-    { name: language === 'ar' ? 'الرسائل' : 'Messages', href: '/admin/messages', icon: MessageCircle },
-    { name: language === 'ar' ? 'التقارير' : 'Reports', href: '/admin/reports', icon: FileText },
-    { name: language === 'ar' ? 'الحوادث' : 'Incidents', href: '/admin/incidents', icon: AlertTriangle },
-    { name: language === 'ar' ? 'النظام' : 'System', href: '/admin/system', icon: Database },
-    { name: language === 'ar' ? 'الأمان' : 'Security', href: '/admin/security', icon: Shield },
-    { name: language === 'ar' ? 'الملف الشخصي' : 'Profile', href: '/admin/profile', icon: User },
-    { name: language === 'ar' ? 'الإعدادات' : 'Settings', href: '/admin/settings', icon: Settings },
-  ];
+  // Get ALL navigation items from unified config (main + system + account)
+  const navigationItems = getSidebarNavigationItems(currentLanguage, onTabChange);
+  
+  // Convert to format expected by UnifiedDashboardLayout
+  const navigation = navigationItems.map(item => ({
+    name: item.label,
+    href: item.href,
+    icon: item.icon,
+    key: item.key,
+    type: item.type,
+    onClick: item.onClick,
+    isActive: item.tabId === activeTab
+  }));
 
   return (
     <UnifiedDashboardLayout
@@ -48,6 +32,7 @@ const AdminLayout = ({ children, onEmergencyAlertsClick }) => {
       navigationItems={navigation}
       quickStats={quickStats}
       onEmergencyAlertsClick={onEmergencyAlertsClick}
+      onNavigate={onTabChange}
     >
       {children}
     </UnifiedDashboardLayout>

@@ -2,7 +2,7 @@
 // OPENAI FRONTEND SERVICE
 // ===============================================
 
-import { apiService } from './api';
+import { apiService } from './frontendApi.js';
 
 class OpenAIService {
   constructor() {

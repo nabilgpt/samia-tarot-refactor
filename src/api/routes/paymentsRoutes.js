@@ -468,7 +468,7 @@ router.get('/payments/:id',
 // Update payment status (Admin only)
 router.patch('/payments/:id/status',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -580,7 +580,7 @@ router.post('/payments/:id/receipt',
 
       // Upload file to Supabase Storage
       const fileName = `receipts/${payment_id}_${Date.now()}_${req.file.originalname}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('receipts')
         .upload(fileName, req.file.buffer, {
           contentType: req.file.mimetype,
@@ -635,7 +635,7 @@ router.post('/payments/:id/receipt',
 // Verify receipt (Admin only)
 router.patch('/receipts/:id/verify',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -901,7 +901,7 @@ router.post('/wallet/transfer',
 // Create refund (Admin only)
 router.post('/refunds',
   authenticateToken,
-  requireRole(['admin']),
+  requireRole(['admin', 'super_admin']),
   validateRequest(refundSchema),
   async (req, res) => {
     try {

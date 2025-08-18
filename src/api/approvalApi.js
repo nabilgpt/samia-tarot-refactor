@@ -2,7 +2,7 @@
 // SAMIA TAROT - APPROVAL API
 // ===================================
 
-import { supabase } from '../lib/supabase';
+import { supabase } from './lib/supabase.js';
 
 export const ApprovalAPI = {
   // Submit a new approval request (for readers)

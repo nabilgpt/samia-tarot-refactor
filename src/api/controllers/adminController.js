@@ -3,9 +3,13 @@
 // =============================================================================
 // Complete admin controller for SAMIA TAROT platform management
 
-const { supabaseAdmin: supabase } = require('../lib/supabase.js');
-const auditService = require('../services/auditService.js');
-const adminService = require('../services/adminService.js');
+// CREDENTIAL SOURCE POLICY COMPLIANCE:
+// - Supabase credentials: ONLY from .env (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)
+// - All other API keys: ONLY from Super Admin Dashboard/Database, NEVER from .env
+
+import { supabaseAdmin as supabase } from '../lib/supabase.js';
+import auditService from '../services/auditService.js';
+import adminService from '../services/adminService.js';
 
 // =============================================================================
 // USER MANAGEMENT CONTROLLERS
@@ -16,7 +20,7 @@ const adminService = require('../services/adminService.js');
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getAllUsers = async (req, res) => {
+export const getAllUsers = async (req, res) => {
   try {
     const {
       page = 1,
@@ -65,7 +69,7 @@ const getAllUsers = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const editUserProfile = async (req, res) => {
+export const editUserProfile = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
@@ -120,7 +124,7 @@ const editUserProfile = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const changeUserRole = async (req, res) => {
+export const changeUserRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { role, reason } = req.body;
@@ -182,7 +186,7 @@ const changeUserRole = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const disableUserAccount = async (req, res) => {
+export const disableUserAccount = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -203,18 +207,18 @@ const disableUserAccount = async (req, res) => {
       .eq('id', id)
       .single();
 
-    const result = await adminService.disableUserAccount(id, reason);
+    const disabledUser = await adminService.disableUserAccount(id);
 
     // Log admin action
     await auditService.logAdminAction(req.user.id, 'DISABLE_USER_ACCOUNT', 'users', id, {
       reason,
-      target_user: userData ? `${userData.first_name} ${userData.last_name} (${userData.email})` : 'Unknown',
-      target_role: userData?.role
+      disabled_user: `${userData?.first_name} ${userData?.last_name} (${userData?.email})`,
+      user_role: userData?.role
     });
 
     res.json({
       success: true,
-      data: result,
+      data: disabledUser,
       message: 'User account disabled successfully'
     });
   } catch (error) {
@@ -236,7 +240,7 @@ const disableUserAccount = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getAllBookings = async (req, res) => {
+export const getAllBookings = async (req, res) => {
   try {
     const {
       page = 1,
@@ -246,7 +250,9 @@ const getAllBookings = async (req, res) => {
       date_to,
       reader_id,
       client_id,
-      service_type
+      service_type,
+      sort_by = 'created_at',
+      sort_order = 'desc'
     } = req.query;
 
     const bookings = await adminService.getAllBookings({
@@ -257,12 +263,15 @@ const getAllBookings = async (req, res) => {
       date_to,
       reader_id,
       client_id,
-      service_type
+      service_type,
+      sort_by,
+      sort_order
     });
 
     // Log admin action
     await auditService.logAdminAction(req.user.id, 'GET_ALL_BOOKINGS', 'bookings', null, {
-      filters: { status, date_from, date_to, reader_id, client_id, service_type }
+      filters: { status, date_from, date_to, reader_id, client_id, service_type },
+      pagination: { page, limit }
     });
 
     res.json({
@@ -282,21 +291,19 @@ const getAllBookings = async (req, res) => {
 };
 
 /**
- * Update booking details
+ * Update booking
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const updateBooking = async (req, res) => {
+export const updateBooking = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
 
     // Validate allowed fields
-    const allowedFields = [
-      'status', 'notes', 'reader_id', 'scheduled_at', 'service_id'
-    ];
-
+    const allowedFields = ['status', 'notes', 'reader_id', 'scheduled_at', 'service_id'];
     const filteredData = {};
+    
     Object.keys(updateData).forEach(key => {
       if (allowedFields.includes(key)) {
         filteredData[key] = updateData[key];
@@ -311,10 +318,10 @@ const updateBooking = async (req, res) => {
       });
     }
 
-    // Get current booking for logging
+    // Get current booking data for logging
     const { data: currentBooking } = await supabase
       .from('bookings')
-      .select('*')
+      .select('status, reader_id, client_id, service_id')
       .eq('id', id)
       .single();
 
@@ -347,35 +354,38 @@ const updateBooking = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const cancelBooking = async (req, res) => {
+export const cancelBooking = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
 
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cancellation reason is required',
+        code: 'MISSING_CANCELLATION_REASON'
+      });
+    }
+
     // Get booking data for logging
     const { data: bookingData } = await supabase
       .from('bookings')
-      .select(`
-        *,
-        profiles!bookings_client_id_fkey(first_name, last_name),
-        reader:profiles!bookings_reader_id_fkey(first_name, last_name)
-      `)
+      .select('status, reader_id, client_id, service_id, scheduled_at')
       .eq('id', id)
       .single();
 
-    const result = await adminService.cancelBooking(id, reason);
+    const cancelledBooking = await adminService.cancelBooking(id, reason);
 
     // Log admin action
     await auditService.logAdminAction(req.user.id, 'CANCEL_BOOKING', 'bookings', id, {
       reason,
-      booking_details: bookingData,
-      client: bookingData?.profiles ? `${bookingData.profiles.first_name} ${bookingData.profiles.last_name}` : 'Unknown',
-      reader: bookingData?.reader ? `${bookingData.reader.first_name} ${bookingData.reader.last_name}` : 'Unassigned'
+      original_status: bookingData?.status,
+      booking_details: bookingData
     });
 
     res.json({
       success: true,
-      data: result,
+      data: cancelledBooking,
       message: 'Booking cancelled successfully'
     });
   } catch (error) {
@@ -397,7 +407,7 @@ const cancelBooking = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getAllPayments = async (req, res) => {
+export const getAllPayments = async (req, res) => {
   try {
     const {
       page = 1,
@@ -408,7 +418,9 @@ const getAllPayments = async (req, res) => {
       date_from,
       date_to,
       amount_from,
-      amount_to
+      amount_to,
+      sort_by = 'created_at',
+      sort_order = 'desc'
     } = req.query;
 
     const payments = await adminService.getAllPayments({
@@ -420,19 +432,21 @@ const getAllPayments = async (req, res) => {
       date_from,
       date_to,
       amount_from: amount_from ? parseFloat(amount_from) : null,
-      amount_to: amount_to ? parseFloat(amount_to) : null
+      amount_to: amount_to ? parseFloat(amount_to) : null,
+      sort_by,
+      sort_order
     });
 
     // Log admin action
     await auditService.logAdminAction(req.user.id, 'GET_ALL_PAYMENTS', 'payments', null, {
-      filters: { method, status, user_id, date_from, date_to, amount_from, amount_to }
+      filters: { method, status, user_id, date_from, date_to, amount_from, amount_to },
+      pagination: { page, limit }
     });
 
     res.json({
       success: true,
       data: payments.data,
       pagination: payments.pagination,
-      summary: payments.summary,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -450,42 +464,40 @@ const getAllPayments = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const approvePayment = async (req, res) => {
+export const approvePayment = async (req, res) => {
   try {
     const { id } = req.params;
     const { admin_notes } = req.body;
 
-    // Get payment data for logging
+    // Get current payment data for logging
     const { data: paymentData } = await supabase
       .from('payments')
-      .select(`
-        *,
-        profiles!payments_user_id_fkey(first_name, last_name, email)
-      `)
+      .select('status, amount, method, user_id')
       .eq('id', id)
       .single();
 
-    if (!paymentData) {
-      return res.status(404).json({
+    if (paymentData?.status === 'approved') {
+      return res.status(400).json({
         success: false,
-        error: 'Payment not found',
-        code: 'PAYMENT_NOT_FOUND'
+        error: 'Payment is already approved',
+        code: 'PAYMENT_ALREADY_APPROVED'
       });
     }
 
-    const result = await adminService.approvePayment(id, admin_notes, req.user.id);
+    const approvedPayment = await adminService.approvePayment(id, admin_notes);
 
     // Log admin action
     await auditService.logAdminAction(req.user.id, 'APPROVE_PAYMENT', 'payments', id, {
       admin_notes,
-      amount: paymentData.amount,
-      method: paymentData.method,
-      user: paymentData.profiles ? `${paymentData.profiles.first_name} ${paymentData.profiles.last_name} (${paymentData.profiles.email})` : 'Unknown'
+      amount: paymentData?.amount,
+      method: paymentData?.method,
+      user_id: paymentData?.user_id,
+      previous_status: paymentData?.status
     });
 
     res.json({
       success: true,
-      data: result,
+      data: approvedPayment,
       message: 'Payment approved successfully'
     });
   } catch (error) {
@@ -503,43 +515,41 @@ const approvePayment = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const rejectPayment = async (req, res) => {
+export const rejectPayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { admin_notes, reason } = req.body;
+    const { reason, admin_notes } = req.body;
 
     if (!reason) {
       return res.status(400).json({
         success: false,
         error: 'Rejection reason is required',
-        code: 'REASON_REQUIRED'
+        code: 'MISSING_REJECTION_REASON'
       });
     }
 
-    // Get payment data for logging
+    // Get current payment data for logging
     const { data: paymentData } = await supabase
       .from('payments')
-      .select(`
-        *,
-        profiles!payments_user_id_fkey(first_name, last_name, email)
-      `)
+      .select('status, amount, method, user_id')
       .eq('id', id)
       .single();
 
-    const result = await adminService.rejectPayment(id, admin_notes, reason, req.user.id);
+    const rejectedPayment = await adminService.rejectPayment(id, reason, admin_notes);
 
     // Log admin action
     await auditService.logAdminAction(req.user.id, 'REJECT_PAYMENT', 'payments', id, {
-      admin_notes,
       reason,
+      admin_notes,
       amount: paymentData?.amount,
       method: paymentData?.method,
-      user: paymentData?.profiles ? `${paymentData.profiles.first_name} ${paymentData.profiles.last_name} (${paymentData.profiles.email})` : 'Unknown'
+      user_id: paymentData?.user_id,
+      previous_status: paymentData?.status
     });
 
     res.json({
       success: true,
-      data: result,
+      data: rejectedPayment,
       message: 'Payment rejected successfully'
     });
   } catch (error) {
@@ -561,20 +571,15 @@ const rejectPayment = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getAllServices = async (req, res) => {
+export const getAllServices = async (req, res) => {
   try {
-    const { page = 1, limit = 20, type, is_active } = req.query;
+    const { page = 1, limit = 50, type, is_active } = req.query;
 
     const services = await adminService.getAllServices({
       page: parseInt(page),
       limit: parseInt(limit),
       type,
       is_active: is_active === 'true' ? true : is_active === 'false' ? false : null
-    });
-
-    // Log admin action
-    await auditService.logAdminAction(req.user.id, 'GET_ALL_SERVICES', 'services', null, {
-      filters: { type, is_active }
     });
 
     res.json({
@@ -594,21 +599,19 @@ const getAllServices = async (req, res) => {
 };
 
 /**
- * Update service details
+ * Update service
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const updateService = async (req, res) => {
+export const updateService = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
 
     // Validate allowed fields
-    const allowedFields = [
-      'name', 'description', 'price', 'duration_minutes', 'is_active', 'type'
-    ];
-
+    const allowedFields = ['name', 'description', 'price', 'duration_minutes', 'is_active', 'type'];
     const filteredData = {};
+    
     Object.keys(updateData).forEach(key => {
       if (allowedFields.includes(key)) {
         filteredData[key] = updateData[key];
@@ -623,10 +626,10 @@ const updateService = async (req, res) => {
       });
     }
 
-    // Get current service for logging
+    // Get current service data for logging
     const { data: currentService } = await supabase
       .from('services')
-      .select('*')
+      .select('name, price, is_active, type')
       .eq('id', id)
       .single();
 
@@ -659,7 +662,7 @@ const updateService = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getAllReaders = async (req, res) => {
+export const getAllReaders = async (req, res) => {
   try {
     const {
       page = 1,
@@ -682,15 +685,15 @@ const getAllReaders = async (req, res) => {
     });
 
     // Log admin action
-    await auditService.logAdminAction(req.user.id, 'GET_ALL_READERS', 'profiles', null, {
-      filters: { is_active, rating_min, rating_max }
+    await auditService.logAdminAction(req.user.id, 'GET_ALL_READERS', 'readers', null, {
+      filters: { is_active, rating_min, rating_max },
+      pagination: { page, limit }
     });
 
     res.json({
       success: true,
       data: readers.data,
       pagination: readers.pagination,
-      summary: readers.summary,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -704,23 +707,19 @@ const getAllReaders = async (req, res) => {
 };
 
 // =============================================================================
-// ANALYTICS CONTROLLERS
+// ANALYTICS & MONITORING CONTROLLERS
 // =============================================================================
 
 /**
- * Get detailed analytics and statistics
+ * Get analytics data
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getAnalytics = async (req, res) => {
+export const getAnalytics = async (req, res) => {
   try {
-    const {
-      date_from,
-      date_to,
-      include_charts = 'false'
-    } = req.query;
+    const { date_from, date_to, include_charts = 'false' } = req.query;
 
-    const analytics = await adminService.getDetailedAnalytics({
+    const analytics = await adminService.getAnalytics({
       date_from,
       date_to,
       include_charts: include_charts === 'true'
@@ -729,13 +728,13 @@ const getAnalytics = async (req, res) => {
     // Log admin action
     await auditService.logAdminAction(req.user.id, 'GET_ANALYTICS', 'analytics', null, {
       date_range: { date_from, date_to },
-      include_charts
+      include_charts: include_charts === 'true'
     });
 
     res.json({
       success: true,
       data: analytics,
-      generated_at: new Date().toISOString()
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('Get analytics error:', error);
@@ -747,43 +746,34 @@ const getAnalytics = async (req, res) => {
   }
 };
 
-// =============================================================================
-// AUDIT LOGS CONTROLLERS
-// =============================================================================
-
 /**
- * Get audit logs with filtering
+ * Get audit logs
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getAuditLogs = async (req, res) => {
+export const getAuditLogs = async (req, res) => {
   try {
     const {
       page = 1,
       limit = 50,
-      user_id,
-      action,
+      admin_id,
+      action_type,
+      resource_type,
       date_from,
       date_to,
-      resource_type
+      sort_order = 'desc'
     } = req.query;
 
     const logs = await auditService.getAuditLogs({
       page: parseInt(page),
       limit: parseInt(limit),
-      user_id,
-      action,
+      admin_id,
+      action_type,
+      resource_type,
       date_from,
       date_to,
-      resource_type
+      sort_order
     });
-
-    // Log admin action (but don't create infinite loop)
-    if (req.query.log_action !== 'false') {
-      await auditService.logAdminAction(req.user.id, 'GET_AUDIT_LOGS', 'audit_logs', null, {
-        filters: { user_id, action, date_from, date_to, resource_type }
-      });
-    }
 
     res.json({
       success: true,
@@ -802,24 +792,26 @@ const getAuditLogs = async (req, res) => {
 };
 
 // =============================================================================
-// COMPLAINTS & FEEDBACK CONTROLLERS
+// COMPLAINT MANAGEMENT CONTROLLERS
 // =============================================================================
 
 /**
- * Get all complaints and feedback
+ * Get all complaints
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const getAllComplaints = async (req, res) => {
+export const getAllComplaints = async (req, res) => {
   try {
     const {
       page = 1,
       limit = 20,
       status,
       priority,
+      category,
       date_from,
       date_to,
-      type
+      sort_by = 'created_at',
+      sort_order = 'desc'
     } = req.query;
 
     const complaints = await adminService.getAllComplaints({
@@ -827,21 +819,23 @@ const getAllComplaints = async (req, res) => {
       limit: parseInt(limit),
       status,
       priority,
+      category,
       date_from,
       date_to,
-      type
+      sort_by,
+      sort_order
     });
 
     // Log admin action
     await auditService.logAdminAction(req.user.id, 'GET_ALL_COMPLAINTS', 'complaints', null, {
-      filters: { status, priority, date_from, date_to, type }
+      filters: { status, priority, category, date_from, date_to },
+      pagination: { page, limit }
     });
 
     res.json({
       success: true,
       data: complaints.data,
       pagination: complaints.pagination,
-      summary: complaints.summary,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -859,39 +853,40 @@ const getAllComplaints = async (req, res) => {
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const resolveComplaint = async (req, res) => {
+export const resolveComplaint = async (req, res) => {
   try {
     const { id } = req.params;
-    const { resolution_notes, resolution_action } = req.body;
+    const { resolution, resolution_notes } = req.body;
 
-    if (!resolution_notes) {
+    if (!resolution) {
       return res.status(400).json({
         success: false,
-        error: 'Resolution notes are required',
-        code: 'RESOLUTION_NOTES_REQUIRED'
+        error: 'Resolution is required',
+        code: 'MISSING_RESOLUTION'
       });
     }
 
-    // Get complaint data for logging
+    // Get current complaint data for logging
     const { data: complaintData } = await supabase
-      .from('user_feedback')
-      .select('*')
+      .from('complaints')
+      .select('status, category, priority, user_id')
       .eq('id', id)
       .single();
 
-    const result = await adminService.resolveComplaint(id, resolution_notes, resolution_action, req.user.id);
+    const resolvedComplaint = await adminService.resolveComplaint(id, resolution, resolution_notes);
 
     // Log admin action
     await auditService.logAdminAction(req.user.id, 'RESOLVE_COMPLAINT', 'complaints', id, {
+      resolution,
       resolution_notes,
-      resolution_action,
-      complaint_type: complaintData?.feedback_type,
-      original_complaint: complaintData?.message
+      previous_status: complaintData?.status,
+      complaint_category: complaintData?.category,
+      complaint_priority: complaintData?.priority
     });
 
     res.json({
       success: true,
-      data: result,
+      data: resolvedComplaint,
       message: 'Complaint resolved successfully'
     });
   } catch (error) {
@@ -904,35 +899,28 @@ const resolveComplaint = async (req, res) => {
   }
 };
 
-module.exports = {
-  // User Management
+// =============================================================================
+// EXPORTS
+// =============================================================================
+
+const adminController = {
   getAllUsers,
   editUserProfile,
   changeUserRole,
   disableUserAccount,
-
-  // Booking Management
   getAllBookings,
   updateBooking,
   cancelBooking,
-
-  // Payment Management
   getAllPayments,
   approvePayment,
   rejectPayment,
-
-  // Service & Reader Management
   getAllServices,
   updateService,
   getAllReaders,
-
-  // Analytics
   getAnalytics,
-
-  // Audit Logs
   getAuditLogs,
-
-  // Complaints & Feedback
   getAllComplaints,
   resolveComplaint
 };
+
+export default adminController;

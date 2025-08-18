@@ -1,0 +1,914 @@
+{
+  "audit_summary": {
+    "timestamp": "2025-08-18T09:10:45.400132",
+    "connection_status": true,
+    "total_tables_expected": 33,
+    "total_tables_found": 255,
+    "tables_missing_count": 24,
+    "critical_tables_missing": 22,
+    "critical_issues_count": 74,
+    "warnings_count": 6,
+    "overall_status": "CRITICAL"
+  },
+  "detailed_results": {
+    "timestamp": "2025-08-18T09:10:45.400132",
+    "connection_status": true,
+    "tables_found": [
+      "active_sessions",
+      "admin_actions",
+      "admin_activity_feed",
+      "admin_analytics_cache",
+      "admin_audit_logs",
+      "admin_notification_channels",
+      "admin_notification_rules",
+      "admin_quick_actions",
+      "admin_saved_filters",
+      "admin_search_history",
+      "admin_users",
+      "ai_alert_notifications",
+      "ai_analysis_logs",
+      "ai_analytics",
+      "ai_content_access_log",
+      "ai_content_scans",
+      "ai_feedback",
+      "ai_incident_flags",
+      "ai_learning_data",
+      "ai_model_configurations",
+      "ai_model_performance",
+      "ai_models",
+      "ai_moderation_alerts",
+      "ai_moderation_models",
+      "ai_moderation_rules",
+      "ai_monitoring_sessions",
+      "ai_prompts",
+      "ai_provider_credentials",
+      "ai_providers",
+      "ai_reading_audit_log",
+      "ai_reading_interpretations",
+      "ai_reading_results",
+      "ai_sessions",
+      "ai_suggestion_logs",
+      "ai_training_data",
+      "ai_training_sessions",
+      "ai_translation_providers",
+      "ai_usage_analytics",
+      "app_config",
+      "app_settings",
+      "approval_requests",
+      "approval_workflows",
+      "audit_logs",
+      "audit_trails",
+      "auth_tokens",
+      "backup_logs",
+      "booking_window_settings",
+      "bookings",
+      "bulk_operations_log",
+      "business_analytics",
+      "call_escalations",
+      "call_notifications",
+      "call_quality_metrics",
+      "call_recording_permissions",
+      "call_recordings",
+      "call_session_features",
+      "call_sessions",
+      "call_signaling",
+      "card_interpretations",
+      "chat_archives",
+      "chat_audit_logs",
+      "chat_messages",
+      "chat_monitoring",
+      "chat_notifications",
+      "chat_participants",
+      "chat_sessions",
+      "client_spread_selections",
+      "client_tarot_sessions",
+      "commission_settings",
+      "configuration_access_log",
+      "configuration_categories",
+      "configuration_change_log",
+      "content_approval_queue",
+      "content_moderation",
+      "content_moderation_actions",
+      "course_content",
+      "course_enrollments",
+      "daily_analytics",
+      "daily_zodiac",
+      "deck_types",
+      "device_registrations",
+      "documentation_entries",
+      "email_templates",
+      "emergency_alerts",
+      "emergency_call_ai_monitoring",
+      "emergency_call_logs",
+      "emergency_call_pricing",
+      "emergency_call_quality_metrics",
+      "emergency_call_recording_permissions",
+      "emergency_call_recordings",
+      "emergency_call_settings",
+      "emergency_call_transactions",
+      "emergency_calls",
+      "emergency_contacts",
+      "emergency_escalation_log",
+      "emergency_escalation_timeline",
+      "emergency_escalations",
+      "emergency_reader_selection_log",
+      "emergency_requests",
+      "emergency_responders",
+      "emergency_response_log",
+      "emergency_siren_control",
+      "emergency_webrtc_signaling",
+      "error_logs",
+      "escalation_logs",
+      "exchange_rates",
+      "feature_ai_assignments",
+      "feature_provider_assignments",
+      "feedback_moderation_log",
+      "feedback_prompts",
+      "file_uploads",
+      "impersonation_sessions",
+      "import_export_jobs",
+      "learning_paths",
+      "learning_progress",
+      "location_tracking",
+      "media_storage",
+      "message_reactions",
+      "messages",
+      "migration_history",
+      "migration_log",
+      "migration_status",
+      "migrations",
+      "monitor_actions",
+      "monitor_session_flags",
+      "moroccan_tarot_cards",
+      "notification_delivery_log",
+      "notification_executions",
+      "notification_settings",
+      "notification_templates",
+      "notifications",
+      "payment_gateway_configs",
+      "payment_gateways",
+      "payment_methods",
+      "payment_receipts",
+      "payment_regions",
+      "payment_sessions",
+      "payment_settings",
+      "payments",
+      "permissions",
+      "platform_commissions",
+      "profiles",
+      "promotional_codes",
+      "provider_audit_log",
+      "provider_configurations",
+      "provider_models",
+      "provider_services",
+      "provider_usage_analytics",
+      "providers",
+      "push_notifications",
+      "reader_analytics",
+      "reader_applications",
+      "reader_earnings",
+      "reader_emergency_settings",
+      "reader_feedback_stats",
+      "reader_performance_metrics",
+      "reader_schedule",
+      "reader_spread_notifications",
+      "reader_spreads",
+      "readers",
+      "reading_cards",
+      "reading_sessions",
+      "receipt_uploads",
+      "recording_access_logs",
+      "recording_permissions",
+      "recording_segments",
+      "recording_transcriptions",
+      "redemption_options",
+      "redemptions",
+      "referral_codes",
+      "referral_uses",
+      "referrals",
+      "refund_requests",
+      "revenue_analytics",
+      "revenue_sharing",
+      "reviews",
+      "reward_settings",
+      "rewards_config",
+      "rewards_points",
+      "rewards_transactions",
+      "role_permissions",
+      "roles",
+      "secret_categories",
+      "secret_providers",
+      "secret_subcategories",
+      "secrets_access_log",
+      "service_feedback",
+      "service_usage_analytics",
+      "services",
+      "sms_templates",
+      "special_rates",
+      "spread_approval_logs",
+      "spread_audit_log",
+      "spread_cards",
+      "spread_categories",
+      "spread_positions",
+      "spread_service_assignments",
+      "spreads",
+      "subscription_plans",
+      "super_admin_audit_logs",
+      "system_activity_log",
+      "system_approval_requests",
+      "system_audit_log",
+      "system_configs",
+      "system_configurations",
+      "system_health_checks",
+      "system_integrations",
+      "system_logs",
+      "system_secrets",
+      "system_secrets_audit",
+      "system_settings",
+      "tarot_cards",
+      "tarot_categories",
+      "tarot_deck_card_images",
+      "tarot_deck_reader_assignments",
+      "tarot_decks",
+      "tarot_readings",
+      "tarot_spread_positions",
+      "tarot_spread_reader_assignments",
+      "tarot_spreads",
+      "tarot_v2_readings",
+      "tenants",
+      "transaction_audit",
+      "transactions",
+      "translation_provider_assignments",
+      "translation_settings",
+      "translation_usage_logs",
+      "user_activity_logs",
+      "user_content_progress",
+      "user_enrollments",
+      "user_feedback",
+      "user_onboarding_progress",
+      "user_permission_overrides",
+      "user_preferences",
+      "user_profiles",
+      "user_roles",
+      "user_sessions",
+      "user_spreads",
+      "user_subscriptions",
+      "users",
+      "voice_note_approvals",
+      "voice_notes",
+      "wallet_balances",
+      "wallet_transactions",
+      "wallets",
+      "webrtc_call_events",
+      "webrtc_call_sessions",
+      "webrtc_device_capabilities",
+      "webrtc_quality_logs",
+      "webrtc_signaling",
+      "working_hours",
+      "working_hours_audit",
+      "working_hours_requests",
+      "zodiac_generation_logs",
+      "zodiac_system_config"
+    ],
+    "tables_missing": [
+      "tarot_v2_card_selections",
+      "tarot_v2_audit_logs",
+      "deck_cards",
+      "deck_uploads",
+      "call_consent_logs",
+      "call_emergency_extensions",
+      "reader_availability",
+      "reader_emergency_requests",
+      "reader_availability_overrides",
+      "payment_transactions",
+      "user_wallets",
+      "analytics_events",
+      "tarot_v2_card_selections",
+      "tarot_v2_audit_logs",
+      "deck_cards",
+      "deck_uploads",
+      "call_consent_logs",
+      "call_emergency_extensions",
+      "reader_availability",
+      "reader_emergency_requests",
+      "reader_availability_overrides",
+      "payment_transactions",
+      "user_wallets",
+      "analytics_events"
+    ],
+    "policies_found": {
+      "ai_alert_notifications": [
+        "Admins can manage AI alerts",
+        "Targeted users can view their AI alerts"
+      ],
+      "ai_analysis_logs": [
+        "Admins can view AI analysis logs",
+        "System can create AI analysis logs"
+      ],
+      "ai_analytics": [
+        "Admins can view AI analytics"
+      ],
+      "ai_content_access_log": [
+        "ai_audit_logs_admin_only",
+        "ai_audit_logs_system_insert"
+      ],
+      "ai_incident_flags": [
+        "Admins can view all AI incident flags"
+      ],
+      "ai_model_configurations": [
+        "Admins can manage AI model configurations"
+      ],
+      "ai_model_performance": [
+        "ai_manage_v3",
+        "ai_select_v3"
+      ],
+      "ai_models": [
+        "Admin can read AI models",
+        "Super Admin can manage AI models"
+      ],
+      "ai_monitoring_sessions": [
+        "Admins can view all AI monitoring sessions",
+        "System can manage AI monitoring sessions"
+      ],
+      "ai_provider_credentials": [
+        "provider_credentials_super_admin"
+      ],
+      "ai_providers": [
+        "Admin can read AI providers",
+        "Super Admin can manage AI providers"
+      ],
+      "ai_reading_audit_log": [
+        "ai_reading_audit_admin_only",
+        "ai_reading_audit_system_insert"
+      ],
+      "ai_reading_interpretations": [
+        "ai_interpretations_reader_only_insert",
+        "ai_interpretations_reader_only_select",
+        "ai_interpretations_reader_only_update"
+      ],
+      "ai_reading_results": [
+        "ai_reading_results_access",
+        "ai_reading_results_user_access"
+      ],
+      "ai_translation_providers": [
+        "ai_providers_admin_read",
+        "ai_providers_super_admin_all"
+      ],
+      "ai_usage_analytics": [
+        "Admin can read usage analytics"
+      ],
+      "approval_workflows": [
+        "Admins can manage approval workflows"
+      ],
+      "audit_logs": [
+        "audit_logs_admin_access",
+        "audit_logs_service_role",
+        "audit_logs_user_own_records"
+      ],
+      "audit_trails": [
+        "Admins can view audit trails"
+      ],
+      "call_notifications": [
+        "System can create notifications",
+        "Users can view their own notifications"
+      ],
+      "call_quality_metrics": [
+        "Admins can view quality metrics"
+      ],
+      "call_recordings": [
+        "Admins can view all recordings",
+        "Users can manage their recordings",
+        "Users can view their recordings"
+      ],
+      "call_session_features": [
+        "Call participants can view call session features"
+      ],
+      "call_signaling": [
+        "Call participants can access signaling"
+      ],
+      "card_interpretations": [
+        "Users can view interpretations for their readings"
+      ],
+      "chat_audit_logs": [
+        "chat_audit_logs_admin_only"
+      ],
+      "chat_messages": [
+        "Admins can view all messages",
+        "Users can send messages to their sessions",
+        "Users can update their own messages",
+        "Users can view messages from their sessions",
+        "chat_messages_session_participants_read"
+      ],
+      "chat_monitoring": [
+        "Admin users can view all monitoring data",
+        "System can insert monitoring data",
+        "chat_monitoring_admin_access",
+        "chat_monitoring_participant_access"
+      ],
+      "chat_sessions": [
+        "Admins can view all chat sessions",
+        "Users can update their chat sessions",
+        "Users can view their chat sessions",
+        "chat_sessions_participants_read"
+      ],
+      "configuration_access_log": [
+        "Super Admin can view all access logs",
+        "Super Admin can view system access logs",
+        "System can insert access logs",
+        "Users can view their own access logs"
+      ],
+      "configuration_categories": [
+        "Anyone can read active categories",
+        "Super Admin can manage categories"
+      ],
+      "configuration_change_log": [
+        "Super Admin can view all change logs",
+        "Users can view their own change logs"
+      ],
+      "daily_analytics": [
+        "da_manage_v3",
+        "da_select_v3",
+        "daily_analytics_access"
+      ],
+      "daily_zodiac": [
+        "daily_zodiac_admin_write",
+        "daily_zodiac_public_read",
+        "daily_zodiac_system_operations"
+      ],
+      "deck_types": [
+        "admin_insert_deck_types",
+        "admin_read_deck_types",
+        "admin_update_deck_types",
+        "deck_types_insert_admin",
+        "deck_types_select_all",
+        "deck_types_update_admin"
+      ],
+      "emergency_call_ai_monitoring": [
+        "admin_monitor_ai_monitoring"
+      ],
+      "emergency_call_pricing": [
+        "Admins can manage emergency call pricing",
+        "Everyone can view emergency call pricing",
+        "pricing_admin_modify",
+        "pricing_read_all"
+      ],
+      "emergency_call_recording_permissions": [
+        "emergency_recording_permissions_access"
+      ],
+      "emergency_call_recordings": [
+        "admin_recordings_all"
+      ],
+      "emergency_call_settings": [
+        "emergency_settings_admin_access"
+      ],
+      "emergency_call_transactions": [
+        "Admins can view all emergency call transactions",
+        "Users can view their emergency call transactions"
+      ],
+      "emergency_siren_control": [
+        "Admins can see targeted emergency sirens",
+        "Admins can stop emergency sirens",
+        "Readers can see emergency sirens for available readers",
+        "Super admins can manage all emergency sirens",
+        "System can create emergency sirens"
+      ],
+      "exchange_rates": [
+        "Admin write access for exchange rates",
+        "Public read access for exchange rates"
+      ],
+      "feature_ai_assignments": [
+        "Admin can read feature assignments",
+        "Super Admin can manage feature assignments"
+      ],
+      "feedback_moderation_log": [
+        "admins_view_moderation_logs",
+        "system_create_moderation_logs"
+      ],
+      "feedback_prompts": [
+        "admins_manage_prompts",
+        "view_active_prompts"
+      ],
+      "learning_progress": [
+        "Users can update their own progress",
+        "Users can view their own progress"
+      ],
+      "payment_gateways": [
+        "payment_gateways_admin_read_access",
+        "payment_gateways_admin_update_access",
+        "payment_gateways_super_admin_full_access"
+      ],
+      "payment_methods": [
+        "pm_delete_v3",
+        "pm_insert_v3",
+        "pm_update_v3"
+      ],
+      "payment_receipts": [
+        "pr_manage_v3"
+      ],
+      "payment_regions": [
+        "payment_regions_admin_read_access",
+        "payment_regions_admin_update_access",
+        "payment_regions_public_read_access",
+        "payment_regions_super_admin_full_access"
+      ],
+      "payment_settings": [
+        "payment_settings_admin_read_access",
+        "payment_settings_admin_update_access",
+        "payment_settings_delete",
+        "payment_settings_insert",
+        "payment_settings_select",
+        "payment_settings_service_role_policy",
+        "payment_settings_super_admin_full_access",
+        "payment_settings_update"
+      ],
+      "provider_models": [
+        "Admins can manage models",
+        "Users can view models"
+      ],
+      "provider_services": [
+        "Admins can manage services",
+        "Users can view services"
+      ],
+      "providers": [
+        "Admins can manage providers",
+        "Users can view providers"
+      ],
+      "reader_analytics": [
+        "ra_manage_v3",
+        "ra_select_v3",
+        "reader_analytics_access"
+      ],
+      "reader_emergency_settings": [
+        "Admins can view all reader emergency settings",
+        "Readers can manage their emergency settings",
+        "admin_reader_settings_all",
+        "reader_settings_own"
+      ],
+      "reader_feedback_stats": [
+        "public_view_reader_stats",
+        "readers_view_own_stats",
+        "system_update_reader_stats"
+      ],
+      "reader_spread_notifications": [
+        "Readers can view their notifications"
+      ],
+      "readers": [
+        "Admin full access to readers",
+        "Public readers read access",
+        "Readers can manage own data"
+      ],
+      "reading_cards": [
+        "Users can view cards for their readings"
+      ],
+      "reading_sessions": [
+        "Users can manage own readings"
+      ],
+      "recording_access_logs": [
+        "System can create access logs",
+        "Users see own access logs"
+      ],
+      "recording_segments": [
+        "Segments follow recording access"
+      ],
+      "secret_categories": [
+        "Admin Read Access - Categories",
+        "Super Admin Full Access - Categories"
+      ],
+      "secret_providers": [
+        "Allow authenticated users to read secret providers",
+        "Allow super_admins to manage secret providers"
+      ],
+      "secret_subcategories": [
+        "Admin Read Access - Subcategories",
+        "Super Admin Full Access - Subcategories"
+      ],
+      "service_feedback": [
+        "admins_view_all_feedback",
+        "clients_create_feedback",
+        "clients_update_own_pending_feedback",
+        "clients_view_own_original_feedback",
+        "readers_view_approved_feedback"
+      ],
+      "service_usage_analytics": [
+        "sa_manage_v3",
+        "sa_select_v3"
+      ],
+      "special_rates": [
+        "Anyone can view active special rates",
+        "Readers can manage their special rates"
+      ],
+      "spread_approval_logs": [
+        "Admins can view approval logs"
+      ],
+      "spread_cards": [
+        "spread_cards_delete_policy",
+        "spread_cards_insert_policy",
+        "spread_cards_select_policy",
+        "spread_cards_update_policy"
+      ],
+      "spread_categories": [
+        "Public can view active categories",
+        "Super admins and admins can manage all categories",
+        "spread_categories_read_policy"
+      ],
+      "spread_positions": [
+        "Admins can manage spread positions",
+        "Anyone can view spread positions"
+      ],
+      "super_admin_audit_logs": [
+        "super_admin_audit_logs_insert_policy",
+        "super_admin_audit_logs_select_policy",
+        "super_admin_audit_logs_service_role_policy"
+      ],
+      "system_configurations": [
+        "Admin can read non-sensitive configurations",
+        "Public configurations are readable by authenticated users",
+        "Super Admin can manage all configurations"
+      ],
+      "system_integrations": [
+        "Super Admin can manage system integrations"
+      ],
+      "system_logs": [
+        "Admins can view system logs"
+      ],
+      "system_secrets": [
+        "Super Admin Full Access - Secrets"
+      ],
+      "system_secrets_audit": [
+        "system_secrets_audit_super_admin_access"
+      ],
+      "system_settings": [
+        "Admins can manage all settings",
+        "Anyone can read public settings",
+        "Users can read basic settings"
+      ],
+      "tarot_cards": [
+        "Admins can manage tarot cards",
+        "Anyone can view active tarot cards"
+      ],
+      "tarot_deck_card_images": [
+        "Enable delete for admin users",
+        "Enable insert for admin users",
+        "Enable read access for authenticated users",
+        "Enable update for admin users"
+      ],
+      "tarot_deck_reader_assignments": [
+        "Enable delete for admin users",
+        "Enable insert for admin users",
+        "Enable read access for authenticated users",
+        "Enable update for admin users"
+      ],
+      "tarot_decks": [
+        "Public can view active decks",
+        "authenticated_users_can_read_decks"
+      ],
+      "tarot_readings": [
+        "Users can create readings",
+        "Users can view their own readings"
+      ],
+      "tarot_spread_reader_assignments": [
+        "Enable delete for admin users",
+        "Enable insert for admin users",
+        "Enable read access for authenticated users",
+        "Enable update for admin users"
+      ],
+      "tarot_spreads": [
+        "tarot_spreads_delete_policy",
+        "tarot_spreads_insert_policy",
+        "tarot_spreads_select_policy",
+        "tarot_spreads_update_policy"
+      ],
+      "tarot_v2_readings": [
+        "ai_draft_isolation"
+      ],
+      "translation_settings": [
+        "Admin Read Access - Settings",
+        "Super Admin Write Access - Settings"
+      ],
+      "translation_usage_logs": [
+        "translation_logs_admin_read",
+        "translation_logs_system_insert"
+      ],
+      "user_activity_logs": [
+        "user_activity_logs_access"
+      ],
+      "user_enrollments": [
+        "Users can enroll themselves",
+        "Users can view their own enrollments"
+      ],
+      "user_preferences": [
+        "Users can manage their own preferences"
+      ],
+      "user_spreads": [
+        "Anyone can view public spreads",
+        "Users can manage their own spreads"
+      ],
+      "webrtc_call_events": [
+        "Call participants can view events for their calls",
+        "System can log call events"
+      ],
+      "webrtc_call_sessions": [
+        "Admins can view all call sessions",
+        "Call participants can view their sessions",
+        "System can manage call sessions"
+      ],
+      "webrtc_device_capabilities": [
+        "Admins can view all device capabilities",
+        "Users can manage their device capabilities"
+      ],
+      "webrtc_quality_logs": [
+        "Call participants can view quality logs",
+        "System can log quality metrics"
+      ],
+      "webrtc_signaling": [
+        "Admins can view all signaling",
+        "Signaling participants can access messages"
+      ],
+      "working_hours": [
+        "Anyone can view available working hours",
+        "Readers can manage their working hours"
+      ],
+      "zodiac_generation_logs": [
+        "zodiac_logs_admin_access",
+        "zodiac_logs_system_operations",
+        "zodiac_logs_system_update"
+      ],
+      "zodiac_system_config": [
+        "zodiac_config_admin_access",
+        "zodiac_config_system_operations"
+      ]
+    },
+    "policies_missing": [
+      "call_sessions",
+      "call_consent_logs",
+      "tarot_v2_readings",
+      "deck_uploads",
+      "reader_availability",
+      "profiles",
+      "bookings",
+      "payment_transactions",
+      "admin_audit_logs",
+      "notifications",
+      "call_sessions",
+      "call_consent_logs",
+      "deck_uploads",
+      "reader_availability",
+      "profiles",
+      "bookings",
+      "payment_transactions",
+      "admin_audit_logs",
+      "notifications"
+    ],
+    "columns_issues": [
+      "Table admin_audit_logs missing columns: action, timestamp",
+      "Table bookings missing columns: service_type",
+      "Table call_recordings missing columns: session_id, file_url, duration_seconds, is_permanently_stored",
+      "Table call_sessions missing columns: max_duration_minutes, recording_enabled",
+      "Table chat_messages missing columns: message, message_type, timestamp",
+      "Table chat_sessions missing columns: client_id, reader_id",
+      "Table daily_zodiac missing columns: content_en, content_ar, audio_url",
+      "Table deck_types missing columns: name, description, card_count",
+      "Table notifications missing columns: user_id, is_read",
+      "Table payment_methods missing columns: name, configuration",
+      "Table profiles missing columns: full_name",
+      "Table service_feedback missing columns: rating, comment",
+      "Table system_configurations missing columns: key, value",
+      "Table system_secrets missing columns: key, value, category, is_encrypted",
+      "Table tarot_cards missing columns: meaning_upright, meaning_reversed",
+      "Table tarot_readings missing columns: client_id, spread_id",
+      "Table tarot_spreads missing columns: layout, visibility_mode, target_readers",
+      "Table zodiac_generation_logs missing columns: date",
+      "Table admin_audit_logs missing columns: action, timestamp",
+      "Table bookings missing columns: service_type",
+      "Table call_recordings missing columns: session_id, file_url, duration_seconds, is_permanently_stored",
+      "Table call_sessions missing columns: max_duration_minutes, recording_enabled",
+      "Table chat_messages missing columns: message, message_type, timestamp",
+      "Table chat_sessions missing columns: client_id, reader_id",
+      "Table daily_zodiac missing columns: content_en, content_ar, audio_url",
+      "Table deck_types missing columns: name, description, card_count",
+      "Table notifications missing columns: user_id, is_read",
+      "Table payment_methods missing columns: name, configuration",
+      "Table profiles missing columns: full_name",
+      "Table service_feedback missing columns: rating, comment",
+      "Table system_configurations missing columns: key, value",
+      "Table system_secrets missing columns: key, value, category, is_encrypted",
+      "Table tarot_cards missing columns: meaning_upright, meaning_reversed",
+      "Table tarot_readings missing columns: client_id, spread_id",
+      "Table tarot_spreads missing columns: layout, visibility_mode, target_readers",
+      "Table zodiac_generation_logs missing columns: date"
+    ],
+    "migration_status": {},
+    "recommendations": [
+      "[URGENT] Address all critical issues immediately before production deployment",
+      "[FIX] Create missing critical tables: tarot_v2_card_selections, tarot_v2_audit_logs, deck_cards, deck_uploads, call_consent_logs, call_emergency_extensions, reader_availability, reader_emergency_requests, reader_availability_overrides, payment_transactions, user_wallets, tarot_v2_card_selections, tarot_v2_audit_logs, deck_cards, deck_uploads, call_consent_logs, call_emergency_extensions, reader_availability, reader_emergency_requests, reader_availability_overrides, payment_transactions, user_wallets",
+      "[SECURITY] Implement RLS policies for: call_sessions, call_consent_logs, tarot_v2_readings, deck_uploads, reader_availability, profiles, bookings, payment_transactions, admin_audit_logs, notifications, call_sessions, call_consent_logs, deck_uploads, reader_availability, profiles, bookings, payment_transactions, admin_audit_logs, notifications",
+      "[SCHEMA] Fix column structure issues in affected tables",
+      "[PERFORMANCE] Run ANALYZE on all tables after fixes to update statistics",
+      "[INDEX] Consider adding indexes on frequently queried columns",
+      "[MAINTENANCE] Set up automated vacuum and maintenance schedules",
+      "[MONITORING] Implement monitoring for database performance",
+      "[SECURITY] Review and test all RLS policies thoroughly",
+      "[ENCRYPT] Ensure sensitive data is properly encrypted",
+      "[AUDIT] Implement comprehensive audit logging",
+      "[ALERTS] Set up alerting for security policy violations"
+    ],
+    "critical_issues": [
+      "Critical table missing: tarot_v2_readings",
+      "Critical table missing: tarot_v2_card_selections",
+      "Critical table missing: tarot_v2_audit_logs",
+      "Critical table missing: deck_cards",
+      "Critical table missing: deck_uploads",
+      "Critical table missing: call_consent_logs",
+      "Critical table missing: call_emergency_extensions",
+      "Critical table missing: reader_availability",
+      "Critical table missing: reader_emergency_requests",
+      "Critical table missing: reader_availability_overrides",
+      "Critical table missing: payment_transactions",
+      "Critical table missing: user_wallets",
+      "Table admin_audit_logs missing columns: action, timestamp",
+      "Table bookings missing columns: service_type",
+      "Table call_recordings missing columns: session_id, file_url, duration_seconds, is_permanently_stored",
+      "Table call_sessions missing columns: max_duration_minutes, recording_enabled",
+      "Table chat_messages missing columns: message, message_type, timestamp",
+      "Table chat_sessions missing columns: client_id, reader_id",
+      "Table daily_zodiac missing columns: content_en, content_ar, audio_url",
+      "Table deck_types missing columns: name, description, card_count",
+      "Table notifications missing columns: user_id, is_read",
+      "Table payment_methods missing columns: name, configuration",
+      "Table profiles missing columns: full_name",
+      "Table system_configurations missing columns: key, value",
+      "Table system_secrets missing columns: key, value, category, is_encrypted",
+      "Table tarot_cards missing columns: meaning_upright, meaning_reversed",
+      "Table tarot_readings missing columns: client_id, spread_id",
+      "Table tarot_spreads missing columns: layout, visibility_mode, target_readers",
+      "Table call_sessions has no RLS policies",
+      "Table call_consent_logs has no RLS policies",
+      "Table tarot_v2_readings has no RLS policies",
+      "Table deck_uploads has no RLS policies",
+      "Table reader_availability has no RLS policies",
+      "Table profiles has no RLS policies",
+      "Table bookings has no RLS policies",
+      "Table payment_transactions has no RLS policies",
+      "Table admin_audit_logs has no RLS policies",
+      "Table notifications has no RLS policies",
+      "Critical table missing: tarot_v2_card_selections",
+      "Critical table missing: tarot_v2_audit_logs",
+      "Critical table missing: deck_cards",
+      "Critical table missing: deck_uploads",
+      "Critical table missing: call_consent_logs",
+      "Critical table missing: call_emergency_extensions",
+      "Critical table missing: reader_availability",
+      "Critical table missing: reader_emergency_requests",
+      "Critical table missing: reader_availability_overrides",
+      "Critical table missing: payment_transactions",
+      "Critical table missing: user_wallets",
+      "Table admin_audit_logs missing columns: action, timestamp",
+      "Table bookings missing columns: service_type",
+      "Table call_recordings missing columns: session_id, file_url, duration_seconds, is_permanently_stored",
+      "Table call_sessions missing columns: max_duration_minutes, recording_enabled",
+      "Table chat_messages missing columns: message, message_type, timestamp",
+      "Table chat_sessions missing columns: client_id, reader_id",
+      "Table daily_zodiac missing columns: content_en, content_ar, audio_url",
+      "Table deck_types missing columns: name, description, card_count",
+      "Table notifications missing columns: user_id, is_read",
+      "Table payment_methods missing columns: name, configuration",
+      "Table profiles missing columns: full_name",
+      "Table system_configurations missing columns: key, value",
+      "Table system_secrets missing columns: key, value, category, is_encrypted",
+      "Table tarot_cards missing columns: meaning_upright, meaning_reversed",
+      "Table tarot_readings missing columns: client_id, spread_id",
+      "Table tarot_spreads missing columns: layout, visibility_mode, target_readers",
+      "Table call_sessions has no RLS policies",
+      "Table call_consent_logs has no RLS policies",
+      "Table deck_uploads has no RLS policies",
+      "Table reader_availability has no RLS policies",
+      "Table profiles has no RLS policies",
+      "Table bookings has no RLS policies",
+      "Table payment_transactions has no RLS policies",
+      "Table admin_audit_logs has no RLS policies",
+      "Table notifications has no RLS policies"
+    ],
+    "warnings": [
+      "Optional table missing: analytics_events",
+      "Table service_feedback missing columns: rating, comment",
+      "Table zodiac_generation_logs missing columns: date",
+      "Optional table missing: analytics_events",
+      "Table service_feedback missing columns: rating, comment",
+      "Table zodiac_generation_logs missing columns: date"
+    ]
+  },
+  "next_steps": [
+    "[URGENT] Address all critical issues immediately before production deployment",
+    "[FIX] Create missing critical tables: tarot_v2_card_selections, tarot_v2_audit_logs, deck_cards, deck_uploads, call_consent_logs, call_emergency_extensions, reader_availability, reader_emergency_requests, reader_availability_overrides, payment_transactions, user_wallets, tarot_v2_card_selections, tarot_v2_audit_logs, deck_cards, deck_uploads, call_consent_logs, call_emergency_extensions, reader_availability, reader_emergency_requests, reader_availability_overrides, payment_transactions, user_wallets",
+    "[SECURITY] Implement RLS policies for: call_sessions, call_consent_logs, tarot_v2_readings, deck_uploads, reader_availability, profiles, bookings, payment_transactions, admin_audit_logs, notifications, call_sessions, call_consent_logs, deck_uploads, reader_availability, profiles, bookings, payment_transactions, admin_audit_logs, notifications",
+    "[SCHEMA] Fix column structure issues in affected tables",
+    "[PERFORMANCE] Run ANALYZE on all tables after fixes to update statistics",
+    "[INDEX] Consider adding indexes on frequently queried columns",
+    "[MAINTENANCE] Set up automated vacuum and maintenance schedules",
+    "[MONITORING] Implement monitoring for database performance",
+    "[SECURITY] Review and test all RLS policies thoroughly",
+    "[ENCRYPT] Ensure sensitive data is properly encrypted",
+    "[AUDIT] Implement comprehensive audit logging",
+    "[ALERTS] Set up alerting for security policy violations"
+  ]
+}

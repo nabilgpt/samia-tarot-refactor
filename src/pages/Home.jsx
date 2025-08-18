@@ -28,6 +28,7 @@ import {
 import Button from '../components/Button';
 import { useUI } from '../context/UIContext';
 import { useAuth } from '../context/AuthContext';
+import ZodiacCardsGrid from '../components/Zodiac/ZodiacCardsGrid';
 
 const Home = () => {
   const { t } = useTranslation();
@@ -334,9 +335,9 @@ const Home = () => {
               className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16 max-w-4xl mx-auto"
               variants={containerVariants}
             >
-              {features.map((feature, index) => (
+              {features.map((feature) => (
                 <motion.div
-                  key={index}
+                  key={feature.title}
                   variants={itemVariants}
                   className="flex flex-col items-center space-y-3 p-6 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-gold-400/50 transition-all duration-300"
                 >
@@ -470,9 +471,9 @@ const Home = () => {
                   { label: language === 'ar' ? 'المستخدمين' : 'Users', value: '2.1K', color: 'blue' },
                   { label: language === 'ar' ? 'الأمان' : 'Security', value: 'HIGH', color: 'purple' },
                   { label: language === 'ar' ? 'الأداء' : 'Performance', value: '98%', color: 'gold' }
-                ].map((stat, index) => (
+                ].map((stat) => (
                   <motion.div
-                    key={index}
+                    key={stat.label}
                     whileHover={{ scale: 1.05 }}
                     className="p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:border-purple-400/30 transition-all text-center"
                   >
@@ -520,7 +521,7 @@ const Home = () => {
             whileInView="visible"
             viewport={{ once: true }}
           >
-            {services.map((service, index) => (
+            {services.map((service) => (
               <motion.div
                 key={service.id}
                 variants={itemVariants}
@@ -582,6 +583,9 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Daily Zodiac Section */}
+      <ZodiacCardsGrid />
+
       {/* Testimonials Section */}
       <section className="relative py-32 px-4 sm:px-6 lg:px-8 z-10">
         <div className="max-w-7xl mx-auto">
@@ -611,14 +615,14 @@ const Home = () => {
           >
             {[1, 2, 3].map((index) => (
               <motion.div
-                key={index}
+                key={`testimonial-${index}`}
                 variants={itemVariants}
                 whileHover={{ y: -10, transition: { duration: 0.3 } }}
                 className="p-8 rounded-3xl bg-gradient-to-br from-gray-900/50 to-gray-800/50 backdrop-blur-xl border border-white/10 hover:border-gold-400/30 transition-all duration-500"
               >
                 <div className="flex items-center mb-6">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-5 h-5 text-gold-400 fill-current" />
+                    <Star key={`testimonial-star-${index}-${i}`} className="w-5 h-5 text-gold-400 fill-current" />
                   ))}
                 </div>
                 <p className="text-gray-300 mb-6 leading-relaxed">
@@ -742,7 +746,7 @@ const Home = () => {
                 <div className="flex space-x-4 rtl:space-x-reverse">
                   {[Facebook, Twitter, Instagram, Youtube].map((Icon, index) => (
                     <motion.a
-                      key={index}
+                      key={`social-icon-${index}`}
                       href="#"
                       whileHover={{ scale: 1.2, rotate: 5 }}
                       className="p-2 rounded-xl bg-gradient-to-br from-cosmic-600/20 to-gold-600/20 border border-white/10 hover:border-gold-400/50 transition-all duration-300"
@@ -771,8 +775,8 @@ const Home = () => {
                     { label: language === 'ar' ? 'الخدمات' : 'Services', href: '/services' },
                     { label: language === 'ar' ? 'القراء' : 'Readers', href: '/readers' },
                     { label: language === 'ar' ? 'من نحن' : 'About', href: '/about' }
-                  ].map((link, index) => (
-                    <li key={index}>
+                  ].map((link) => (
+                    <li key={link.href}>
                       <Link 
                         to={link.href}
                         className="text-gray-400 hover:text-gold-300 transition-colors duration-300"

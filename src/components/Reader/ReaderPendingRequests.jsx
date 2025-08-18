@@ -23,7 +23,7 @@ import {
   Search
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { ApprovalAPI } from '../../api/approvalApi';
+import api from '../../services/frontendApi.js';
 
 const ReaderPendingRequests = () => {
   const { t } = useTranslation();
@@ -73,7 +73,7 @@ const ReaderPendingRequests = () => {
   const loadRequests = async () => {
     try {
       setLoading(true);
-      const response = await ApprovalAPI.getMyRequests();
+      const response = await api.getMyRequests();
       
       if (response.success) {
         setRequests(response.data);
@@ -119,7 +119,7 @@ const ReaderPendingRequests = () => {
 
   const handleCancelRequest = async (requestId) => {
     try {
-      const response = await ApprovalAPI.cancelRequest(requestId);
+      const response = await api.cancelRequest(requestId);
       
       if (response.success) {
         await loadRequests();

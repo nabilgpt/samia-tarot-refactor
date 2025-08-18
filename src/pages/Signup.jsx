@@ -1248,7 +1248,7 @@ const Signup = () => {
           <motion.div variants={itemVariants} className="flex justify-center mb-8">
             <div className="flex items-center space-x-4 rtl:space-x-reverse">
               {[1, 2, 3].map((stepNumber) => (
-                <div key={stepNumber} className="flex items-center">
+                <div key={`signup-step-${stepNumber}`} className="flex items-center">
                   <div className={`
                     w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
                     ${step >= stepNumber 

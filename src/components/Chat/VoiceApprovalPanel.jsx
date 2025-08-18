@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { ChatAPI } from '../../api/chatApi.js';
+import api from '../../services/frontendApi.js';
 import { Play, Pause, Check, X, Clock, Volume2, AlertTriangle } from 'lucide-react';
 
 const VoiceApprovalPanel = ({ onClose, onApprovalUpdate }) => {
@@ -16,7 +16,7 @@ const VoiceApprovalPanel = ({ onClose, onApprovalUpdate }) => {
     loadPendingApprovals();
     
     // Subscribe to real-time updates
-    const subscription = ChatAPI.subscribeToVoiceApprovals((payload) => {
+    const subscription = api.subscribeToVoiceApprovals((payload) => {
       if (payload.eventType === 'INSERT') {
         loadPendingApprovals();
       } else if (payload.eventType === 'UPDATE') {
@@ -36,7 +36,7 @@ const VoiceApprovalPanel = ({ onClose, onApprovalUpdate }) => {
   const loadPendingApprovals = async () => {
     try {
       setLoading(true);
-      const result = await ChatAPI.getPendingVoiceApprovals();
+      const result = await api.getPendingVoiceApprovals();
       
       if (result.success) {
         setPendingApprovals(result.data);
@@ -52,7 +52,7 @@ const VoiceApprovalPanel = ({ onClose, onApprovalUpdate }) => {
     try {
       setProcessingId(approvalId);
       
-      const result = await ChatAPI.approveVoiceNote(approvalId, user.id, approved, notes);
+      const result = await api.approveVoiceNote(approvalId, user.id, approved, notes);
       
       if (result.success) {
         // Remove from pending list

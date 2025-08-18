@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { 
   Calendar, 
   Clock, 
@@ -22,10 +23,13 @@ import {
   Hourglass
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { WorkingHoursAPI } from '../../api/workingHoursApi';
+import { useLanguage } from '../../context/LanguageContext';
+import api from '../../services/frontendApi.js';
 
 const WorkingHoursManager = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const { currentLanguage, direction } = useLanguage();
   const [activeTab, setActiveTab] = useState('schedule');
   const [loading, setLoading] = useState(false);
   const [schedule, setSchedule] = useState([]);
@@ -67,9 +71,9 @@ const WorkingHoursManager = () => {
   const loadSchedule = useCallback(async () => {
     try {
       setLoading(true);
-      const result = await WorkingHoursAPI.getMySchedule(filters);
+      const result = await api.getMySchedule(filters);
       if (result.success) {
-        setSchedule(result.data.map(item => WorkingHoursAPI.formatScheduleData(item)));
+        setSchedule(result.data.map(item => api.formatScheduleData(item)));
       } else {
         setErrors([result.error]);
       }
@@ -82,7 +86,7 @@ const WorkingHoursManager = () => {
 
   const loadRequests = useCallback(async () => {
     try {
-      const result = await WorkingHoursAPI.getMyRequests();
+      const result = await api.getMyRequests();
       if (result.success) {
         setRequests(result.data);
       } else {
@@ -161,7 +165,7 @@ const WorkingHoursManager = () => {
     e.preventDefault();
     
     // Validate form
-    const validation = WorkingHoursAPI.validateWorkingHours(formData);
+    const validation = api.validateWorkingHours(formData);
     if (!validation.isValid) {
       setErrors(validation.errors);
       return;
@@ -179,7 +183,7 @@ const WorkingHoursManager = () => {
         request_notes: formData.notes
       };
 
-      const result = await WorkingHoursAPI.submitRequest(requestData);
+      const result = await api.submitRequest(requestData);
       
       if (result.success) {
         setSuccessMessage(result.message);
@@ -232,7 +236,7 @@ const WorkingHoursManager = () => {
         return;
       }
 
-      const result = await WorkingHoursAPI.submitBulkRequest(slots, bulkFormData.notes);
+      const result = await api.submitBulkRequest(slots, bulkFormData.notes);
       
       if (result.success) {
         setSuccessMessage(`Bulk request submitted with ${slots.length} slots`);
@@ -264,7 +268,7 @@ const WorkingHoursManager = () => {
         request_notes: `Delete ${slot.formattedDate} ${slot.formattedTime}`
       };
 
-      const result = await WorkingHoursAPI.submitRequest(requestData);
+      const result = await api.submitRequest(requestData);
       
       if (result.success) {
         setSuccessMessage('Delete request submitted successfully');
@@ -286,7 +290,7 @@ const WorkingHoursManager = () => {
 
     try {
       setLoading(true);
-      const result = await WorkingHoursAPI.cancelRequest(requestId);
+      const result = await api.cancelRequest(requestId);
       
       if (result.success) {
         setSuccessMessage('Request cancelled successfully');

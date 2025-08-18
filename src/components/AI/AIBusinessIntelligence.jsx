@@ -42,148 +42,91 @@ const AIBusinessIntelligence = () => {
 
   const loadBusinessInsights = async () => {
     try {
-      // Simulate AI-generated business insights
-      const mockInsights = {
-        revenueGrowth: {
-          current: 15.8,
-          predicted: 22.3,
-          trend: 'up',
-          confidence: 87
-        },
-        clientRetention: {
-          current: 78.5,
-          predicted: 82.1,
-          trend: 'up',
-          confidence: 92
-        },
-        demandForecast: {
-          nextWeek: 145,
-          nextMonth: 620,
-          peakHours: ['19:00', '20:00', '21:00'],
-          confidence: 89
-        },
-        pricing: {
-          optimal: 85,
-          current: 75,
-          potential: 13.3,
-          confidence: 84
-        }
-      };
-      setInsights(mockInsights);
+      const response = await fetch('/api/ai/business-insights');
+      if (response.ok) {
+        const data = await response.json();
+        setInsights(data);
+      } else {
+        console.error('Failed to load business insights:', response.status);
+        setInsights({
+          revenueGrowth: { current: 0, predicted: 0, trend: 'neutral', confidence: 0 },
+          clientRetention: { current: 0, predicted: 0, trend: 'neutral', confidence: 0 },
+          demandForecast: { nextWeek: 0, nextMonth: 0, peakHours: [], confidence: 0 },
+          pricing: { optimal: 0, current: 0, potential: 0, confidence: 0 }
+        });
+      }
     } catch (error) {
       console.error('Error loading insights:', error);
+      setInsights({
+        revenueGrowth: { current: 0, predicted: 0, trend: 'neutral', confidence: 0 },
+        clientRetention: { current: 0, predicted: 0, trend: 'neutral', confidence: 0 },
+        demandForecast: { nextWeek: 0, nextMonth: 0, peakHours: [], confidence: 0 },
+        pricing: { optimal: 0, current: 0, potential: 0, confidence: 0 }
+      });
     }
   };
 
   const loadPredictiveAnalytics = async () => {
     try {
-      // Simulate predictive analytics data
-      const mockPredictions = {
-        revenue: {
-          next30Days: 12500,
-          next90Days: 38200,
-          yearEnd: 156000,
-          growthRate: 18.5
-        },
-        clients: {
-          newClients: 45,
-          churnRisk: 12,
-          lifetimeValue: 285,
-          satisfaction: 4.3
-        },
-        market: {
-          demand: 'increasing',
-          competition: 'moderate',
-          opportunity: 'high',
-          seasonality: 'peak'
-        }
-      };
-      setPredictions(mockPredictions);
+      const response = await fetch('/api/ai/predictive-analytics');
+      if (response.ok) {
+        const data = await response.json();
+        setPredictions(data);
+      } else {
+        console.error('Failed to load predictive analytics:', response.status);
+        setPredictions({
+          revenue: { next30Days: 0, next90Days: 0, yearEnd: 0, growthRate: 0 },
+          clients: { newClients: 0, churnRisk: 0, lifetimeValue: 0, satisfaction: 0 },
+          market: { demand: 'unknown', competition: 'unknown', opportunity: 'unknown', seasonality: 'unknown' }
+        });
+      }
     } catch (error) {
       console.error('Error loading predictions:', error);
+      setPredictions({
+        revenue: { next30Days: 0, next90Days: 0, yearEnd: 0, growthRate: 0 },
+        clients: { newClients: 0, churnRisk: 0, lifetimeValue: 0, satisfaction: 0 },
+        market: { demand: 'unknown', competition: 'unknown', opportunity: 'unknown', seasonality: 'unknown' }
+      });
     }
   };
 
   const loadRecommendations = async () => {
     try {
-      // Simulate AI recommendations
-      const mockRecommendations = [
-        {
-          id: 1,
-          type: 'pricing',
-          priority: 'high',
-          title: 'Optimize Service Pricing',
-          description: 'Increase your tarot reading price to $85 to maximize revenue without affecting demand.',
-          impact: '+13.3% revenue',
-          confidence: 84,
-          action: 'Adjust pricing strategy',
-          timeframe: '1-2 weeks'
-        },
-        {
-          id: 2,
-          type: 'scheduling',
-          priority: 'medium',
-          title: 'Expand Evening Availability',
-          description: 'Add more slots between 7-9 PM when demand is highest.',
-          impact: '+25% bookings',
-          confidence: 89,
-          action: 'Update schedule',
-          timeframe: 'Immediate'
-        },
-        {
-          id: 3,
-          type: 'marketing',
-          priority: 'medium',
-          title: 'Target New Client Segment',
-          description: 'Focus marketing on 25-35 age group showing highest engagement.',
-          impact: '+18% new clients',
-          confidence: 76,
-          action: 'Launch campaign',
-          timeframe: '2-4 weeks'
-        },
-        {
-          id: 4,
-          type: 'retention',
-          priority: 'low',
-          title: 'Implement Loyalty Program',
-          description: 'Create a rewards system for repeat clients to improve retention.',
-          impact: '+12% retention',
-          confidence: 71,
-          action: 'Design program',
-          timeframe: '1-2 months'
-        }
-      ];
-      setRecommendations(mockRecommendations);
+      const response = await fetch('/api/ai/recommendations');
+      if (response.ok) {
+        const data = await response.json();
+        setRecommendations(data);
+      } else {
+        console.error('Failed to load AI recommendations:', response.status);
+        setRecommendations([]);
+      }
     } catch (error) {
       console.error('Error loading recommendations:', error);
+      setRecommendations([]);
     }
   };
 
   const loadMarketAnalysis = async () => {
     try {
-      // Simulate market analysis
-      const mockMarketAnalysis = {
-        trends: [
-          { name: 'Spiritual Wellness', growth: '+23%', status: 'rising' },
-          { name: 'Online Readings', growth: '+45%', status: 'hot' },
-          { name: 'Group Sessions', growth: '+12%', status: 'stable' },
-          { name: 'Video Calls', growth: '+67%', status: 'hot' }
-        ],
-        competition: {
-          position: 'top 15%',
-          advantages: ['AI Integration', 'User Experience', 'Pricing'],
-          threats: ['New Entrants', 'Platform Changes']
-        },
-        opportunities: [
-          'Corporate wellness programs',
-          'Subscription-based services',
-          'Educational content creation',
-          'International expansion'
-        ]
-      };
-      setMarketAnalysis(mockMarketAnalysis);
+      const response = await fetch('/api/ai/market-analysis');
+      if (response.ok) {
+        const data = await response.json();
+        setMarketAnalysis(data);
+      } else {
+        console.error('Failed to load market analysis:', response.status);
+        setMarketAnalysis({
+          trends: [],
+          competition: { position: 'unknown', advantages: [], threats: [] },
+          opportunities: []
+        });
+      }
     } catch (error) {
       console.error('Error loading market analysis:', error);
+      setMarketAnalysis({
+        trends: [],
+        competition: { position: 'unknown', advantages: [], threats: [] },
+        opportunities: []
+      });
     }
   };
 

@@ -40,6 +40,17 @@ const RealTimeAnalyticsDashboard = ({ className = '' }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  // Page visibility optimization
+  const [isPageVisible, setIsPageVisible] = useState(true);
+  
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageVisible(!document.hidden);
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   // Time periods for analytics
   const timePeriods = [
@@ -92,8 +103,8 @@ const RealTimeAnalyticsDashboard = ({ className = '' }) => {
   useEffect(() => {
     fetchAnalytics();
     
-    if (autoRefresh) {
-      const interval = setInterval(fetchAnalytics, 30000); // Refresh every 30 seconds
+    if (autoRefresh && isPageVisible) {
+      const interval = setInterval(fetchAnalytics, 120000); // Refresh every 30 seconds
       return () => clearInterval(interval);
     }
   }, [fetchAnalytics, autoRefresh]);

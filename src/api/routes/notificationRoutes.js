@@ -367,7 +367,7 @@ router.post('/automated', adminAuth, notificationController.createAutomatedNotif
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-router.use((error, req, res, next) => {
+router.use((error, req, res, /* next */) => {
   console.error('Notification API Error:', {
     error: error.message,
     stack: error.stack,

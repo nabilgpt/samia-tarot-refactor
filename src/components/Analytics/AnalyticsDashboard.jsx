@@ -9,7 +9,7 @@ import {
   Calendar, Clock, Star, Target, AlertCircle, 
   ArrowUp, ArrowDown, Minus, RefreshCw
 } from 'lucide-react';
-import { AnalyticsAPI } from '../../api/analyticsApi.js';
+import api from '../../services/frontendApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const AnalyticsDashboard = () => {
@@ -34,16 +34,16 @@ const AnalyticsDashboard = () => {
       const startDate = getStartDate(timeRange);
       
       const [analyticsResult, revenueResult, clientResult, insightsResult] = await Promise.all([
-        AnalyticsAPI.getReaderAnalytics(user.id, { 
+        api.getReaderAnalytics(user.id, { 
           startDate: startDate.toISOString().split('T')[0],
           granularity: timeRange === '7d' ? 'daily' : timeRange === '30d' ? 'daily' : 'weekly'
         }),
-        AnalyticsAPI.getRevenueAnalytics(user.id, { 
+        api.getRevenueAnalytics(user.id, { 
           startDate: startDate.toISOString(),
           groupBy: timeRange === '7d' ? 'day' : timeRange === '30d' ? 'day' : 'week'
         }),
-        AnalyticsAPI.getClientAnalytics(user.id),
-        AnalyticsAPI.getPerformanceInsights(user.id)
+        api.getClientAnalytics(user.id),
+        api.getPerformanceInsights(user.id)
       ]);
 
       if (analyticsResult.success) {

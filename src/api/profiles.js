@@ -661,7 +661,7 @@ router.get('/me', profilesRateLimit, authenticateToken, async (req, res) => {
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-router.use((error, req, res, _next) => {
+router.use((error, req, res, /* _next */) => {
   console.error('Profiles API Error:', error);
   res.status(500).json({
     success: false,

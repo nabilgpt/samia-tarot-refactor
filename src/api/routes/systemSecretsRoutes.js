@@ -1,967 +1,1284 @@
-const express = require('express');
-const { supabase, supabaseAdmin } = require('../lib/supabase');
-const { authenticateToken } = require('../middleware/auth');
-const crypto = require('crypto');
+// ============================================================================
+// SAMIA TAROT - SYSTEM SECRETS MANAGEMENT API
+// Centralized API for all sensitive data, API keys, and credentials
+// ============================================================================
+// Date: 2025-07-13
+// Purpose: Secure management of system secrets with comprehensive audit trails
+// Security: Super admin only, full encryption, detailed logging
+// ============================================================================
+
+import express from 'express';
+import crypto from 'crypto';
+import { authenticateToken } from '../middleware/auth.js';
+import { roleCheck } from '../middleware/roleCheck.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 
 const router = express.Router();
 
-// Middleware to ensure only super_admin can access these routes
-const requireSuperAdmin = async (req, res, next) => {
-  try {
-    // Use admin client to bypass RLS for role checking
-    const { data: profile, error } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', req.user.id)
-      .single();
+// ============================================================================
+// MIDDLEWARE & UTILITIES
+// ============================================================================
 
-    if (error || !profile || profile.role !== 'super_admin') {
-      console.log(`Access denied for user ${req.user.id}: role=${profile?.role}, error=${error?.message}`);
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Super Admin role required.',
-        error: 'INSUFFICIENT_PERMISSIONS'
-      });
-    }
-
-    console.log(`✅ Super admin access granted for user ${req.user.id}`);
+// Audit logging middleware
+const logSecretAccess = async (req, res, next) => {
+    const originalSend = res.send;
+    
+    res.send = function(data) {
+        // Log the access after response
+        setImmediate(async () => {
+            try {
+                const { data: insertData, error } = await supabaseAdmin
+                    .from('secrets_access_log')
+                    .insert({
+                        secret_id: req.params.id || null,
+                        accessed_by: req.user.id,
+                        access_type: req.method === 'GET' ? 'read' : 
+                                   req.method === 'POST' ? 'export' : 
+                                   req.method === 'PUT' ? 'update' : 'delete',
+                        access_method: 'api',
+                        ip_address: req.ip,
+                        user_agent: req.get('User-Agent'),
+                        success: res.statusCode < 400,
+                        accessed_at: new Date().toISOString()
+                    });
+                
+                if (error) {
+                    console.error('🚨 [AUDIT LOG] Failed to log access:', error);
+                }
+  } catch (error) {
+                console.error('🚨 [AUDIT LOG] Error logging access:', error);
+            }
+        });
+        
+        return originalSend.call(this, data);
+    };
+    
     next();
-  } catch (error) {
-    console.error('Super Admin check error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Authentication verification failed',
-      error: error.message
-    });
-  }
 };
 
-// Helper function to mask sensitive values for frontend display
-const maskSensitiveValue = (value, showLength = 4) => {
-  if (!value || value.length <= showLength) {
-    return '*'.repeat(8);
-  }
-  return value.substring(0, showLength) + '*'.repeat(value.length - showLength);
-};
-
-// Helper function to log audit entry
-const logAudit = async (secretId, configKey, action, oldValue = null, newValue = null, category = null, additionalInfo = {}) => {
-  try {
-    // Try to insert directly into audit table if RPC doesn't exist
-    const { error } = await supabaseAdmin
-      .from('super_admin_audit_logs')
-      .insert({
-        secret_id: secretId,
-        config_key: configKey,
-        action: action,
-        old_value: oldValue,
-        new_value: newValue,
-        category: category,
-        additional_info: additionalInfo,
-        created_at: new Date().toISOString()
-      });
-
-    if (error) {
-      console.error('Audit logging error:', error);
+// Encryption utilities
+const encryptSecret = (value) => {
+    try {
+        const algorithm = 'aes-256-gcm';
+        const key = crypto.randomBytes(32);
+        const iv = crypto.randomBytes(16);
+        
+        // Use createCipheriv instead of deprecated createCipher
+        const cipher = crypto.createCipheriv(algorithm, key, iv);
+        let encrypted = cipher.update(value, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        
+        const authTag = cipher.getAuthTag();
+        
+        return {
+            encrypted: encrypted,
+            key: key.toString('hex'),
+            iv: iv.toString('hex'),
+            authTag: authTag.toString('hex')
+        };
+    } catch (error) {
+        console.error('🚨 [CRYPTO] Encryption error:', error);
+        // Fallback to simple base64 encoding for development
+        return {
+            encrypted: Buffer.from(value).toString('base64'),
+            key: 'fallback',
+            iv: 'fallback',
+            authTag: 'fallback'
+        };
     }
-  } catch (error) {
-    console.error('Audit logging failed:', error);
-  }
 };
 
-// GET /api/system-secrets - List all system secrets (masked values)
-router.get('/', authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const { category, search, active_only } = req.query;
+const decryptSecret = (encryptedData) => {
+    try {
+        // Check if it's fallback encoding
+        if (encryptedData.key === 'fallback') {
+            return Buffer.from(encryptedData.encrypted, 'base64').toString('utf8');
+        }
+        
+        const algorithm = 'aes-256-gcm';
+        const key = Buffer.from(encryptedData.key, 'hex');
+        const iv = Buffer.from(encryptedData.iv, 'hex');
+        const authTag = Buffer.from(encryptedData.authTag, 'hex');
+        
+        // Use createDecipheriv instead of deprecated createDecipher
+        const decipher = crypto.createDecipheriv(algorithm, key, iv);
+        decipher.setAuthTag(authTag);
+        
+        let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        
+        return decrypted;
+    } catch (error) {
+        console.error('🚨 [CRYPTO] Decryption error:', error);
+        // Fallback to returning encrypted data as-is
+        return encryptedData.encrypted || encryptedData;
+    }
+};
+
+// ============================================================================
+// ROUTES
+// ============================================================================
+
+// GET /api/system-secrets - List all system secrets (metadata only)
+router.get('/', authenticateToken, roleCheck(['super_admin']), logSecretAccess, async (req, res) => {
+    try {
+        console.log('🔐 [SYSTEM SECRETS] Getting all secrets list...');
+        
+        const { category, subcategory, provider, active_only } = req.query;
     
     let query = supabaseAdmin
       .from('system_secrets')
-      .select('id, config_key, category, description, is_active, last_updated, created_at')
-      .order('category', { ascending: true })
-      .order('config_key', { ascending: true });
+            .select(`
+                id,
+                secret_key,
+                secret_category_id,
+                secret_subcategory_id,
+                display_name,
+                description,
+                provider_name,
+                is_required,
+                requires_restart,
+                test_status,
+                last_tested_at,
+                environment,
+                is_active,
+                created_at,
+                updated_at,
+                category:secret_categories(id, name, display_name_en, display_name_ar),
+                subcategory:secret_subcategories(id, name, display_name_en, display_name_ar)
+            `);
 
     // Apply filters
-    if (category && category !== 'all') {
-      query = query.eq('category', category);
-    }
-
-    if (active_only === 'true') {
-      query = query.eq('is_active', true);
-    }
-
-    if (search) {
-      query = query.or(`config_key.ilike.%${search}%,description.ilike.%${search}%`);
-    }
+        if (category) query = query.eq('secret_category_id', category);
+        if (subcategory) query = query.eq('secret_subcategory_id', subcategory);
+        if (provider) query = query.eq('provider_name', provider);
+        if (active_only === 'true') query = query.eq('is_active', true);
+        
+        query = query.order('secret_category_id', { ascending: true })
+                    .order('display_name', { ascending: true });
 
     const { data: secrets, error } = await query;
 
     if (error) {
-      throw error;
-    }
-
-    // Add masked values for display
-    const secretsWithMaskedValues = secrets.map(secret => ({
-      ...secret,
-      config_value_masked: maskSensitiveValue(secret.config_key, 6),
-      has_value: true
-    }));
+            console.error('🚨 [SYSTEM SECRETS] Error fetching secrets:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to fetch system secrets',
+                details: error.message
+            });
+        }
+        
+        // Format response with category names and group by category for better organization
+        const formattedSecrets = secrets.map(secret => ({
+            ...secret,
+            secret_category: secret.category?.display_name_en || 'Uncategorized',
+            secret_subcategory: secret.subcategory?.display_name_en || null,
+            category_display_name: secret.category?.display_name_en || 'Uncategorized'
+        }));
+        
+        const groupedSecrets = formattedSecrets.reduce((acc, secret) => {
+            const category = secret.secret_category;
+            if (!acc[category]) acc[category] = [];
+            acc[category].push(secret);
+            return acc;
+        }, {});
+        
+        console.log(`✅ [SYSTEM SECRETS] Retrieved ${formattedSecrets.length} secrets`);
 
     res.json({
       success: true,
-      data: secretsWithMaskedValues,
-      total: secrets.length,
-      message: 'System secrets retrieved successfully'
+            data: {
+                secrets: groupedSecrets,
+      total: formattedSecrets.length,
+                categories: Object.keys(groupedSecrets)
+            }
     });
 
   } catch (error) {
-    console.error('Get system secrets error:', error);
+        console.error('🚨 [SYSTEM SECRETS] Error in GET /:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve system secrets',
-      error: error.message
+            error: 'Internal server error',
+            details: error.message
     });
   }
 });
 
-// GET /api/system-secrets/categories - Get all available categories
-router.get('/categories', authenticateToken, requireSuperAdmin, async (req, res) => {
+// GET /api/system-secrets/categories - Get available categories
+router.get('/categories', authenticateToken, roleCheck(['super_admin']), async (req, res) => {
   try {
-    const { data: categories, error } = await supabaseAdmin
-      .from('system_secrets')
-      .select('category')
-      .order('category');
+        console.log('🔐 [SYSTEM SECRETS] Getting categories...');
+        
+        // Get categories with subcategories and secrets count
+        const { data: categories, error } = await supabaseAdmin
+            .from('secret_categories')
+            .select(`
+                id,
+                name,
+                display_name_en,
+                display_name_ar,
+                is_active,
+                subcategories:secret_subcategories(
+                    id,
+                    name,
+                    display_name_en,
+                    display_name_ar,
+                    is_active
+                ),
+                secrets:system_secrets(
+                    provider_name
+                )
+            `)
+            .eq('is_active', true)
+            .order('display_name_en');
+
+        if (error) {
+            console.error('🚨 [SYSTEM SECRETS] Error fetching categories:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to fetch categories'
+            });
+        }
+        
+        // Format response with providers from secrets
+        const result = categories.map(category => {
+            const providers = new Set();
+            if (category.secrets) {
+                category.secrets.forEach(secret => {
+                    if (secret.provider_name) providers.add(secret.provider_name);
+                });
+            }
+            
+            return {
+                id: category.id,
+                category: category.display_name_en,
+                name_en: category.display_name_en,
+                name_ar: category.display_name_ar,
+                subcategories: category.subcategories?.filter(sub => sub.is_active) || [],
+                providers: Array.from(providers)
+            };
+        });
+        
+        console.log(`✅ [SYSTEM SECRETS] Retrieved ${result.length} categories`);
+
+        res.json({
+            success: true,
+            data: result
+        });
+
+    } catch (error) {
+        console.error('🚨 [SYSTEM SECRETS] Error in GET /categories:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+});
+
+// GET /api/system-secrets/:id - Get specific secret (decrypted value)
+router.get('/:id', authenticateToken, roleCheck(['super_admin']), logSecretAccess, async (req, res) => {
+  try {
+        console.log(`🔐 [SYSTEM SECRETS] Getting secret: ${req.params.id}`);
+
+        const { data: secret, error } = await supabaseAdmin
+            .from('system_secrets')
+            .select(`
+                *,
+                category:secret_categories(id, name, display_name_en, display_name_ar),
+                subcategory:secret_subcategories(id, name, display_name_en, display_name_ar)
+            `)
+            .eq('id', req.params.id)
+            .single();
 
     if (error) {
-      throw error;
-    }
-
-    // Get unique categories with counts
-    const categoryStats = categories.reduce((acc, item) => {
-      acc[item.category] = (acc[item.category] || 0) + 1;
-      return acc;
-    }, {});
-
-    const categoriesWithCounts = Object.entries(categoryStats).map(([name, count]) => ({
-      name,
-      count,
-      label: name.charAt(0).toUpperCase() + name.slice(1).replace('_', ' ')
-    }));
+            console.error('🚨 [SYSTEM SECRETS] Error fetching secret:', error);
+            return res.status(error.code === 'PGRST116' ? 404 : 500).json({
+        success: false,
+                error: error.code === 'PGRST116' ? 'Secret not found' : 'Failed to fetch secret'
+            });
+        }
+        
+        // Decrypt the secret value
+        const decryptedValue = decryptSecret({
+            encrypted: secret.secret_value_encrypted,
+            key: secret.secret_salt
+        });
+        
+        console.log(`✅ [SYSTEM SECRETS] Retrieved secret: ${secret.secret_key}`);
 
     res.json({
       success: true,
-      data: categoriesWithCounts,
-      message: 'Categories retrieved successfully'
+            data: {
+                ...secret,
+                secret_value: decryptedValue,
+                // Remove encrypted fields from response
+                secret_value_encrypted: undefined,
+                secret_salt: undefined
+            }
     });
 
   } catch (error) {
-    console.error('Get categories error:', error);
+        console.error('🚨 [SYSTEM SECRETS] Error in GET /:id:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve categories',
-      error: error.message
+            error: 'Internal server error'
     });
   }
 });
 
-// GET /api/system-secrets/:id - Get specific system secret (with actual value)
-router.get('/:id', authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
+// POST /api/system-secrets - Create new secret
+router.post('/', authenticateToken, roleCheck(['super_admin']), logSecretAccess, async (req, res) => {
+    try {
+        console.log('🔐 [SYSTEM SECRETS] Creating new secret...');
+        
+        const {
+            secret_key,
+            secret_category_id,
+            secret_subcategory_id,
+            secret_value,
+            display_name,
+            description,
+            provider_name,
+            is_required,
+            requires_restart,
+            environment
+        } = req.body;
+        
+        // Validate required fields
+        if (!secret_key || !secret_category_id || !secret_value || !display_name) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: secret_key, secret_category_id, secret_value, display_name'
+            });
+        }
 
-    const { data: secret, error } = await supabase
-      .from('system_secrets')
-      .select('*')
-      .eq('id', id)
-      .single();
+        // Validate category exists
+        const { data: category } = await supabaseAdmin
+            .from('secret_categories')
+            .select('id')
+            .eq('id', secret_category_id)
+            .single();
 
-    if (error) {
-      throw error;
-    }
+        if (!category) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid category ID'
+            });
+        }
 
-    if (!secret) {
-      return res.status(404).json({
-        success: false,
-        message: 'System secret not found'
-      });
-    }
+        // Validate subcategory if provided
+        if (secret_subcategory_id) {
+            const { data: subcategory } = await supabaseAdmin
+                .from('secret_subcategories')
+                .select('id, category_id')
+                .eq('id', secret_subcategory_id)
+                .single();
 
-    // Log the access
-    await logAudit(
-      secret.id,
-      secret.config_key,
-      'VIEW',
-      null,
-      null,
-      secret.category,
-      { access_method: 'api_get_by_id', user_id: req.user.id }
-    );
+            if (!subcategory) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid subcategory ID'
+                });
+            }
 
-    res.json({
-      success: true,
-      data: secret,
-      message: 'System secret retrieved successfully'
-    });
+            if (subcategory.category_id !== secret_category_id) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Subcategory does not belong to the specified category'
+                });
+            }
+        }
 
-  } catch (error) {
-    console.error('Get system secret error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve system secret',
-      error: error.message
-    });
-  }
-});
-
-// POST /api/system-secrets - Create new system secret
-router.post('/', authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const { config_key, config_value, category, description } = req.body;
-
-    // Validation
-    if (!config_key || !config_value) {
-      return res.status(400).json({
-        success: false,
-        message: 'Config key and value are required'
-      });
-    }
-
-    // Check if config_key already exists
-    const { data: existing } = await supabase
+        // Check if secret already exists
+        const { data: existingSecret, error: checkError } = await supabaseAdmin
       .from('system_secrets')
       .select('id')
-      .eq('config_key', config_key)
+            .eq('secret_key', secret_key)
       .single();
 
-    if (existing) {
-      return res.status(409).json({
+        if (existingSecret) {
+            return res.status(400).json({
         success: false,
-        message: 'Configuration key already exists'
-      });
-    }
-
-    // Create new secret
-    const { data: newSecret, error } = await supabase
-      .from('system_secrets')
-      .insert({
-        config_key,
-        config_value,
-        category: category || 'general',
-        description,
-        created_by: req.user.id,
-        updated_by: req.user.id
-      })
-      .select()
-      .single();
+                error: 'Secret with this key already exists'
+            });
+        }
+        
+        // Encrypt the secret value
+        const encryptedData = encryptSecret(secret_value);
+        
+        // Insert new secret
+        const { data: newSecret, error } = await supabaseAdmin
+            .from('system_secrets')
+            .insert({
+                secret_key,
+                secret_category_id,
+                secret_subcategory_id,
+                secret_value_encrypted: encryptedData.encrypted,
+                secret_salt: encryptedData.key,
+                encryption_method: 'AES-256-GCM',
+                display_name,
+                description,
+                provider_name,
+                is_required: is_required || false,
+                requires_restart: requires_restart || false,
+                environment: environment || 'all',
+                is_active: true,
+                created_by: req.user.id,
+                updated_by: req.user.id
+            })
+            .select(`
+                *,
+                category:secret_categories(id, name, display_name_en, display_name_ar),
+                subcategory:secret_subcategories(id, name, display_name_en, display_name_ar)
+            `)
+            .single();
 
     if (error) {
-      throw error;
-    }
-
-    // Log the creation
-    await logAudit(
-      newSecret.id,
-      config_key,
-      'CREATE',
-      null,
-      config_value,
-      category || 'general',
-      { method: 'api_create', user_id: req.user.id }
-    );
+            console.error('🚨 [SYSTEM SECRETS] Error creating secret:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to create secret',
+                details: error.message
+            });
+        }
+        
+        console.log(`✅ [SYSTEM SECRETS] Created secret: ${secret_key}`);
 
     res.status(201).json({
       success: true,
       data: {
         ...newSecret,
-        config_value: maskSensitiveValue(config_value)
-      },
-      message: 'System secret created successfully'
+                secret_value_encrypted: undefined,
+                secret_salt: undefined
+            }
     });
 
   } catch (error) {
-    console.error('Create system secret error:', error);
+        console.error('🚨 [SYSTEM SECRETS] Error in POST /:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create system secret',
-      error: error.message
+            error: 'Internal server error'
     });
   }
 });
 
-// PUT /api/system-secrets/:id - Update system secret
-router.put('/:id', authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { config_value, category, description, is_active } = req.body;
+// PUT /api/system-secrets/:id - Update secret
+router.put('/:id', authenticateToken, roleCheck(['super_admin']), logSecretAccess, async (req, res) => {
+    try {
+        console.log(`🔐 [SYSTEM SECRETS] Updating secret: ${req.params.id}`);
+        
+        const {
+            secret_value,
+            secret_category_id,
+            secret_subcategory_id,
+            display_name,
+            description,
+            provider_name,
+            is_required,
+            requires_restart,
+            environment,
+            is_active
+        } = req.body;
 
-    // Get current secret for audit
-    const { data: currentSecret, error: fetchError } = await supabase
-      .from('system_secrets')
-      .select('*')
-      .eq('id', id)
-      .single();
+        // Validate category if provided
+        if (secret_category_id) {
+            const { data: category } = await supabaseAdmin
+                .from('secret_categories')
+                .select('id')
+                .eq('id', secret_category_id)
+                .single();
 
-    if (fetchError || !currentSecret) {
-      return res.status(404).json({
-        success: false,
-        message: 'System secret not found'
-      });
-    }
+            if (!category) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid category ID'
+                });
+            }
+        }
 
-    // Prepare update data
-    const updateData = {
-      last_updated: new Date().toISOString(),
-      updated_by: req.user.id
-    };
+        // Validate subcategory if provided
+        if (secret_subcategory_id) {
+            const { data: subcategory } = await supabaseAdmin
+                .from('secret_subcategories')
+                .select('id, category_id')
+                .eq('id', secret_subcategory_id)
+                .single();
 
-    if (config_value !== undefined) updateData.config_value = config_value;
-    if (category !== undefined) updateData.category = category;
-    if (description !== undefined) updateData.description = description;
-    if (is_active !== undefined) updateData.is_active = is_active;
+            if (!subcategory) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid subcategory ID'
+                });
+            }
 
-    // Update the secret
-    const { data: updatedSecret, error } = await supabase
-      .from('system_secrets')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
+            // If both category and subcategory are provided, ensure they match
+            if (secret_category_id && subcategory.category_id !== secret_category_id) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Subcategory does not belong to the specified category'
+                });
+            }
+        }
+
+        // Prepare update data
+        const updateData = {
+            display_name,
+            description,
+            provider_name,
+            is_required,
+            requires_restart,
+            environment,
+            is_active,
+            updated_by: req.user.id
+        };
+
+        // Add category/subcategory if provided
+        if (secret_category_id !== undefined) updateData.secret_category_id = secret_category_id;
+        if (secret_subcategory_id !== undefined) updateData.secret_subcategory_id = secret_subcategory_id;
+
+        // If secret value is being updated, encrypt it
+        if (secret_value) {
+            const encryptedData = encryptSecret(secret_value);
+            updateData.secret_value_encrypted = encryptedData.encrypted;
+            updateData.secret_salt = encryptedData.key;
+        }
+        
+        // Update secret
+        const { data: updatedSecret, error } = await supabaseAdmin
+            .from('system_secrets')
+            .update(updateData)
+            .eq('id', req.params.id)
+            .select(`
+                *,
+                category:secret_categories(id, name, display_name_en, display_name_ar),
+                subcategory:secret_subcategories(id, name, display_name_en, display_name_ar)
+            `)
+            .single();
 
     if (error) {
-      throw error;
-    }
-
-    // Log the update
-    await logAudit(
-      id,
-      currentSecret.config_key,
-      'UPDATE',
-      currentSecret.config_value,
-      config_value || currentSecret.config_value,
-      category || currentSecret.category,
-      { 
-        method: 'api_update', 
-        user_id: req.user.id,
-        fields_updated: Object.keys(updateData).filter(key => key !== 'last_updated' && key !== 'updated_by')
-      }
-    );
+            console.error('🚨 [SYSTEM SECRETS] Error updating secret:', error);
+            return res.status(error.code === 'PGRST116' ? 404 : 500).json({
+                success: false,
+                error: error.code === 'PGRST116' ? 'Secret not found' : 'Failed to update secret'
+            });
+        }
+        
+        console.log(`✅ [SYSTEM SECRETS] Updated secret: ${updatedSecret.secret_key}`);
 
     res.json({
       success: true,
       data: {
         ...updatedSecret,
-        config_value: maskSensitiveValue(updatedSecret.config_value)
-      },
-      message: 'System secret updated successfully'
+                secret_value_encrypted: undefined,
+                secret_salt: undefined
+            }
     });
 
   } catch (error) {
-    console.error('Update system secret error:', error);
+        console.error('🚨 [SYSTEM SECRETS] Error in PUT /:id:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update system secret',
-      error: error.message
+            error: 'Internal server error'
     });
   }
 });
 
-// DELETE /api/system-secrets/:id - Delete system secret
-router.delete('/:id', authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { confirm } = req.body;
-
-    if (!confirm) {
-      return res.status(400).json({
+// DELETE /api/system-secrets/:id - Delete secret
+router.delete('/:id', authenticateToken, roleCheck(['super_admin']), logSecretAccess, async (req, res) => {
+    try {
+        console.log(`🔐 [SYSTEM SECRETS] Deleting secret: ${req.params.id}`);
+        
+        const { data: deletedSecret, error } = await supabaseAdmin
+            .from('system_secrets')
+            .delete()
+            .eq('id', req.params.id)
+            .select('secret_key')
+            .single();
+        
+        if (error) {
+            console.error('🚨 [SYSTEM SECRETS] Error deleting secret:', error);
+            return res.status(error.code === 'PGRST116' ? 404 : 500).json({
         success: false,
-        message: 'Deletion must be confirmed'
-      });
+                error: error.code === 'PGRST116' ? 'Secret not found' : 'Failed to delete secret'
+            });
+        }
+        
+        console.log(`✅ [SYSTEM SECRETS] Deleted secret: ${deletedSecret.secret_key}`);
+        
+        res.json({
+            success: true,
+            message: 'Secret deleted successfully'
+        });
+        
+    } catch (error) {
+        console.error('🚨 [SYSTEM SECRETS] Error in DELETE /:id:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
     }
+});
 
-    // Get secret details for audit
-    const { data: secret, error: fetchError } = await supabase
+// POST /api/system-secrets/:id/test - Test secret/API key
+router.post('/:id/test', authenticateToken, roleCheck(['super_admin']), logSecretAccess, async (req, res) => {
+    try {
+        console.log(`🔐 [SYSTEM SECRETS] Testing secret: ${req.params.id}`);
+        
+        // Get secret details
+        const { data: secret, error } = await supabaseAdmin
       .from('system_secrets')
       .select('*')
-      .eq('id', id)
+            .eq('id', req.params.id)
       .single();
 
-    if (fetchError || !secret) {
+        if (error) {
       return res.status(404).json({
         success: false,
-        message: 'System secret not found'
-      });
+                error: 'Secret not found'
+            });
+        }
+        
+        // Decrypt secret value
+        const decryptedValue = decryptSecret({
+            encrypted: secret.secret_value_encrypted,
+            key: secret.secret_salt
+        });
+        
+        let testResult = { success: false, message: 'Test not implemented' };
+        
+        // FIRST: Check if value exists and is not empty
+        if (!decryptedValue || decryptedValue.trim() === '' || decryptedValue === 'null' || decryptedValue === 'undefined') {
+            testResult = { 
+                success: false, 
+                message: 'Failed: Key not set or empty' 
+            };
+        } else {
+            // Test based on secret type
+            if (secret.secret_key.includes('OPENAI_API_KEY')) {
+                testResult = await testOpenAIKey(decryptedValue);
+            } else if (secret.secret_key.includes('ELEVENLABS_API_KEY')) {
+                testResult = await testElevenLabsKey(decryptedValue);
+            } else if (secret.secret_key.includes('STRIPE_SECRET_KEY')) {
+                testResult = await testStripeKey(decryptedValue);
+            } else if (secret.secret_key.includes('TRON_API_KEY')) {
+                testResult = validateFormatOnly(decryptedValue, 'TRON API Key');
+            } else if (secret.secret_key.includes('USDT') || secret.secret_key.includes('WALLET')) {
+                testResult = validateFormatOnly(decryptedValue, 'Wallet Address');
+            } else if (secret.secret_key.includes('JWT_SECRET')) {
+                testResult = validateJWTSecret(decryptedValue);
+            } else {
+                testResult = validateFormatOnly(decryptedValue, 'Secret');
+            }
+        }
+        
+        // Update test status
+        await supabaseAdmin
+            .from('system_secrets')
+            .update({
+                test_status: testResult.success ? 'valid' : 'invalid',
+                last_tested_at: new Date().toISOString()
+            })
+            .eq('id', req.params.id);
+        
+        console.log(`✅ [SYSTEM SECRETS] Test result for ${secret.secret_key}: ${testResult.success ? 'SUCCESS' : 'FAILED'}`);
+
+        res.json({
+            success: true,
+            test_result: testResult
+        });
+
+    } catch (error) {
+        console.error('🚨 [SYSTEM SECRETS] Error in POST /:id/test:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+});
+
+// POST /api/system-secrets/test-connection - Test provider connection
+router.post('/test-connection', authenticateToken, roleCheck(['super_admin']), async (req, res) => {
+  try {
+    const { 
+            provider_type, 
+            api_key, 
+            base_url, 
+            test_endpoint, 
+            deployment_name, 
+            api_version,
+            headers = {} 
+        } = req.body;
+
+        console.log(`🔗 [SYSTEM SECRETS] Testing connection for ${provider_type}...`);
+
+        // Validate required fields
+        if (!provider_type || !api_key || !base_url) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: provider_type, api_key, base_url'
+            });
+        }
+
+        let testResult;
+        
+        // Test connection based on provider type
+        switch (provider_type) {
+            case 'openai':
+                testResult = await testOpenAIConnection(api_key, base_url);
+                break;
+            case 'anthropic':
+                testResult = await testAnthropicConnection(api_key, base_url);
+                break;
+            case 'google':
+                testResult = await testGoogleConnection(api_key, base_url);
+                break;
+            case 'elevenlabs':
+                testResult = await testElevenLabsConnection(api_key, base_url);
+                break;
+            case 'azure_openai':
+                testResult = await testAzureOpenAIConnection(api_key, base_url, deployment_name, api_version);
+                break;
+            case 'custom':
+                testResult = await testCustomConnection(api_key, base_url, test_endpoint, headers);
+                break;
+            default:
+                return res.status(400).json({
+                    success: false,
+                    error: `Unsupported provider type: ${provider_type}`
+                });
+        }
+
+        res.json(testResult);
+
+    } catch (error) {
+        console.error('🚨 [SYSTEM SECRETS] Connection test error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Connection test failed',
+            details: error.message
+        });
+    }
+});
+
+// POST /api/system-secrets/health-update - Update provider health status
+router.post('/health-update', authenticateToken, roleCheck(['super_admin']), async (req, res) => {
+    try {
+        const { provider_id, status, response_time, error_message, checked_at } = req.body;
+
+        console.log(`🏥 [SYSTEM SECRETS] Updating health for provider ${provider_id}...`);
+
+        // Update provider health in database
+        const { data: healthUpdate, error: updateError } = await supabaseAdmin
+            .from('system_health_checks')
+            .upsert({
+                provider_id,
+                status,
+                response_time,
+                error_message,
+                checked_at: checked_at || new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'provider_id'
+            });
+
+        if (updateError) {
+            throw updateError;
     }
 
-    // Log the deletion before deleting
-    await logAudit(
-      id,
-      secret.config_key,
-      'DELETE',
-      secret.config_value,
-      null,
-      secret.category,
-      { method: 'api_delete', user_id: req.user.id }
-    );
+    res.json({
+      success: true,
+            message: 'Health status updated successfully'
+    });
 
-    // Delete the secret
-    const { error } = await supabase
-      .from('system_secrets')
-      .delete()
-      .eq('id', id);
+  } catch (error) {
+        console.error('🚨 [SYSTEM SECRETS] Health update error:', error);
+    res.status(500).json({
+      success: false,
+            error: 'Health update failed',
+            details: error.message
+    });
+  }
+});
+
+// GET /api/system-secrets/providers/:id - Get specific provider details
+router.get('/providers/:id', authenticateToken, roleCheck(['super_admin']), async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        console.log(`📋 [SYSTEM SECRETS] Getting provider details for ${id}...`);
+
+        // Get provider from ai_providers table
+        const { data: provider, error } = await supabaseAdmin
+            .from('ai_providers')
+      .select('*')
+            .eq('id', id)
+            .single();
 
     if (error) {
       throw error;
     }
 
+        if (!provider) {
+            return res.status(404).json({
+                success: false,
+                error: 'Provider not found'
+            });
+        }
+
     res.json({
       success: true,
-      message: 'System secret deleted successfully'
+            data: provider
     });
 
   } catch (error) {
-    console.error('Delete system secret error:', error);
+        console.error('🚨 [SYSTEM SECRETS] Get provider error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete system secret',
-      error: error.message
+            error: 'Failed to get provider',
+            details: error.message
     });
   }
 });
 
 // GET /api/system-secrets/audit/logs - Get audit logs
-router.get('/audit/logs', authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const { 
-      config_key, 
-      action, 
-      limit = 50, 
-      offset = 0,
-      start_date,
-      end_date 
-    } = req.query;
-
-    let query = supabase
-      .from('system_secrets_audit')
-      .select(`
-        *,
-        profiles:performed_by(full_name, email)
-      `)
-      .order('performed_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    // Apply filters
-    if (config_key) {
-      query = query.eq('config_key', config_key);
-    }
-
-    if (action) {
-      query = query.eq('action', action);
-    }
-
-    if (start_date) {
-      query = query.gte('performed_at', start_date);
-    }
-
-    if (end_date) {
-      query = query.lte('performed_at', end_date);
-    }
-
-    const { data: auditLogs, error } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    res.json({
-      success: true,
-      data: auditLogs,
-      total: auditLogs.length,
-      message: 'Audit logs retrieved successfully'
-    });
-
-  } catch (error) {
-    console.error('Get audit logs error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve audit logs',
-      error: error.message
-    });
-  }
-});
-
-// POST /api/system-secrets/export - Export system secrets
-router.post('/export', authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const { 
-      categories = [], 
-      include_inactive = false, 
-      format = 'json',
-      mask_values = false 
-    } = req.body;
-
-    let query = supabase
-      .from('system_secrets')
-      .select('*')
-      .order('category', { ascending: true })
-      .order('config_key', { ascending: true });
-
-    // Apply filters
-    if (categories.length > 0) {
-      query = query.in('category', categories);
-    }
-
-    if (!include_inactive) {
-      query = query.eq('is_active', true);
-    }
-
-    const { data: secrets, error } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    // Prepare export data
-    const exportData = {
-      metadata: {
-        version: '1.0.0',
-        export_date: new Date().toISOString(),
-        total_secrets: secrets.length,
-        categories: [...new Set(secrets.map(s => s.category))],
-        exported_by: req.user.id,
-        include_inactive,
-        mask_values
-      },
-      secrets: secrets.map(secret => ({
-        config_key: secret.config_key,
-        config_value: mask_values ? maskSensitiveValue(secret.config_value) : secret.config_value,
-        category: secret.category,
-        description: secret.description,
-        is_active: secret.is_active,
-        created_at: secret.created_at,
-        last_updated: secret.last_updated
-      })),
-      import_instructions: {
-        description: 'Use this JSON for bulk import of system secrets',
-        usage: 'POST /api/system-secrets/import with this JSON structure',
-        validation: 'All config_key values must be unique',
-        security: 'Only super_admin users can perform bulk operations',
-        backup: 'Always backup existing secrets before bulk import'
-      }
-    };
-
-    // Log the export
-    await logAudit(
-      null,
-      'SYSTEM_EXPORT',
-      'EXPORT',
-      null,
-      null,
-      'system',
-      {
-        method: 'api_export',
-        user_id: req.user.id,
-        total_exported: secrets.length,
-        categories: exportData.metadata.categories,
-        mask_values
-      }
-    );
-
-    // Set appropriate headers for download
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="samia-tarot-secrets-${new Date().toISOString().split('T')[0]}.json"`);
-
-    res.json({
-      success: true,
-      data: exportData,
-      message: 'Secrets exported successfully'
-    });
-
-  } catch (error) {
-    console.error('Export system secrets error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to export system secrets',
-      error: error.message
-    });
-  }
-});
-
-// POST /api/system-secrets/bulk-populate - Auto-populate with default secrets
-router.post('/bulk-populate', authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const { overwrite = false, categories = [] } = req.body;
-
-    // Default secrets template
-    const defaultSecrets = [
-      // Payment Gateway Secrets
-      { config_key: 'stripe_publishable', config_value: 'pk_live_placeholder', category: 'payment', description: 'Stripe Publishable Key for frontend integration' },
-      { config_key: 'stripe_secret', config_value: 'sk_live_placeholder', category: 'payment', description: 'Stripe Secret Key for backend API calls' },
-      { config_key: 'stripe_webhook', config_value: 'whsec_placeholder', category: 'payment', description: 'Stripe Webhook Secret for event verification' },
-      { config_key: 'square_publishable', config_value: 'sq0idp-placeholder', category: 'payment', description: 'Square Application ID for frontend' },
-      { config_key: 'square_secret', config_value: 'EAAAl_placeholder', category: 'payment', description: 'Square Access Token for API calls' },
-      { config_key: 'usdt_wallet_trc20', config_value: 'TXplaceholder', category: 'payment', description: 'USDT Wallet Address TRC20 Network' },
-      { config_key: 'usdt_wallet_erc20', config_value: '0xplaceholder', category: 'payment', description: 'USDT Wallet Address ERC20 Network' },
-      
-      // AI & ML Secrets
-      { config_key: 'openai_api_key', config_value: 'sk-placeholder', category: 'ai', description: 'OpenAI API Key for GPT models' },
-      { config_key: 'openai_org_id', config_value: 'org-placeholder', category: 'ai', description: 'OpenAI Organization ID' },
-      { config_key: 'openai_default_model', config_value: 'gpt-4o', category: 'ai', description: 'Default OpenAI Model for AI readings' },
-      
-      // Database Secrets
-      { config_key: 'supabase_url', config_value: 'https://placeholder.supabase.co', category: 'database', description: 'Supabase Project URL' },
-      { config_key: 'supabase_anon_key', config_value: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder', category: 'database', description: 'Supabase Anonymous Key for frontend' },
-      { config_key: 'supabase_service_role_key', config_value: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.service_placeholder', category: 'database', description: 'Supabase Service Role Key for backend' },
-      
-      // WebRTC Secrets
-      { config_key: 'webrtc_ice_servers', config_value: 'stun:stun1.l.google.com:19302', category: 'webrtc', description: 'WebRTC ICE STUN Servers for video calls' },
-      { config_key: 'webrtc_turn_user', config_value: 'turnuser_placeholder', category: 'webrtc', description: 'WebRTC TURN Server Username' },
-      
-      // Backup & Storage
-      { config_key: 'backup_storage_url', config_value: 'https://backup.samia-tarot.com/', category: 'backup', description: 'Primary Backup Storage URL' },
-      { config_key: 'backup_access_key', config_value: 'AKIA_placeholder', category: 'backup', description: 'Backup Storage Access Key' },
-      
-      // Notifications
-      { config_key: 'sendgrid_api_key', config_value: 'SG.placeholder', category: 'notification', description: 'SendGrid API Key for email notifications' },
-      { config_key: 'twilio_sid', config_value: 'AC_placeholder', category: 'notification', description: 'Twilio Account SID for SMS' },
-      
-      // Security
-      { config_key: 'jwt_secret', config_value: 'samia_tarot_jwt_placeholder', category: 'security', description: 'JWT Secret Key for API authentication' },
-      { config_key: 'encryption_key', config_value: 'samia_tarot_encryption_placeholder', category: 'security', description: 'Data Encryption Key' },
-      
-      // System
-      { config_key: 'app_version', config_value: '1.0.0', category: 'system', description: 'Current Application Version' },
-      { config_key: 'maintenance_mode', config_value: 'off', category: 'system', description: 'Application Maintenance Mode' },
-      { config_key: 'feature_ai_readings', config_value: 'true', category: 'system', description: 'Enable AI-powered tarot readings' },
-      
-      // Analytics & Monitoring
-      { config_key: 'google_analytics_id', config_value: 'GA-placeholder', category: 'analytics', description: 'Google Analytics Tracking ID' },
-      { config_key: 'sentry_dsn', config_value: 'https://placeholder@sentry.io/placeholder', category: 'monitoring', description: 'Sentry Error Tracking DSN' }
-    ];
-
-    // Filter by categories if specified
-    const secretsToPopulate = categories.length > 0 
-      ? defaultSecrets.filter(secret => categories.includes(secret.category))
-      : defaultSecrets;
-
-    const results = {
-      created: 0,
-      updated: 0,
-      skipped: 0,
-      errors: []
-    };
-
-    for (const secret of secretsToPopulate) {
-      try {
-        // Check if exists
-        const { data: existing } = await supabase
-          .from('system_secrets')
-          .select('id')
-          .eq('config_key', secret.config_key)
-          .single();
-
-        if (existing && !overwrite) {
-          results.skipped++;
-          continue;
-        }
-
-        if (existing && overwrite) {
-          // Update existing
-          const { error } = await supabase
-            .from('system_secrets')
-            .update({
-              config_value: secret.config_value,
-              category: secret.category,
-              description: secret.description,
-              last_updated: new Date().toISOString(),
-              updated_by: req.user.id
-            })
-            .eq('id', existing.id);
-
-          if (error) {
-            results.errors.push(`Update failed for ${secret.config_key}: ${error.message}`);
-          } else {
-            results.updated++;
-          }
-        } else {
-          // Create new
-          const { error } = await supabase
-            .from('system_secrets')
-            .insert({
-              config_key: secret.config_key,
-              config_value: secret.config_value,
-              category: secret.category,
-              description: secret.description,
-              is_active: true,
-              created_by: req.user.id,
-              updated_by: req.user.id
+router.get('/audit/logs', authenticateToken, roleCheck(['super_admin']), async (req, res) => {
+    try {
+        console.log('🔐 [SYSTEM SECRETS] Getting audit logs...');
+        
+        const { limit = 100, offset = 0, secret_id, access_type } = req.query;
+        
+        let query = supabaseAdmin
+            .from('secrets_access_log')
+            .select(`
+                *,
+                profiles:accessed_by(first_name, last_name, email)
+            `)
+            .order('accessed_at', { ascending: false })
+            .range(offset, offset + limit - 1);
+        
+        if (secret_id) query = query.eq('secret_id', secret_id);
+        if (access_type) query = query.eq('access_type', access_type);
+        
+        const { data: logs, error } = await query;
+        
+        if (error) {
+            console.error('🚨 [SYSTEM SECRETS] Error fetching audit logs:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to fetch audit logs'
             });
-
-          if (error) {
-            results.errors.push(`Create failed for ${secret.config_key}: ${error.message}`);
-          } else {
-            results.created++;
-          }
         }
-      } catch (error) {
-        results.errors.push(`Processing failed for ${secret.config_key}: ${error.message}`);
-      }
-    }
-
-    // Log the bulk populate operation
-    await logAudit(
-      null,
-      'BULK_POPULATE',
-      'CREATE',
-      null,
-      null,
-      'system',
-      {
-        method: 'api_bulk_populate',
-        user_id: req.user.id,
-        results,
-        total_processed: secretsToPopulate.length,
-        categories: categories.length > 0 ? categories : 'all'
-      }
-    );
-
-    res.json({
-      success: true,
-      data: results,
-      message: 'Bulk populate completed successfully'
-    });
-
-  } catch (error) {
-    console.error('Bulk populate error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to bulk populate secrets',
-      error: error.message
-    });
-  }
-});
-
-// POST /api/system-secrets/import - Import system secrets
-router.post('/import', authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const { secrets, overwrite = false } = req.body;
-
-    if (!Array.isArray(secrets) || secrets.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid import data'
-      });
-    }
-
-    const results = {
-      created: 0,
-      updated: 0,
-      skipped: 0,
-      errors: []
-    };
-
-    for (const secret of secrets) {
-      try {
-        const { config_key, config_value, category, description } = secret;
-
-        if (!config_key || !config_value) {
-          results.errors.push(`Invalid secret data: ${config_key || 'unknown'}`);
-          continue;
-        }
-
-        // Check if exists
-        const { data: existing } = await supabase
-          .from('system_secrets')
-          .select('id')
-          .eq('config_key', config_key)
-          .single();
-
-        if (existing && !overwrite) {
-          results.skipped++;
-          continue;
-        }
-
-        if (existing && overwrite) {
-          // Update existing
-          const { error } = await supabase
-            .from('system_secrets')
-            .update({
-              config_value,
-              category: category || 'general',
-              description,
-              last_updated: new Date().toISOString(),
-              updated_by: req.user.id
-            })
-            .eq('id', existing.id);
-
-          if (error) {
-            results.errors.push(`Update failed for ${config_key}: ${error.message}`);
-          } else {
-            results.updated++;
-            await logAudit(existing.id, config_key, 'UPDATE', null, config_value, category, {
-              method: 'api_import',
-              user_id: req.user.id
-            });
-          }
-        } else {
-          // Create new
-          const { data: newSecret, error } = await supabase
-            .from('system_secrets')
-            .insert({
-              config_key,
-              config_value,
-              category: category || 'general',
-              description,
-              created_by: req.user.id,
-              updated_by: req.user.id
-            })
-            .select()
-            .single();
-
-          if (error) {
-            results.errors.push(`Create failed for ${config_key}: ${error.message}`);
-          } else {
-            results.created++;
-            await logAudit(newSecret.id, config_key, 'CREATE', null, config_value, category, {
-              method: 'api_import',
-              user_id: req.user.id
-            });
-          }
-        }
-      } catch (error) {
-        results.errors.push(`Processing failed for ${secret.config_key || 'unknown'}: ${error.message}`);
-      }
-    }
-
-    // Log the import operation
-    await logAudit(
-      null,
-      'SYSTEM_IMPORT',
-      'IMPORT',
-      null,
-      null,
-      'system',
-      {
-        method: 'api_import',
-        user_id: req.user.id,
-        results,
-        total_processed: secrets.length
-      }
-    );
-
-    res.json({
-      success: true,
-      data: results,
-      message: 'Import completed'
-    });
-
-  } catch (error) {
-    console.error('Import system secrets error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to import system secrets',
-      error: error.message
-    });
-  }
-});
-
-// POST /api/system-secrets/test-connection/:id - Test connection for specific secret
-router.post('/test-connection/:id', authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const { data: secret, error } = await supabase
-      .from('system_secrets')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error || !secret) {
-      return res.status(404).json({
-        success: false,
-        message: 'System secret not found'
-      });
-    }
-
-    let testResult = {
-      success: false,
-      message: 'Connection test not implemented for this type',
-      details: null
-    };
-
-    // Implement connection tests based on config_key type
-    switch (secret.config_key) {
-      case 'stripe_secret_key':
-        // Test Stripe connection
-        try {
-          // This would require the actual Stripe SDK
-          testResult = {
+        
+        console.log(`✅ [SYSTEM SECRETS] Retrieved ${logs.length} audit logs`);
+        
+        res.json({
             success: true,
-            message: 'Stripe connection test would be implemented here',
-            details: { type: 'stripe', status: 'simulated_success' }
+            data: logs
+        });
+        
+    } catch (error) {
+        console.error('🚨 [SYSTEM SECRETS] Error in GET /audit/logs:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+});
+
+// ============================================================================
+// TESTING UTILITIES
+// ============================================================================
+
+// Test OpenAI API key
+async function testOpenAIKey(apiKey) {
+    // Check for empty value first
+    if (!apiKey || apiKey.trim() === '') {
+        return {
+            success: false,
+            message: 'Failed: OpenAI API key is empty'
+        };
+    }
+    
+    // Check basic format
+    if (!apiKey.startsWith('sk-') || apiKey.length < 20) {
+        return {
+            success: false,
+            message: 'Failed: Invalid OpenAI API key format'
+        };
+    }
+    
+    try {
+        const response = await fetch('https://api.openai.com/v1/models', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            return {
+                success: true,
+                message: `OpenAI key is valid! Found ${data.data.length} available models.`
+            };
+          } else {
+            return {
+                success: false,
+                message: `OpenAI key test failed: ${response.status} ${response.statusText}`
+            };
+        }
+    } catch (error) {
+        return {
+            success: false,
+            message: `OpenAI key test error: ${error.message}`
+        };
+    }
+}
+
+// Test ElevenLabs API key
+async function testElevenLabsKey(apiKey) {
+    // Check for empty value first
+    if (!apiKey || apiKey.trim() === '') {
+        return {
+            success: false,
+            message: 'Failed: ElevenLabs API key is empty'
+        };
+    }
+    
+    // Check basic format (ElevenLabs keys are usually 32 characters)
+    if (apiKey.length < 20) {
+        return {
+            success: false,
+            message: 'Failed: ElevenLabs API key too short'
+        };
+    }
+    
+    try {
+        const response = await fetch('https://api.elevenlabs.io/v1/user', {
+            method: 'GET',
+            headers: {
+                'xi-api-key': apiKey,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            return {
+                success: true,
+                message: 'ElevenLabs key is valid and working!'
+            };
+          } else {
+            return {
+                success: false,
+                message: `ElevenLabs key test failed: ${response.status} ${response.statusText}`
+            };
+        }
+      } catch (error) {
+        return {
+            success: false,
+            message: `ElevenLabs key test error: ${error.message}`
+        };
+    }
+}
+
+// Test Stripe API key
+async function testStripeKey(apiKey) {
+    // Check for empty value first
+    if (!apiKey || apiKey.trim() === '') {
+        return {
+            success: false,
+            message: 'Failed: Stripe API key is empty'
+        };
+    }
+    
+    // Check basic format (Stripe keys start with sk_ or pk_)
+    if (!apiKey.startsWith('sk_') && !apiKey.startsWith('pk_')) {
+        return {
+            success: false,
+            message: 'Failed: Invalid Stripe API key format (should start with sk_ or pk_)'
+        };
+    }
+    
+    try {
+        const response = await fetch('https://api.stripe.com/v1/accounts', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
+        
+        if (response.ok) {
+            return {
+                success: true,
+                message: 'Stripe key is valid and working!'
+            };
+        } else {
+            return {
+                success: false,
+                message: `Stripe key test failed: ${response.status} ${response.statusText}`
+            };
+        }
+  } catch (error) {
+        return {
+      success: false,
+            message: `Stripe key test error: ${error.message}`
+        };
+    }
+}
+
+async function testOpenAIConnection(apiKey, baseUrl) {
+    try {
+        const response = await fetch(`${baseUrl}/models`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        return {
+            success: true,
+            status: 'connected',
+            data: data,
+            message: `OpenAI connection successful. ${data.data?.length || 0} models available.`
+        };
+    } catch (error) {
+        return {
+            success: false,
+            status: 'connection_failed',
+            error: error.message
+        };
+    }
+}
+
+async function testAnthropicConnection(apiKey, baseUrl) {
+    try {
+        const response = await fetch(`${baseUrl}/models`, {
+            method: 'GET',
+            headers: {
+                'x-api-key': apiKey,
+                'Content-Type': 'application/json',
+                'anthropic-version': '2023-06-01'
+            },
+            timeout: 10000
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        return {
+            success: true,
+            status: 'connected',
+            data: data,
+            message: 'Anthropic (Claude) connection successful'
+        };
+    } catch (error) {
+        return {
+            success: false,
+            status: 'connection_failed',
+            error: error.message
+        };
+    }
+}
+
+async function testGoogleConnection(apiKey, baseUrl) {
+    try {
+        const response = await fetch(`${baseUrl}/models?key=${apiKey}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        return {
+            success: true,
+            status: 'connected',
+            data: data,
+            message: `Google AI connection successful. ${data.models?.length || 0} models available.`
+        };
+      } catch (error) {
+        return {
+            success: false,
+            status: 'connection_failed',
+            error: error.message
+        };
+    }
+}
+
+async function testElevenLabsConnection(apiKey, baseUrl) {
+    try {
+        const response = await fetch(`${baseUrl}/user`, {
+            method: 'GET',
+            headers: {
+                'xi-api-key': apiKey,
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        return {
+            success: true,
+            status: 'connected',
+            data: data,
+            message: 'ElevenLabs connection successful'
+        };
+  } catch (error) {
+        return {
+      success: false,
+            status: 'connection_failed',
+      error: error.message
+        };
+    }
+}
+
+async function testAzureOpenAIConnection(apiKey, baseUrl, deploymentName, apiVersion) {
+    try {
+        const url = `${baseUrl}/openai/deployments/${deploymentName}/completions?api-version=${apiVersion}`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'api-key': apiKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: 'test',
+                max_tokens: 1
+            }),
+            timeout: 15000
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        return {
+            success: true,
+            status: 'connected',
+            data: data,
+            message: 'Azure OpenAI connection successful'
           };
         } catch (error) {
-          testResult = {
+        return {
             success: false,
-            message: 'Stripe connection failed',
-            details: { error: error.message }
-          };
-        }
-        break;
-
-      case 'openai_api_key':
-        // Test OpenAI connection
-        testResult = {
-          success: true,
-          message: 'OpenAI connection test would be implemented here',
-          details: { type: 'openai', status: 'simulated_success' }
-        };
-        break;
-
-      case 'supabase_url':
-        // Test Supabase connection
-        testResult = {
-          success: true,
-          message: 'Supabase connection active',
-          details: { type: 'supabase', status: 'connected' }
-        };
-        break;
-
-      default:
-        testResult = {
-          success: false,
-          message: `Connection test not available for ${secret.config_key}`,
-          details: { type: 'unsupported' }
+            status: 'connection_failed',
+            error: error.message
         };
     }
+}
 
-    // Log the test
-    await logAudit(
-      secret.id,
-      secret.config_key,
-      'TEST',
-      null,
-      null,
-      secret.category,
-      {
-        method: 'api_test_connection',
-        user_id: req.user.id,
-        test_result: testResult.success
-      }
-    );
+async function testCustomConnection(apiKey, baseUrl, testEndpoint = '/health', customHeaders = {}) {
+    try {
+        const url = `${baseUrl}${testEndpoint}`;
+        
+        const headers = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            ...customHeaders
+        };
 
-    res.json({
-      success: true,
-      data: testResult,
-      message: 'Connection test completed'
-    });
+        const response = await fetch(url, {
+            method: 'GET',
+            headers,
+            timeout: 10000
+        });
 
-  } catch (error) {
-    console.error('Test connection error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to test connection',
-      error: error.message
-    });
-  }
-});
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
 
-module.exports = router; 
+        const data = await response.json();
+        
+        return {
+            success: true,
+            status: 'connected',
+            data: data,
+            message: 'Custom provider connection successful'
+        };
+      } catch (error) {
+        return {
+            success: false,
+            status: 'connection_failed',
+            error: error.message
+        };
+    }
+}
+
+// ============================================================================
+// FORMAT VALIDATION UTILITIES
+// ============================================================================
+
+// Basic format validation for secrets without API testing
+function validateFormatOnly(value, keyType) {
+    if (!value || value.trim() === '') {
+        return {
+            success: false,
+            message: `Failed: ${keyType} is empty`
+        };
+    }
+    
+    // Basic format checks
+    if (value.length < 8) {
+        return {
+            success: false,
+            message: `Failed: ${keyType} too short (minimum 8 characters)`
+        };
+    }
+    
+    return {
+        success: true,
+        message: `Format validation passed for ${keyType}`
+    };
+}
+
+// JWT Secret validation
+function validateJWTSecret(value) {
+    if (!value || value.trim() === '') {
+        return {
+            success: false,
+            message: 'Failed: JWT Secret is empty'
+        };
+    }
+    
+    // JWT secrets should be at least 32 characters for security
+    if (value.length < 32) {
+        return {
+            success: false,
+            message: 'Failed: JWT Secret too short (minimum 32 characters)'
+        };
+    }
+    
+    return {
+        success: true,
+        message: 'JWT Secret format validation passed'
+    };
+}
+
+export default router; 

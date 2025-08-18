@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import SuperAdminAPI from '../../../api/superAdminApi.js';
+import api from '../../../services/frontendApi.js';
 import PaymentSettingsManager from '../../../components/Admin/PaymentSettingsManager.jsx';
 import RewardsManagement from '../../../components/Admin/RewardsManagement.jsx';
 import {
@@ -25,11 +25,10 @@ const SystemSettingsTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-  const [activeSection, setActiveSection] = useState('api_keys');
+  const [activeSection, setActiveSection] = useState('database');
   const [showSecrets, setShowSecrets] = useState({});
 
   const sections = [
-    { id: 'api_keys', name: 'API Keys', icon: KeyIcon },
     { id: 'database', name: 'Database', icon: CircleStackIcon },
     { id: 'payments', name: 'Payments', icon: CurrencyDollarIcon },
     { id: 'rewards', name: 'Rewards System', icon: TrophyIcon },
@@ -46,7 +45,7 @@ const SystemSettingsTab = () => {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const result = await SuperAdminAPI.getSystemSettings();
+      const result = await api.getSystemSettings();
       if (result.success) {
         setSettings(result.data);
       } else {
@@ -62,7 +61,7 @@ const SystemSettingsTab = () => {
   const updateSetting = async (category, key, value) => {
     try {
       setSaving(true);
-      const result = await SuperAdminAPI.updateSystemSetting(key, value, category);
+      const result = await api.updateSystemSetting(key, value, category);
       if (result.success) {
         setSettings(prev => ({
           ...prev,
@@ -403,7 +402,7 @@ const SystemSettingsTab = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {activeSection === 'api_keys' && renderAPIKeysSection()}
+          {/* API Keys section removed as per user requirements */}
           {activeSection === 'payments' && renderPaymentsSection()}
           {activeSection === 'rewards' && (
             <RewardsManagement />

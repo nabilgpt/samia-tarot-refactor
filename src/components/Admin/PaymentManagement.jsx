@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { UserAPI } from '../../api/userApi.js';
+import api from '../../services/frontendApi.js';
 
 const PaymentManagement = () => {
   const { user, profile } = useAuth();
@@ -20,13 +20,13 @@ const PaymentManagement = () => {
     setLoading(true);
     try {
       if (selectedTab === 'pending') {
-        const result = await UserAPI.getPendingPayments();
+        const result = await api.getPendingPayments();
         if (result.success) {
           setPendingPayments(result.data);
         }
       } else {
         // Load all payments - you'd implement this method
-        // const result = await UserAPI.getAllPayments();
+        // const result = await api.getAllPayments();
         // if (result.success) {
         //   setPayments(result.data);
         // }
@@ -43,7 +43,7 @@ const PaymentManagement = () => {
     setError(null);
 
     try {
-      const result = await UserAPI.updatePaymentStatus(paymentId, action, notes);
+      const result = await api.updatePaymentStatus(paymentId, action, notes);
       if (result.success) {
         // Reload data
         await loadPaymentData();
@@ -316,7 +316,7 @@ const PaymentManagement = () => {
     );
   };
 
-  if (!profile || !['admin', 'monitor'].includes(profile.role)) {
+  if (!profile || !['admin', 'super_admin', 'monitor'].includes(profile.role)) {
     return (
       <div className="text-center py-8">
         <p className="text-red-600">Access denied. Admin privileges required.</p>
@@ -327,7 +327,14 @@ const PaymentManagement = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Payment Management</h2>
+        <div>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
+            Payment Management
+          </h2>
+          <p className="text-gray-400 mt-1">
+            Manage all payments and transactions in the system
+          </p>
+        </div>
         <div className="flex space-x-2">
           <button
             onClick={() => setSelectedTab('pending')}

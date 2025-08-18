@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
-import RewardsAPI from '../../api/rewardsApi';
+import api from '../../services/frontendApi.js';
 import {
   StarIcon,
   GiftIcon,
@@ -47,10 +47,10 @@ const RewardsDashboard = () => {
       
       // Load all data in parallel
       const [pointsResult, transactionsResult, redemptionResult, referralResult] = await Promise.all([
-        RewardsAPI.getUserPoints(),
-        RewardsAPI.getTransactionHistory(1, 10),
-        RewardsAPI.getRedemptionOptions(),
-        RewardsAPI.getReferralCode()
+        api.getUserPoints(),
+        api.getTransactionHistory(1, 10),
+        api.getRedemptionOptions(),
+        api.getReferralCode()
       ]);
 
       if (pointsResult.success) {
@@ -80,7 +80,7 @@ const RewardsDashboard = () => {
   const handleRedemption = async (option) => {
     try {
       setRedeeming(true);
-      const result = await RewardsAPI.redeemPoints(option.id);
+      const result = await api.redeemPoints(option.id);
       
       if (result.success) {
         showSuccess(result.message);
@@ -105,7 +105,7 @@ const RewardsDashboard = () => {
     }
 
     try {
-      const result = await RewardsAPI.useReferralCode(referralCode.trim());
+      const result = await api.useReferralCode(referralCode.trim());
       
       if (result.success) {
         showSuccess(result.message);

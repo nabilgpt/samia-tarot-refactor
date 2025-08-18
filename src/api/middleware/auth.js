@@ -3,7 +3,8 @@
 // =============================================================================
 // Reusable auth middleware for all API endpoints
 
-const { supabaseAdmin: supabase } = require('../lib/supabase.js');
+import { supabase, supabaseAdmin } from '../lib/supabase.js';
+import jwt from 'jsonwebtoken';
 
 // =============================================================================
 // AUTHENTICATION MIDDLEWARE
@@ -12,10 +13,18 @@ const { supabaseAdmin: supabase } = require('../lib/supabase.js');
 // التحقق من التوكن
 const authenticateToken = async (req, res, next) => {
   try {
+    console.log(`🔐 [AUTH] ${req.method} ${req.path} - Starting authentication...`);
+    
     const authHeader = req.headers['authorization'];
+    console.log('🔐 [AUTH] Authorization header:', authHeader);
+    console.log('🔐 [AUTH] Authorization header type:', typeof authHeader);
+    
     const token = authHeader && authHeader.split(' ')[1];
+    console.log('🔐 [AUTH] Token extracted:', token ? 'success' : 'failed');
+    console.log('🔐 [AUTH] Token extraction method:', authHeader ? 'split on space, index 1' : 'no header');
 
     if (!token) {
+      console.log('🔐 [AUTH] No token provided');
       return res.status(401).json({
         success: false,
         error: 'Access token required',
@@ -23,25 +32,57 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // التحقق من التوكن مع Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    console.log('🔐 [AUTH] Token found, verifying...');
+    console.log('🔐 [AUTH] Token:', token);
+    console.log('🔐 [AUTH] Token length:', token.length);
+    console.log('🔐 [AUTH] Token type:', typeof token);
+    console.log('🔐 [AUTH] Token preview:', token.substring(0, 50) + '...');
+
+    // Check JWT token structure
+    const tokenParts = token.split('.');
+    console.log('🔐 [AUTH] Token parts count:', tokenParts.length);
+    console.log('🔐 [AUTH] Token parts lengths:', tokenParts.map(part => part.length));
     
-    if (error || !user) {
-      return res.status(403).json({
+    if (tokenParts.length !== 3) {
+      console.log('🔐 [AUTH] Token validation failed: invalid JWT: unable to parse or verify signature, token is malformed: token contains an invalid number of segments');
+      return res.status(401).json({
         success: false,
-        error: 'Invalid or expired token',
-        code: 'AUTH_TOKEN_INVALID'
+        error: 'Invalid token format',
+        code: 'AUTH_TOKEN_MALFORMED'
       });
     }
 
-    // جلب بيانات البروفايل الكاملة
-    const { data: profile, error: profileError } = await supabase
+    // Verify JWT token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+      console.log('🔐 [AUTH] JWT token verified successfully');
+      console.log('🔐 [AUTH] Decoded payload:', JSON.stringify(decoded, null, 2));
+    } catch (jwtError) {
+      console.log('🔐 [AUTH] JWT verification failed:', jwtError.message);
+      
+      // Check if token is expired
+      const isTokenExpired = jwtError.name === 'TokenExpiredError';
+      
+      return res.status(401).json({
+        success: false,
+        error: isTokenExpired ? 'Token expired' : 'Invalid or expired token',
+        code: isTokenExpired ? 'AUTH_TOKEN_EXPIRED' : 'AUTH_TOKEN_INVALID',
+        expired: isTokenExpired
+      });
+    }
+
+    console.log(`🔐 [AUTH] Token valid for user: ${decoded.email}`);
+
+    // جلب بيانات البروفايل الكاملة (using admin client for profile access)
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', decoded.user_id)
       .single();
 
     if (profileError || !profile) {
+      console.log('🔐 [AUTH] Profile not found:', profileError?.message || 'No profile data');
       return res.status(404).json({
         success: false,
         error: 'User profile not found',
@@ -49,24 +90,23 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // التحقق من أن الحساب نشط
-    if (!profile.is_active) {
-      return res.status(403).json({
-        success: false,
-        error: 'Account is deactivated',
-        code: 'ACCOUNT_DEACTIVATED'
-      });
-    }
-
-    req.user = user;
+    // Set user and profile data
+    req.user = {
+      id: decoded.user_id,
+      email: decoded.email,
+      role: decoded.role
+    };
     req.profile = profile;
+
+    console.log(`✅ [AUTH] Authentication successful for: ${decoded.email} (${decoded.role})`);
     next();
+
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('🚨 [AUTH] Authentication error:', error);
     return res.status(500).json({
       success: false,
-      error: 'Authentication failed',
-      code: 'AUTH_ERROR'
+      error: 'Authentication service error',
+      code: 'AUTH_SERVICE_ERROR'
     });
   }
 };
@@ -74,7 +114,12 @@ const authenticateToken = async (req, res, next) => {
 // التحقق من الصلاحيات
 const requireRole = (allowedRoles) => {
   return (req, res, next) => {
+    console.log(`🔐 [ROLE] Checking role access for ${req.path}`);
+    console.log(`🔐 [ROLE] Required roles: [${allowedRoles.join(', ')}]`);
+    console.log(`🔐 [ROLE] User role: ${req.profile?.role || 'undefined'}`);
+    
     if (!req.profile || !allowedRoles.includes(req.profile.role)) {
+      console.log(`🔐 [ROLE] ❌ Access denied - insufficient permissions`);
       return res.status(403).json({
         success: false,
         error: 'Insufficient permissions',
@@ -83,6 +128,8 @@ const requireRole = (allowedRoles) => {
         user_role: req.profile?.role
       });
     }
+    
+    console.log(`🔐 [ROLE] ✅ Role access granted`);
     next();
   };
 };
@@ -128,7 +175,7 @@ const checkSecuritySettings = async (req, res, next) => {
     const userId = req.user.id;
     
     // التحقق من محاولات تسجيل الدخول المتعددة
-    const { data: recentLogins } = await supabase
+    const { data: recentLogins } = await supabaseAdmin
       .from('user_sessions')
       .select('created_at')
       .eq('user_id', userId)
@@ -141,7 +188,7 @@ const checkSecuritySettings = async (req, res, next) => {
     }
 
     // التحقق من تجميد الحساب
-    const { data: adminActions } = await supabase
+    const { data: adminActions } = await supabaseAdmin
       .from('admin_actions')
       .select('action_type, created_at')
       .eq('target_user_id', userId)
@@ -165,10 +212,11 @@ const checkSecuritySettings = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export {
   authenticateToken,
   requireRole,
   requireOwnershipOrAdmin,
   checkSecuritySettings,
-  supabase
+  supabase,
+  supabaseAdmin
 }; 

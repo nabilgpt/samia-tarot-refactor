@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { CallAPI } from '../../api/callApi.js';
+import api from '../../services/frontendApi.js';
 import CallTimer from './CallTimer.jsx';
 import CallControls from './CallControls.jsx';
 import CallParticipants from './CallParticipants.jsx';
@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   Shield
 } from 'lucide-react';
+import { hasAdminAccess, hasAdminOrMonitorAccess } from '../../utils/roleHelpers';
 
 const CallRoom = ({ callSessionId, onCallEnd }) => {
   const { user, profile } = useAuth();
@@ -58,7 +59,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
   useEffect(() => {
     if (!callSessionId) return;
 
-    const subscription = CallAPI.subscribeToCallSession(callSessionId, (payload) => {
+    const subscription = api.subscribeToCallSession(callSessionId, (payload) => {
       if (payload.new) {
         setCallSession(prev => ({ ...prev, ...payload.new }));
         
@@ -78,7 +79,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
   useEffect(() => {
     if (!callSessionId) return;
 
-    const subscription = CallAPI.subscribeToCallParticipants(callSessionId, (payload) => {
+    const subscription = api.subscribeToCallParticipants(callSessionId, (payload) => {
       loadParticipants();
     });
 
@@ -97,7 +98,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
   const loadCallSession = async () => {
     try {
       setLoading(true);
-      const result = await CallAPI.getCallSession(callSessionId);
+      const result = await api.getCallSession(callSessionId);
       if (result.success) {
         setCallSession(result.data);
         setIsVideoEnabled(result.data.call_type === 'video');
@@ -115,7 +116,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
 
   const loadParticipants = async () => {
     try {
-      const result = await CallAPI.getCallSession(callSessionId);
+      const result = await api.getCallSession(callSessionId);
       if (result.success && result.data.participants) {
         setParticipants(result.data.participants);
       }
@@ -160,15 +161,12 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
 
   const initializePeerJS = async () => {
     try {
-      // Create PeerJS instance with configuration
+      // Initialize PeerJS with proper configuration
       const peerInstance = new Peer(user.id, {
         host: 'localhost', // Configure your PeerJS server
         port: 9000,
         path: '/peerjs',
-        config: getWebRTCConfiguration(),
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
-        }
+        config: getWebRTCConfiguration()
       });
 
       setPeer(peerInstance);
@@ -202,7 +200,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
       }
 
       // Start recording if enabled
-      if (callSession.is_emergency || profile?.role === 'admin') {
+      if (callSession.is_emergency || hasAdminAccess(profile?.role)) {
         startRecording();
       }
 
@@ -270,7 +268,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
       });
 
       // Update call status to ringing
-      await CallAPI.startCallSession(callSessionId);
+      await api.startCallSession(callSessionId);
       setCallStarted(true);
 
     } catch (error) {
@@ -301,7 +299,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
       });
 
       // Update call status to active
-      await CallAPI.startCallSession(callSessionId);
+      await api.startCallSession(callSessionId);
       setCallStarted(true);
 
     } catch (error) {
@@ -318,7 +316,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
       setConnectionQuality(quality);
 
       // Submit quality metrics
-      CallAPI.submitCallQualityMetrics({
+      api.submitCallQualityMetrics({
         call_session_id: callSessionId,
         user_id: user.id,
         connection_strength: quality === 'good' ? 5 : quality === 'fair' ? 3 : 1,
@@ -370,7 +368,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
         type: 'video/webm'
       });
 
-      await CallAPI.uploadRecording(file, callSessionId, 'video');
+      await api.uploadRecording(file, callSessionId, 'video');
     } catch (error) {
       console.error('Error uploading recording:', error);
     }
@@ -402,10 +400,10 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
       stopRecording();
 
       // End call session
-      await CallAPI.endCallSession(callSessionId);
+      await api.endCallSession(callSessionId);
 
       // Remove participant
-      await CallAPI.removeCallParticipant(callSessionId, user.id);
+      await api.removeCallParticipant(callSessionId, user.id);
 
       // Cleanup
       cleanup();
@@ -533,7 +531,7 @@ const CallRoom = ({ callSessionId, onCallEnd }) => {
         )}
 
         {/* Admin/Monitor Badge */}
-        {(profile?.role === 'admin' || profile?.role === 'monitor') && (
+        {hasAdminOrMonitorAccess(profile?.role) && (
           <div className="flex items-center space-x-1 text-blue-400">
             <Shield className="h-4 w-4" />
             <span className="text-sm">{profile.role}</span>

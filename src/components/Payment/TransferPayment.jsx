@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { UserAPI } from '../../api/userApi.js';
+import api from '../../services/frontendApi.js';
 
 const TransferPayment = ({ service, amount, onPaymentSuccess, onPaymentError, onBack, bookingId, method }) => {
   const { user, profile } = useAuth();
@@ -158,7 +158,7 @@ const TransferPayment = ({ service, amount, onPaymentSuccess, onPaymentError, on
 
     try {
       // Create payment record first
-      const paymentResult = await UserAPI.createPayment({
+      const paymentResult = await api.createPayment({
         booking_id: bookingId,
         user_id: user.id,
         amount: amount,
@@ -175,7 +175,7 @@ const TransferPayment = ({ service, amount, onPaymentSuccess, onPaymentError, on
       }
 
       // Upload receipt
-      const receiptResult = await UserAPI.uploadPaymentReceipt(paymentResult.data.id, receiptFile);
+      const receiptResult = await api.uploadPaymentReceipt(paymentResult.data.id, receiptFile);
       
       if (receiptResult.success) {
         setStep(3);

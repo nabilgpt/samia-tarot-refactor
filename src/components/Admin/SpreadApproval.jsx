@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
-import { SpreadAPI } from '../../api/spreadApi';
+import api from '../../services/frontendApi.js';
 
 const SpreadApproval = () => {
   const { t } = useTranslation();
@@ -86,7 +86,7 @@ const SpreadApproval = () => {
     loadPendingSpreads();
     
     // Subscribe to real-time notifications
-    const subscription = SpreadAPI.subscribeToSpreadApprovals(profile?.id, () => {
+    const subscription = api.subscribeToSpreadApprovals(profile?.id, () => {
       loadPendingSpreads();
     });
 
@@ -98,7 +98,7 @@ const SpreadApproval = () => {
   const loadPendingSpreads = async () => {
     setLoading(true);
     try {
-      const result = await SpreadAPI.getPendingSpreads();
+      const result = await api.getPendingSpreads();
       if (result.success) {
         setPendingSpreads(result.data);
       } else {
@@ -115,7 +115,7 @@ const SpreadApproval = () => {
     if (!selectedSpread) return;
 
     try {
-      const result = await SpreadAPI.approveSpread(selectedSpread.id, profile?.id, approvalNotes);
+      const result = await api.approveSpread(selectedSpread.id, profile?.id, approvalNotes);
       if (result.success) {
         showSuccess(
           language === 'ar' 
@@ -138,7 +138,7 @@ const SpreadApproval = () => {
     if (!selectedSpread || !rejectionReason) return;
 
     try {
-      const result = await SpreadAPI.rejectSpread(selectedSpread.id, profile?.id, rejectionReason);
+      const result = await api.rejectSpread(selectedSpread.id, profile?.id, rejectionReason);
       if (result.success) {
         showSuccess(
           language === 'ar' 

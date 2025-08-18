@@ -72,80 +72,18 @@ const ClientFeedback = () => {
   const loadFeedbacks = async () => {
     try {
       setLoading(true);
-      // Mock data for demonstration
-      const mockFeedbacks = [
-        {
-          id: '1',
-          booking_id: 'booking_1',
-          reader: {
-            name: 'Samia Al-Mystique',
-            name_ar: 'سامية الغامضة',
-            avatar_url: null
-          },
-          service: {
-            name: 'Tarot Reading',
-            name_ar: 'قراءة التاروت'
-          },
-          rating: 5,
-          comment: 'Amazing session! Samia provided very accurate insights about my career. I felt really connected to the reading.',
-          comment_ar: 'جلسة مذهلة! قدمت سامية رؤى دقيقة جداً حول مسيرتي المهنية. شعرت بارتباط حقيقي بالقراءة.',
-          created_at: '2024-01-25T15:30:00Z',
-          session_date: '2024-01-25T14:00:00Z',
-          anonymous: false,
-          reader_response: {
-            message: 'Thank you so much for your kind words! It was a pleasure helping you.',
-            message_ar: 'شكراً جزيلاً لكلماتك الطيبة! كان من دواعي سروري مساعدتك.',
-            created_at: '2024-01-25T16:00:00Z'
-          }
-        },
-        {
-          id: '2',
-          booking_id: 'booking_2',
-          reader: {
-            name: 'Omar Al-Kindi',
-            name_ar: 'عمر الكندي',
-            avatar_url: null
-          },
-          service: {
-            name: 'Astrology Consultation',
-            name_ar: 'استشارة فلكية'
-          },
-          rating: 4,
-          comment: 'Great reading! Omar was very knowledgeable about astrology. Some predictions were spot on.',
-          comment_ar: 'قراءة رائعة! كان عمر على دراية كبيرة بعلم التنجيم. بعض التوقعات كانت في محلها.',
-          created_at: '2024-01-24T10:00:00Z',
-          session_date: '2024-01-24T09:00:00Z',
-          anonymous: false,
-          reader_response: null
-        },
-        {
-          id: '3',
-          booking_id: 'booking_3',
-          reader: {
-            name: 'Layla Al-Fares',
-            name_ar: 'ليلى الفارس',
-            avatar_url: null
-          },
-          service: {
-            name: 'Palm Reading',
-            name_ar: 'قراءة الكف'
-          },
-          rating: 5,
-          comment: 'Incredible experience! The palm reading revealed so much about my personality and future.',
-          comment_ar: 'تجربة لا تصدق! كشفت قراءة الكف الكثير عن شخصيتي ومستقبلي.',
-          created_at: '2024-01-23T16:30:00Z',
-          session_date: '2024-01-23T15:00:00Z',
-          anonymous: true,
-          reader_response: {
-            message: 'I\'m so happy the reading resonated with you! Wishing you all the best.',
-            message_ar: 'أنا سعيدة جداً أن القراءة أثرت فيك! أتمنى لك كل التوفيق.',
-            created_at: '2024-01-23T17:00:00Z'
-          }
-        }
-      ];
-      setFeedbacks(mockFeedbacks);
+      const response = await api.getFeedbacks();
+      
+      if (response.success) {
+        setFeedbacks(response.data);
+      } else {
+        console.error('Failed to load feedbacks:', response.error);
+        setFeedbacks([]);
+        showError(response.error || (language === 'ar' ? 'فشل في تحميل التقييمات' : 'Failed to load feedbacks'));
+      }
     } catch (error) {
       console.error('Error loading feedbacks:', error);
+      setFeedbacks([]);
       showError(language === 'ar' ? 'فشل في تحميل التقييمات' : 'Failed to load feedbacks');
     } finally {
       setLoading(false);

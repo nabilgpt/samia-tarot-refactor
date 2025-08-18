@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { UserAPI } from '../../api/userApi.js';
+import api from '../../services/frontendApi.js';
 
 const USDTPayment = ({ service, amount, onPaymentSuccess, onPaymentError, onBack, bookingId }) => {
   const { user, profile } = useAuth();
@@ -43,7 +43,7 @@ const USDTPayment = ({ service, amount, onPaymentSuccess, onPaymentError, onBack
 
     try {
       // Create payment record with pending status
-      const paymentResult = await UserAPI.createPayment({
+      const paymentResult = await api.createPayment({
         booking_id: bookingId,
         user_id: user.id,
         amount: amount,

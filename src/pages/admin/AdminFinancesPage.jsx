@@ -30,57 +30,16 @@ const AdminFinancesPage = () => {
         setFinancialData(data.summary);
         setTransactions(data.transactions);
       } else {
-        // Mock data for now
+        console.error('Failed to load financial data:', response.status);
         setFinancialData({
-          totalRevenue: 45230,
-          monthlyRevenue: 12450,
-          totalTransactions: 1247,
-          averageTransaction: 36.3,
-          revenueGrowth: 12.5,
-          transactionGrowth: 8.3
+          totalRevenue: 0,
+          monthlyRevenue: 0,
+          totalTransactions: 0,
+          averageTransaction: 0,
+          revenueGrowth: 0,
+          transactionGrowth: 0
         });
-        setTransactions([
-          {
-            id: 1,
-            date: '2024-01-20',
-            client: 'أحمد محمد',
-            reader: 'سارة أحمد',
-            amount: 25.00,
-            type: 'session',
-            status: 'completed',
-            paymentMethod: 'credit_card'
-          },
-          {
-            id: 2,
-            date: '2024-01-20',
-            client: 'فاطمة علي',
-            reader: 'محمد علي',
-            amount: 35.00,
-            type: 'session',
-            status: 'completed',
-            paymentMethod: 'paypal'
-          },
-          {
-            id: 3,
-            date: '2024-01-19',
-            client: 'خالد حسن',
-            reader: 'نور فاطمة',
-            amount: 45.00,
-            type: 'premium_session',
-            status: 'completed',
-            paymentMethod: 'credit_card'
-          },
-          {
-            id: 4,
-            date: '2024-01-19',
-            client: 'مريم أحمد',
-            reader: 'سارة أحمد',
-            amount: 30.00,
-            type: 'session',
-            status: 'pending',
-            paymentMethod: 'bank_transfer'
-          }
-        ]);
+        setTransactions([]);
       }
     } catch (error) {
       console.error('Error fetching financial data:', error);

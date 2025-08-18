@@ -104,7 +104,7 @@ class TTSService {
       const fileName = `tts_${Date.now()}.${format}`;
       const filePath = `audio/tts/${fileName}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('media')
         .upload(filePath, audioBlob, {
           contentType: `audio/${format}`,

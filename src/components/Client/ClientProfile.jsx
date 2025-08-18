@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
-import { ClientAPI } from '../../api/clientApi';
+import api from '../../services/frontendApi.js';
 
 const ClientProfile = () => {
   const { t } = useTranslation();
@@ -188,7 +188,7 @@ const ClientProfile = () => {
 
     try {
       setUploadingAvatar(true);
-      const response = await ClientAPI.uploadAvatar(file);
+      const response = await api.uploadAvatar(file);
       
       if (response.success) {
         setFormData(prev => ({
@@ -215,7 +215,7 @@ const ClientProfile = () => {
 
     try {
       setLoading(true);
-      const response = await ClientAPI.updateProfile(formData);
+      const response = await api.updateProfile(formData);
       
       if (response.success) {
         showSuccess(language === 'ar' ? 'تم تحديث الملف الشخصي بنجاح' : 'Profile updated successfully');

@@ -63,7 +63,7 @@ const aiAPILimit = rateLimit({
 // =============================================================================
 
 // Standard AI API access
-const aiAuth = [authenticateToken, aiAPILimit];
+// const aiAuth = [authenticateToken, aiAPILimit];
 
 // AI scanning (for real-time content analysis)
 const scanAuth = [authenticateToken, aiScanLimit];
@@ -437,7 +437,7 @@ router.delete('/webhooks/:id', adminAuth, aiModerationController.deleteWebhook);
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-router.use((error, req, res, next) => {
+router.use((error, req, res, /* next */) => {
   console.error('AI Moderation API Error:', {
     error: error.message,
     stack: error.stack,

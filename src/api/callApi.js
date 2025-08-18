@@ -1,6 +1,5 @@
-import { supabase } from '../lib/supabase.js';
-import RecordingService from '../services/recordingService';
-import AIWatchdogService from '../services/aiWatchdogService';
+import { supabase } from './lib/supabase.js';
+import { hasAdminOrMonitorAccess } from '../utils/roleHelpers';
 
 // Safe wrapper for database operations that might fail due to missing tables
 const safeDbOperation = async (operation, fallbackData = null) => {
@@ -321,7 +320,7 @@ export const CallAPI = {
       const filePath = `call-recordings/${fileName}`;
 
       // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('call-recordings')
         .upload(filePath, file);
 
@@ -683,7 +682,7 @@ export const CallAPI = {
         .eq('id', userId)
         .single();
 
-      const isAdminOrMonitor = profile?.role === 'admin' || profile?.role === 'monitor';
+      const isAdminOrMonitor = hasAdminOrMonitorAccess(profile?.role);
 
       return isParticipant || isAdminOrMonitor;
     } catch (error) {

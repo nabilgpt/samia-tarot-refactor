@@ -5,7 +5,6 @@
 const { supabase } = require('../lib/supabase');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
 // Colors for console output
 const colors = {
@@ -107,7 +106,7 @@ const checkDatabaseConnection = async () => {
   log('\n🗄️ Checking Database Connection...', 'info');
   
   try {
-    const { data, error } = await supabase.from('profiles').select('count').limit(1);
+    const { error } = await supabase.from('profiles').select('count').limit(1);
     
     if (error) {
       addResult('Database', 'Connection', 'failed', `Database connection failed: ${error.message}`, error);
@@ -146,10 +145,10 @@ const checkDatabaseSchema = async () => {
 const checkForeignKeys = async () => {
   log('\n🔗 Checking Foreign Key Constraints...', 'info');
   
-  try {
-    const { data, error } = await supabase.rpc('check_foreign_key_constraints');
-    
-    if (error) {
+      try {
+      const { error } = await supabase.rpc('check_foreign_key_constraints');
+      
+      if (error) {
       addResult('Database', 'Foreign Keys', 'warning', 'Could not verify foreign key constraints');
     } else {
       addResult('Database', 'Foreign Keys', 'passed', 'Foreign key constraints verified');

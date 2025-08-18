@@ -18,7 +18,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { useUI } from '../../../context/UIContext';
-import { UserAPI } from '../../../api/userApi';
+import api from '../../../services/frontendApi.js';
 
 const DashboardOverview = () => {
   const { t } = useTranslation();
@@ -65,37 +65,36 @@ const DashboardOverview = () => {
   }, []);
 
   const loadDashboardStats = async () => {
+    const abortController = new AbortController();
     try {
       setLoading(true);
-      // Simulate API call - replace with actual API
-      const response = await UserAPI.getAdminStats();
+      const response = await api.getAdminStats({ signal: abortController.signal });
       if (response.success) {
         setStats(response.data);
       } else {
-        // Mock data for demonstration
+        console.error('Failed to load admin stats:', response.status);
         setStats({
-          totalUsers: 1250,
-          totalReaders: 45,
-          totalBookings: 890,
-          totalRevenue: 15670,
-          activeUsers: 128,
-          pendingApprovals: 12,
-          emergencyAlerts: 2,
-          systemHealth: 98
+          totalUsers: 0,
+          totalReaders: 0,
+          totalBookings: 0,
+          totalRevenue: 0,
+          activeUsers: 0,
+          pendingApprovals: 0,
+          emergencyAlerts: 0,
+          systemHealth: 0
         });
       }
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
-      // Mock data fallback
       setStats({
-        totalUsers: 1250,
-        totalReaders: 45,
-        totalBookings: 890,
-        totalRevenue: 15670,
-        activeUsers: 128,
-        pendingApprovals: 12,
-        emergencyAlerts: 2,
-        systemHealth: 98
+        totalUsers: 0,
+        totalReaders: 0,
+        totalBookings: 0,
+        totalRevenue: 0,
+        activeUsers: 0,
+        pendingApprovals: 0,
+        emergencyAlerts: 0,
+        systemHealth: 0
       });
     } finally {
       setLoading(false);
@@ -129,7 +128,7 @@ const DashboardOverview = () => {
     },
     {
       title: language === 'ar' ? 'الإيرادات الشهرية' : 'Monthly Revenue',
-      value: `$${stats.totalRevenue.toLocaleString()}`,
+      value: `$${(stats.totalRevenue || 0).toLocaleString()}`,
       icon: CreditCard,
       gradient: 'from-yellow-500 via-orange-500 to-red-500',
       change: '+23.1%',
@@ -229,18 +228,16 @@ const DashboardOverview = () => {
       animate="visible"
       className="space-y-8"
     >
-      {/* Welcome Header */}
-      <motion.div
-        variants={itemVariants}
-        className="text-center"
-      >
-        <h2 className="text-4xl font-bold bg-gradient-to-r from-gold-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent mb-4">
-          {language === 'ar' ? 'لوحة تحكم الإدارة' : 'Admin Dashboard'}
+      {/* Title and Description */}
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
+          {language === 'ar' ? 'نظرة عامة' : 'Overview'}
         </h2>
-        <p className="text-xl text-gray-300">
+        <p className="text-gray-400 mt-1">
           {language === 'ar' ? 'مرحباً بك في نظام إدارة سامية تاروت' : 'Welcome to Samia Tarot Management System'}
         </p>
-      </motion.div>
+      </div>
+
 
       {/* Stats Grid */}
       <motion.div

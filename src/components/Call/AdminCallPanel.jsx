@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { CallAPI } from '../../api/callApi.js';
+import api from '../../services/frontendApi.js';
 import { 
   Eye, 
   EyeOff, 
@@ -19,6 +19,7 @@ import {
   Search,
   RefreshCw
 } from 'lucide-react';
+import { hasAdminAccess } from '../../utils/roleHelpers';
 
 const AdminCallPanel = ({ className = '' }) => {
   const { user, profile } = useAuth();
@@ -31,7 +32,7 @@ const AdminCallPanel = ({ className = '' }) => {
   const [selectedCall, setSelectedCall] = useState(null);
   const [joinedCalls, setJoinedCalls] = useState(new Set());
 
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = hasAdminAccess(profile?.role);
   const isMonitor = profile?.role === 'monitor';
 
   useEffect(() => {
@@ -49,7 +50,7 @@ const AdminCallPanel = ({ className = '' }) => {
       setLoading(true);
 
       // Load active calls
-      const activeCallsResult = await CallAPI.getUserCallSessions(null, { 
+      const activeCallsResult = await api.getUserCallSessions(null, { 
         status: 'active',
         limit: 50 
       });
@@ -58,7 +59,7 @@ const AdminCallPanel = ({ className = '' }) => {
       }
 
       // Load emergency calls
-      const emergencyResult = await CallAPI.getUserCallSessions(null, { 
+      const emergencyResult = await api.getUserCallSessions(null, { 
         isEmergency: true,
         limit: 20 
       });
@@ -67,7 +68,7 @@ const AdminCallPanel = ({ className = '' }) => {
       }
 
       // Load escalations
-      const escalationsResult = await CallAPI.getCallEscalations({ 
+      const escalationsResult = await api.getCallEscalations({ 
         status: 'pending',
         escalatedTo: user.id 
       });
@@ -85,7 +86,7 @@ const AdminCallPanel = ({ className = '' }) => {
   const handleStealthJoin = async (callSession) => {
     try {
       // Add admin/monitor as silent participant
-      const result = await CallAPI.addCallParticipant(
+      const result = await api.addCallParticipant(
         callSession.id, 
         user.id, 
         profile.role, 
@@ -104,7 +105,7 @@ const AdminCallPanel = ({ className = '' }) => {
 
   const handleLeaveCall = async (callSessionId) => {
     try {
-      await CallAPI.removeCallParticipant(callSessionId, user.id);
+      await api.removeCallParticipant(callSessionId, user.id);
       setJoinedCalls(prev => {
         const newSet = new Set(prev);
         newSet.delete(callSessionId);
@@ -121,7 +122,7 @@ const AdminCallPanel = ({ className = '' }) => {
     }
 
     try {
-      await CallAPI.endCallSession(callSessionId);
+      await api.endCallSession(callSessionId);
       await loadCallData(); // Refresh data
     } catch (error) {
       console.error('Error ending call:', error);

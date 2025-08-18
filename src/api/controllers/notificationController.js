@@ -30,9 +30,9 @@ const getUserNotifications = async (req, res) => {
     let query = supabase
       .from('notifications')
       .select(`
-        id, type, title, message, data, priority, read_status,
-        created_at, updated_at, expires_at,
-        sender:sender_id(id, first_name, last_name, role)
+        id, type, title, message, data, priority,
+        title_en, message_en, title_ar, message_ar,
+        created_at
       `)
       .eq('recipient_id', req.user.id)
       .order('created_at', { ascending: false });
@@ -49,13 +49,38 @@ const getUserNotifications = async (req, res) => {
     const to = from + limit - 1;
     query = query.range(from, to);
 
-    const { data: notifications, error, count } = await query;
+    console.log('🔔 [NOTIFICATIONS] Executing query for notifications');
+    
+    const { data, error } = await query;
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ [NOTIFICATIONS] Database error:', error);
+      throw error;
+    }
+
+    console.log('✅ [NOTIFICATIONS] Raw data from database:', data?.length || 0, 'records');
+    console.log('🔔 [NOTIFICATIONS] First notification raw data:', data?.[0] ? {
+      id: data[0].id,
+      keys: Object.keys(data[0]),
+      title: data[0].title,
+      title_ar: data[0].title_ar,
+      title_en: data[0].title_en,
+      message: data[0].message,
+      message_ar: data[0].message_ar,
+      message_en: data[0].message_en
+    } : 'No notifications');
+
+    // Apply filters if specified
+    let filteredData = data;
+
+    const { count } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('recipient_id', req.user.id);
 
     res.json({
       success: true,
-      data: notifications || [],
+      data: filteredData || [],
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -84,8 +109,7 @@ const getUnreadCount = async (req, res) => {
     const { data, error } = await supabase
       .from('notifications')
       .select('id', { count: 'exact' })
-      .eq('recipient_id', req.user.id)
-      .eq('read_status', false);
+      .eq('recipient_id', req.user.id);
 
     if (error) throw error;
 
@@ -118,9 +142,7 @@ const markAsRead = async (req, res) => {
     const { data, error } = await supabase
       .from('notifications')
       .update({
-        read_status: true,
-        read_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        read_at: new Date().toISOString()
       })
       .eq('id', id)
       .eq('recipient_id', req.user.id)
@@ -165,16 +187,13 @@ const markAllAsRead = async (req, res) => {
     let query = supabase
       .from('notifications')
       .update({
-        read_status: true,
-        read_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        read_at: new Date().toISOString()
       })
-      .eq('recipient_id', req.user.id)
-      .eq('read_status', false);
+      .eq('recipient_id', req.user.id);
 
     if (type) query = query.eq('type', type);
 
-    const { data, error, count } = await query.select();
+    const { error, count } = await query.select();
 
     if (error) throw error;
 
@@ -254,7 +273,7 @@ const clearAllNotifications = async (req, res) => {
 
     if (type) query = query.eq('type', type);
 
-    const { data, error, count } = await query.select();
+    const { error, count } = await query.select();
 
     if (error) throw error;
 

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase.js';
 
 export class AIWatchdogService {
   static isMonitoring = false;
@@ -719,7 +719,7 @@ export class AIWatchdogService {
       }
 
       // Store enhanced monitoring record
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('chat_monitoring')
         .insert([{
           booking_id: messageData.booking_id,

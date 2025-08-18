@@ -3,6 +3,8 @@
  * Provides consistent styling classes and helper functions for all dashboard pages
  */
 
+import { hasAdminOrMonitorAccess } from './roleHelpers';
+
 // Base layout classes
 export const dashboardClasses = {
   // Container spacing
@@ -99,7 +101,7 @@ export const getIconClasses = (color) => {
 
 // Layout helper components
 export const createStatsGrid = (role, stats) => {
-  const isWideLayout = role === 'admin' || role === 'monitor';
+  const isWideLayout = hasAdminOrMonitorAccess(role);
   return isWideLayout ? dashboardClasses.statsGridLarge : dashboardClasses.statsGrid;
 };
 

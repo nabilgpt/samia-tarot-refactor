@@ -367,7 +367,7 @@ router.get('/monitor/queue', [...responderAuth], emergencyController.getEmergenc
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-router.use((error, req, res, next) => {
+router.use((error, req, res, /* next */) => {
   console.error('Emergency API Error:', {
     error: error.message,
     stack: error.stack,

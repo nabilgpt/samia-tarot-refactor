@@ -67,56 +67,18 @@ const ClientNotifications = () => {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      // Mock data for demonstration
-      const mockNotifications = [
-        {
-          id: '1',
-          type: 'booking_confirmed',
-          title: 'Booking Confirmed',
-          title_ar: 'تم تأكيد الحجز',
-          message: 'Your tarot reading session with Samia Al-Mystique has been confirmed for tomorrow at 3:00 PM',
-          message_ar: 'تم تأكيد جلسة قراءة التاروت مع سامية الغامضة غداً في تمام الساعة 3:00 مساءً',
-          read: false,
-          created_at: '2024-01-25T15:30:00Z',
-          priority: 'high'
-        },
-        {
-          id: '2',
-          type: 'session_reminder',
-          title: 'Session Reminder',
-          title_ar: 'تذكير بالجلسة',
-          message: 'Your astrology consultation is starting in 1 hour. Please be ready.',
-          message_ar: 'ستبدأ استشارتك الفلكية خلال ساعة واحدة. يرجى الاستعداد.',
-          read: false,
-          created_at: '2024-01-25T14:45:00Z',
-          priority: 'medium'
-        },
-        {
-          id: '3',
-          type: 'payment_success',
-          title: 'Payment Successful',
-          title_ar: 'تمت الدفعة بنجاح',
-          message: 'Your payment of $50 for the tarot reading session has been processed successfully.',
-          message_ar: 'تمت معالجة دفعتك بقيمة 50 دولاراً لجلسة قراءة التاروت بنجاح.',
-          read: true,
-          created_at: '2024-01-25T13:20:00Z',
-          priority: 'low'
-        },
-        {
-          id: '4',
-          type: 'promotion',
-          title: 'Special Offer',
-          title_ar: 'عرض خاص',
-          message: 'Get 20% off your next palm reading session. Limited time offer!',
-          message_ar: 'احصل على خصم 20% على جلسة قراءة الكف القادمة. عرض لفترة محدودة!',
-          read: true,
-          created_at: '2024-01-25T10:00:00Z',
-          priority: 'low'
-        }
-      ];
-      setNotifications(mockNotifications);
+      const response = await api.getNotifications();
+      
+      if (response.success) {
+        setNotifications(response.data);
+      } else {
+        console.error('Failed to load notifications:', response.error);
+        setNotifications([]);
+        showError(response.error || (language === 'ar' ? 'فشل في تحميل الإشعارات' : 'Failed to load notifications'));
+      }
     } catch (error) {
       console.error('Error loading notifications:', error);
+      setNotifications([]);
       showError(language === 'ar' ? 'فشل في تحميل الإشعارات' : 'Failed to load notifications');
     } finally {
       setLoading(false);

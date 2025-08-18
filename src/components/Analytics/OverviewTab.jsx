@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AnalyticsAPI } from '../../api/analyticsApi.js';
+import api from '../../services/frontendApi.js';
 import { 
   Users, 
   DollarSign, 
@@ -39,15 +39,15 @@ const OverviewTab = ({ dateRange, loading, setLoading }) => {
     setLoading(true);
     try {
       // Load overview stats
-      const statsResult = await AnalyticsAPI.getOverviewStats();
+      const statsResult = await api.getOverviewStats();
       if (statsResult.success) {
         setOverviewStats(statsResult.data);
       }
 
       // Load sparkline data for trends
-      const revenueResult = await AnalyticsAPI.getRevenueStats(dateRange.start, dateRange.end);
-      const usersResult = await AnalyticsAPI.getUserGrowthStats(dateRange.start, dateRange.end);
-      const bookingsResult = await AnalyticsAPI.getBookingStats(dateRange.start, dateRange.end);
+      const revenueResult = await api.getRevenueStats(dateRange.start, dateRange.end);
+      const usersResult = await api.getUserGrowthStats(dateRange.start, dateRange.end);
+      const bookingsResult = await api.getBookingStats(dateRange.start, dateRange.end);
 
       if (revenueResult.success && revenueResult.data.daily_data) {
         const revenueSparkline = revenueResult.data.daily_data.slice(-7).map((item, index) => ({

@@ -56,6 +56,45 @@ export const getDashboardConfigForRole = (role, t) => {
 };
 
 /**
+ * Check if user has admin-level access (includes both admin and super_admin)
+ * @param {string} role - User role
+ * @returns {boolean}
+ */
+export const hasAdminAccess = (role) => {
+  return role === USER_ROLES.ADMIN || role === USER_ROLES.SUPER_ADMIN;
+};
+
+/**
+ * Check if user has admin or monitor access
+ * @param {string} role - User role
+ * @returns {boolean}
+ */
+export const hasAdminOrMonitorAccess = (role) => {
+  return role === USER_ROLES.ADMIN || role === USER_ROLES.SUPER_ADMIN || role === USER_ROLES.MONITOR;
+};
+
+/**
+ * Check if user has super admin access
+ * @param {string} role - User role
+ * @returns {boolean}
+ */
+export const hasSuperAdminAccess = (role) => {
+  return role === USER_ROLES.SUPER_ADMIN;
+};
+
+/**
+ * Get admin roles array (for use in allowedRoles arrays)
+ * @returns {string[]}
+ */
+export const getAdminRoles = () => [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN];
+
+/**
+ * Get admin and monitor roles array
+ * @returns {string[]}
+ */
+export const getAdminAndMonitorRoles = () => [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.MONITOR];
+
+/**
  * Check if user has permission for a specific role
  * @param {string} userRole - Current user role
  * @param {string|string[]} requiredRoles - Required role(s)
@@ -86,18 +125,18 @@ export const isAdmin = (role) => role === USER_ROLES.ADMIN;
 export const isSuperAdmin = (role) => role === USER_ROLES.SUPER_ADMIN;
 
 /**
- * Check if user is reader
- * @param {string} role - User role
- * @returns {boolean}
- */
-export const isReader = (role) => role === USER_ROLES.READER;
-
-/**
  * Check if user is monitor
  * @param {string} role - User role
  * @returns {boolean}
  */
 export const isMonitor = (role) => role === USER_ROLES.MONITOR;
+
+/**
+ * Check if user is reader
+ * @param {string} role - User role
+ * @returns {boolean}
+ */
+export const isReader = (role) => role === USER_ROLES.READER;
 
 /**
  * Check if user is client
@@ -107,21 +146,25 @@ export const isMonitor = (role) => role === USER_ROLES.MONITOR;
 export const isClient = (role) => role === USER_ROLES.CLIENT;
 
 /**
- * Get role display name
+ * Get user role display name
  * @param {string} role - User role
- * @param {function} t - Translation function
- * @returns {string} Localized role name
+ * @returns {string}
  */
-export const getRoleDisplayName = (role, t) => {
-  const roleNames = {
-    [USER_ROLES.SUPER_ADMIN]: t('roles.super_admin'),
-    [USER_ROLES.ADMIN]: t('roles.admin'),
-    [USER_ROLES.READER]: t('roles.reader'),
-    [USER_ROLES.MONITOR]: t('roles.monitor'),
-    [USER_ROLES.CLIENT]: t('roles.client')
-  };
-
-  return roleNames[role] || role;
+export const getRoleDisplayName = (role) => {
+  switch (role) {
+    case USER_ROLES.SUPER_ADMIN:
+      return 'Super Admin';
+    case USER_ROLES.ADMIN:
+      return 'Admin';
+    case USER_ROLES.MONITOR:
+      return 'Monitor';
+    case USER_ROLES.READER:
+      return 'Reader';
+    case USER_ROLES.CLIENT:
+      return 'Client';
+    default:
+      return 'Unknown';
+  }
 };
 
 /**
@@ -139,6 +182,24 @@ export const getDashboardPath = (role) => {
   }
   
   return `/dashboard/${role}`;
+};
+
+/**
+ * Check if role can access admin features
+ * @param {string} role - User role
+ * @returns {boolean}
+ */
+export const canAccessAdminFeatures = (role) => {
+  return hasAdminAccess(role);
+};
+
+/**
+ * Check if role can access monitoring features
+ * @param {string} role - User role
+ * @returns {boolean}
+ */
+export const canAccessMonitoringFeatures = (role) => {
+  return hasAdminOrMonitorAccess(role);
 };
 
 /**
@@ -181,4 +242,17 @@ export const hasMinimumRole = (userRole, requiredRole) => {
   const requiredLevel = ROLE_HIERARCHY[requiredRole] || 0;
   
   return userLevel >= requiredLevel;
+};
+
+/**
+ * Check if user role has higher permissions than another role
+ * @param {string} userRole - Current user role
+ * @param {string} targetRole - Target role to compare
+ * @returns {boolean}
+ */
+export const hasHigherRole = (userRole, targetRole) => {
+  const userLevel = ROLE_HIERARCHY[userRole] || 0;
+  const targetLevel = ROLE_HIERARCHY[targetRole] || 0;
+  
+  return userLevel > targetLevel;
 }; 

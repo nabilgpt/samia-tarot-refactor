@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import SuperAdminAPI from '../../../api/superAdminApi.js';
+import api from '../../../services/frontendApi.js';
 import {
   DocumentTextIcon,
   MagnifyingGlassIcon,
@@ -85,7 +85,7 @@ const AuditLogsTab = () => {
   const loadLogs = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const result = await SuperAdminAPI.getAuditLogs(filters);
+      const result = await api.getAuditLogs(filters);
       if (result.success) {
         setLogs(result.data);
       } else {
@@ -100,7 +100,7 @@ const AuditLogsTab = () => {
 
   const loadStats = async () => {
     try {
-      const result = await SuperAdminAPI.getAuditStats();
+      const result = await api.getAuditStats();
       if (result.success) {
         setStats(result.data);
       }

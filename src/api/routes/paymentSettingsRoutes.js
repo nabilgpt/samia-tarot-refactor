@@ -149,7 +149,7 @@ router.put('/:method', adminAuth, async (req, res) => {
         });
       }
       updateData = req.body;
-    } else if (userRole === 'admin') {
+    } else if (['admin', 'super_admin'].includes(userRole)) {
       // Admin can only enable/disable
       if (req.body.enabled !== undefined) {
         updateData.enabled = req.body.enabled;

@@ -1,0 +1,288 @@
+{
+  "project_structure": {
+    "total_directories": 90,
+    "total_files": 1339,
+    "total_size_mb": 20.06,
+    "file_types": {
+      ".md": 437,
+      ".js": 329,
+      ".jsx": 303,
+      ".sql": 169,
+      ".json": 22,
+      ".cjs": 16,
+      ".css": 9,
+      ".py": 8,
+      ".mjs": 8,
+      ".txt": 7,
+      "": 6,
+      ".csv": 6,
+      ".backup": 5,
+      ".log": 3,
+      ".yml": 2,
+      ".bat": 2,
+      ".sh": 2,
+      ".example": 1,
+      ".template": 1,
+      ".html": 1
+    },
+    "structure_patterns": {
+      "src_structure": true,
+      "api_structure": true,
+      "components_structure": true,
+      "services_structure": true,
+      "utils_structure": true,
+      "tests_structure": true,
+      "docs_structure": true,
+      "scripts_structure": true,
+      "config_structure": true
+    },
+    "main_directories": [
+      ".claude",
+      ".cursor",
+      ".cursor\\rules",
+      ".vscode",
+      "CSV files",
+      "backend",
+      "backups",
+      "database",
+      "database\\migrations",
+      "docs",
+      "frontend",
+      "legal",
+      "logs",
+      "public",
+      "samia-tarot",
+      "samia-tarot\\src",
+      "scripts",
+      "scripts\\migrations",
+      "src",
+      "src\\api",
+      "src\\api\\config",
+      "src\\api\\controllers",
+      "src\\api\\helpers",
+      "src\\api\\lib",
+      "src\\api\\middleware",
+      "src\\api\\routes",
+      "src\\api\\scripts",
+      "src\\api\\services",
+      "src\\api\\swagger",
+      "src\\api\\uploads"
+    ]
+  },
+  "code_organization": {
+    "layers": {
+      "presentation": 296,
+      "business_logic": 69,
+      "data_access": 129,
+      "infrastructure": 24
+    },
+    "separation_of_concerns": {
+      "files_with_mixed_concerns": 0,
+      "mixed_concerns_details": [],
+      "separation_score": 100
+    },
+    "organization_score": 68
+  },
+  "build_system": {
+    "tools_detected": [
+      "npm/yarn",
+      "vite",
+      "eslint",
+      "tailwindcss",
+      "postcss"
+    ],
+    "configurations": {
+      "npm/yarn": {
+        "present": true,
+        "file": "package.json",
+        "scripts": {
+          "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+          "frontend": "vite",
+          "backend": "node -r dotenv/config src/api/index.js",
+          "test": "jest",
+          "test:watch": "jest --watch",
+          "test:coverage": "jest --coverage",
+          "lint": "eslint src --ext .js,.jsx --fix",
+          "lint:check": "eslint src --ext .js,.jsx",
+          "build": "cd src && npm run build",
+          "server:restart": "node scripts/server-manager.js restart",
+          "server:kill": "node scripts/server-manager.js kill",
+          "server:start": "node scripts/server-manager.js start",
+          "server:health": "node scripts/server-manager.js health",
+          "server:restart:migration": "node scripts/server-manager.js restart \"Database migration\" \"System\"",
+          "server:restart:language": "node scripts/server-manager.js restart \"Language system update\" \"System\"",
+          "server:restart:deployment": "node scripts/server-manager.js restart \"Production deployment\" \"CI/CD\"",
+          "deploy:dev": "npm run server:kill && npm run migrate && npm run server:restart:deployment",
+          "deploy:staging": "npm run lint:check && npm run test && npm run migrate && npm run server:restart:deployment",
+          "deploy:prod": "npm run lint:check && npm run test && npm run migrate && npm run theme:protect && npm run server:restart:deployment",
+          "migrate": "node scripts/database-migrator.js",
+          "migrate:rollback": "node scripts/database-migrator.js rollback",
+          "migrate:fresh": "npm run server:kill && node scripts/database-migrator.js fresh && npm run server:restart:migration",
+          "language:add": "node scripts/language-manager.js add",
+          "language:update": "node scripts/language-manager.js update",
+          "language:sync": "npm run server:kill && node scripts/language-manager.js sync && npm run server:restart:language",
+          "theme:protect": "node scripts/theme-protector.js",
+          "theme:validate": "node scripts/theme-protector.js validate",
+          "audit:deployment": "node scripts/audit-logger.js deployment",
+          "audit:report": "node scripts/audit-logger.js report",
+          "ci:prepare": "npm install && npm run lint:check && npm run test",
+          "ci:deploy": "npm run ci:prepare && npm run deploy:prod",
+          "emergency:kill": "npm run server:kill",
+          "emergency:restore": "npm run migrate:rollback && npm run server:restart \"Emergency restore\" \"Emergency\"",
+          "logs:server": "tail -f logs/server-management.log",
+          "logs:deployment": "tail -f logs/deployment-audit.log",
+          "logs:clear": "rm -rf logs/*.log"
+        },
+        "build_script": true,
+        "test_script": true,
+        "lint_script": true
+      },
+      "vite": {
+        "present": true,
+        "file": "vite.config.js"
+      },
+      "eslint": {
+        "present": true,
+        "file": "eslint.config.js"
+      },
+      "tailwindcss": {
+        "present": true,
+        "file": "tailwind.config.js"
+      },
+      "postcss": {
+        "present": true,
+        "file": "postcss.config.js"
+      }
+    },
+    "build_complexity": 5,
+    "modern_tooling": true
+  },
+  "deployment": {
+    "deployment_types": [
+      "docker",
+      "docker-compose",
+      "github-actions",
+      "pm2"
+    ],
+    "configurations": {
+      "docker": {
+        "present": true,
+        "file": "Dockerfile"
+      },
+      "docker-compose": {
+        "present": true,
+        "file": "docker-compose.yml"
+      },
+      "github-actions": {
+        "present": true,
+        "file": ".github/workflows",
+        "workflows": 5
+      },
+      "pm2": {
+        "present": true,
+        "file": "ecosystem.config.js"
+      }
+    },
+    "ci_cd_present": true,
+    "containerization": true
+  },
+  "documentation": {
+    "total_doc_files": 438,
+    "total_doc_size_kb": 3787.34,
+    "doc_types_present": {
+      "readme": true,
+      "api_docs": true,
+      "setup_guide": true,
+      "deployment_guide": true,
+      "architecture_docs": true,
+      "user_guide": true,
+      "changelog": true
+    },
+    "documentation_score": 100.0,
+    "recent_doc_files": [
+      "ADD_NEW_DECK_FORM_DOCUMENTATION.md",
+      "ADD_NEW_DECK_MODAL_BACKGROUND_FIX.md",
+      "ADD_NEW_DECK_MODAL_DOUBLE_BACKGROUND_FIX_COMPLETE.md",
+      "ADD_NEW_SPREAD_FORM_DOCUMENTATION.md",
+      "ADMIN_ACCESS_DEBUG_REPORT.md",
+      "ADMIN_ACCESS_FIX_SUMMARY.md",
+      "ADMIN_ACCESS_TEST_REPORT.md",
+      "ADMIN_API_DOCUMENTATION.md",
+      "ADMIN_API_IMPLEMENTATION_SUMMARY.md",
+      "ADMIN_AUDIT_LOGS_400_ERROR_FIX.md"
+    ]
+  },
+  "testing": {
+    "total_test_files": 921,
+    "test_types": {
+      "unit_tests": 45,
+      "integration_tests": 2,
+      "e2e_tests": 0,
+      "api_tests": 1
+    },
+    "test_configs": {},
+    "testing_score": 100,
+    "test_frameworks": []
+  },
+  "quality_assurance": {
+    "qa_tools": {
+      "eslint": true
+    },
+    "qa_scripts": {
+      "lint": true,
+      "format": false,
+      "type_check": false,
+      "audit": true
+    },
+    "quality_score": 35,
+    "modern_qa_setup": false
+  },
+  "scalability": {
+    "factors": {
+      "modular_architecture": false,
+      "api_separation": true,
+      "microservices_ready": true,
+      "caching_strategy": true,
+      "performance_monitoring": true,
+      "horizontal_scaling": true
+    },
+    "scalability_score": 83,
+    "bottlenecks": [
+      "Large number of files may impact build times"
+    ]
+  },
+  "maintainability": {
+    "factors": {
+      "clear_structure": true,
+      "separation_of_concerns": true,
+      "documentation_adequate": true,
+      "testing_present": true,
+      "linting_setup": true,
+      "build_automation": true,
+      "dependency_management": true
+    },
+    "maintainability_score": 100,
+    "technical_debt": {
+      "indicators": {
+        "mixed_concerns": 0,
+        "missing_tests": 0,
+        "missing_docs": 0,
+        "no_linting": false
+      },
+      "debt_score": 0,
+      "debt_level": "Low"
+    }
+  },
+  "recommendations": [
+    {
+      "type": "Architecture",
+      "priority": "Medium",
+      "message": "Poor code organization detected. Improve separation of concerns and layer organization."
+    },
+    {
+      "type": "Quality",
+      "priority": "Medium",
+      "message": "Missing modern QA tools. Implement ESLint and Prettier for code quality."
+    }
+  ]
+}

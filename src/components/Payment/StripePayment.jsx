@@ -7,7 +7,7 @@ import {
   useElements
 } from '@stripe/react-stripe-js';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { UserAPI } from '../../api/userApi.js';
+import api from '../../services/frontendApi.js';
 
 // Initialize Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
@@ -94,7 +94,7 @@ const CheckoutForm = ({ service, amount, onPaymentSuccess, onPaymentError, onBac
 
       if (paymentIntent.status === 'succeeded') {
         // Create payment record in our database
-        const paymentResult = await UserAPI.createPayment({
+        const paymentResult = await api.createPayment({
           booking_id: bookingId,
           user_id: user.id,
           amount: amount,

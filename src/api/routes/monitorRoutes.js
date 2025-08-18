@@ -285,7 +285,7 @@ router.get('/readers/:id/history', monitorAuth, monitorController.getReaderMonit
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
 // =============================================================================
-router.use((error, req, res, next) => {
+router.use((error, req, res, /* next */) => {
   console.error('Monitor API Error:', {
     error: error.message,
     stack: error.stack,

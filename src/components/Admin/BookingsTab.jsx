@@ -129,24 +129,6 @@ const BookingsTab = ({ onUpdate }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Bookings Management</h3>
-        <div className="flex space-x-2">
-          <button
-            onClick={exportBookings}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            Export CSV
-          </button>
-          <button
-            onClick={loadBookings}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Refresh
-          </button>
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <select

@@ -200,25 +200,8 @@ const MonitoringTab = ({ onUpdate }) => {
     }
   };
 
-  return (
+         return ( 
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Platform Monitoring</h3>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setShowMetricsModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            View Analytics
-          </button>
-          <button
-            onClick={loadMonitoringData}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Refresh
-          </button>
-        </div>
-      </div>
 
       {/* Monitoring Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

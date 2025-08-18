@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Activity, 
   User, 
@@ -17,6 +18,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
 const ActivityFeed = ({ className = '', showFilters = true, limit = 20 }) => {
+  const { t } = useTranslation();
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -222,7 +224,7 @@ const ActivityFeed = ({ className = '', showFilters = true, limit = 20 }) => {
               onClick={() => loadActivities(true)}
               disabled={loading}
               className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors disabled:opacity-50"
-              title="تحديث الآن"
+                              title={t('admin.activityFeed.updateNow')}
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>

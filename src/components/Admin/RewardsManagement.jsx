@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
-import RewardsAPI from '../../api/rewardsApi';
+import api from '../../services/frontendApi.js';
 import {
   TrophyIcon,
   UserGroupIcon,
@@ -58,9 +58,9 @@ const RewardsManagement = () => {
       
       // Load all data in parallel
       const [usersResult, statsResult, configResult] = await Promise.all([
-        RewardsAPI.getAllUsersRewards(1, 50, searchTerm),
-        RewardsAPI.getRewardsStats(),
-        RewardsAPI.getRewardsConfig()
+        api.getAllUsersRewards(1, 50, searchTerm),
+        api.getRewardsStats(),
+        api.getRewardsConfig()
       ]);
 
       if (usersResult.success) {
@@ -96,7 +96,7 @@ const RewardsManagement = () => {
 
     try {
       setAdjusting(true);
-      const result = await RewardsAPI.adjustUserPoints(
+      const result = await api.adjustUserPoints(
         selectedUser.user_id,
         parseInt(adjustmentData.points),
         adjustmentData.reason
@@ -126,7 +126,7 @@ const RewardsManagement = () => {
         value: value.toString()
       }));
 
-      const result = await RewardsAPI.updateRewardsConfig(configArray);
+      const result = await api.updateRewardsConfig(configArray);
 
       if (result.success) {
         showSuccess(result.message);

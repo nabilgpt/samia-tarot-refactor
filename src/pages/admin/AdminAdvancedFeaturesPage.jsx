@@ -23,11 +23,6 @@ import ReferralSystemManager from '../../components/Admin/ReferralSystemManager'
 
 const AdminAdvancedFeaturesPage = () => {
   const [activeTab, setActiveTab] = useState('activity');
-  const [mockData] = useState([
-    { id: '1', name: 'John Doe', email: 'john@example.com', role: 'client', status: 'active' },
-    { id: '2', name: 'Jane Smith', email: 'jane@example.com', role: 'reader', status: 'active' },
-    { id: '3', name: 'Ahmad Hassan', email: 'ahmad@example.com', role: 'client', status: 'pending' }
-  ]);
 
   const tabs = [
     { id: 'activity', label: 'سجل الأنشطة', icon: Activity, component: ActivityFeed },
@@ -54,7 +49,6 @@ const AdminAdvancedFeaturesPage = () => {
         return (
           <Component 
             entityType="users" 
-            data={mockData}
             onDataUpdate={() => console.log('Data updated')}
             className="h-full"
           />

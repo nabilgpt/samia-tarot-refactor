@@ -22,7 +22,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useUI } from '../../../context/UIContext';
-import { AdminAPI } from '../../../api/adminApi';
+import api from '../../../services/frontendApi.js';
 
 const NotificationsSystem = () => {
   const { t } = useTranslation();
@@ -85,7 +85,7 @@ const NotificationsSystem = () => {
   const loadNotificationHistory = async () => {
     try {
       setLoading(true);
-      const response = await AdminAPI.getNotificationHistory();
+      const response = await api.getNotificationHistory();
       if (response.success) {
         setNotifications(response.data);
       } else {
@@ -133,7 +133,7 @@ const NotificationsSystem = () => {
         return;
       }
 
-      const response = await AdminAPI.sendBulkNotification(notificationForm);
+      const response = await api.sendBulkNotification(notificationForm);
       if (response.success) {
         showSuccess(language === 'ar' ? 'تم إرسال الإشعار بنجاح' : 'Notification sent successfully');
         setShowComposeModal(false);
@@ -262,7 +262,7 @@ const NotificationsSystem = () => {
         className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
       >
         <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent">
             {language === 'ar' ? 'نظام الإشعارات' : 'Notifications System'}
           </h2>
           <p className="text-gray-400 mt-1">

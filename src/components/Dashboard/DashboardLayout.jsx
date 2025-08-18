@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserAPI } from '../../api/userApi.js';
+import api from '../../services/frontendApi.js';
 import { authHelpers } from '../../lib/supabase.js';
 import AnimatedBackground from '../UI/AnimatedBackground.jsx';
 
@@ -15,7 +15,7 @@ const DashboardLayout = ({ children, userRole = 'client' }) => {
 
   const loadUserData = async () => {
     try {
-      const result = await UserAPI.getCurrentUser();
+      const result = await api.getCurrentUser();
       if (result.success && result.data) {
         setUser(result.data);
         setProfile(result.data.profile);
@@ -29,7 +29,7 @@ const DashboardLayout = ({ children, userRole = 'client' }) => {
 
   const handleSignOut = async () => {
     try {
-      await UserAPI.signOut();
+      await api.signOut();
       window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);

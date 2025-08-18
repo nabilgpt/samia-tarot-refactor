@@ -1,4 +1,4 @@
-import { TarotAPI } from '../api/tarotApi.js';
+import api from './frontendApi.js';
 
 // Note: In production, this should be handled by a secure backend service
 // This is a simplified version for demonstration

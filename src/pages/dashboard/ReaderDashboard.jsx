@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Particles from 'react-tsparticles';
 import { loadSlim } from 'tsparticles-slim';
 import ReaderLayout from '../../components/Layout/ReaderLayout.jsx';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { supabase } from '../../lib/supabase';
-import { UserAPI } from '../../api/userApi';
+import api from '../../services/frontendApi.js';
 import WorkingHoursManager from '../../components/reader/WorkingHoursManager';
-import SpreadManager from '../../components/Reader/SpreadManager';
 import RewardsDashboard from '../../components/Rewards/RewardsDashboard';
+import ReaderSpreadsTab from './ReaderSpreadsTab.jsx';
 import { 
   User, 
   Settings, 
@@ -33,10 +34,14 @@ import {
   Sparkles
 } from 'lucide-react';
 import Button from '../../components/Button';
+import BilingualBio from '../../components/UI/BilingualBio';
 
 const ReaderDashboard = () => {
-  const { t, i18n } = useTranslation();
+  // ✅ PURE LANGUAGE CONTEXT - No more useTranslation
+  const { currentLanguage, direction, getTextAlign } = useLanguage();
   const { user, profile, refreshProfile } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
   const [readerData, setReaderData] = useState({
@@ -47,6 +52,23 @@ const ReaderDashboard = () => {
     stats: {},
     feedback: []
   });
+
+  // Handle URL parameters for tab navigation
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam && tabs.some(tab => tab.id === tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location.search]);
+
+  // Update URL when tab changes
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    const urlParams = new URLSearchParams(location.search);
+    urlParams.set('tab', tabId);
+    navigate(`${location.pathname}?${urlParams.toString()}`, { replace: true });
+  };
 
   // Particle configuration for cosmic background (EXACT SAME AS HOME.JSX)
   const particlesInit = useCallback(async engine => {
@@ -171,7 +193,7 @@ const ReaderDashboard = () => {
       setLoading(true);
       
       // Load reader's bookings
-      const bookingsResult = await UserAPI.getReaderBookings(user.id);
+      const bookingsResult = await api.getReaderBookings(user.id);
       if (bookingsResult.success) {
         setReaderData(prev => ({ ...prev, bookings: bookingsResult.data }));
       }
@@ -190,19 +212,19 @@ const ReaderDashboard = () => {
     loadReaderData();
   }, [user, profile]);
 
-  // Tab configuration
+  // Tab configuration with consistent language context
   const tabs = [
-    { id: 'profile', name: t('reader.tabs.profile'), icon: User },
-    { id: 'services', name: t('reader.tabs.services'), icon: Settings },
-    { id: 'spreads', name: i18n.language === 'ar' ? 'إدارة الانتشارات' : 'Tarot Spreads', icon: Sparkles },
-    { id: 'working-hours', name: 'Working Hours', icon: Clock },
-    { id: 'calendar', name: t('reader.tabs.calendar'), icon: Calendar },
-    { id: 'bookings', name: t('reader.tabs.bookings'), icon: BookOpen },
-    { id: 'chat', name: t('reader.tabs.chat'), icon: MessageCircle },
-    { id: 'rewards', name: i18n.language === 'ar' ? 'المكافآت' : 'Rewards', icon: Award },
-    { id: 'calls', name: t('reader.tabs.calls'), icon: Phone },
-    { id: 'notifications', name: t('reader.tabs.notifications'), icon: Bell },
-    { id: 'feedback', name: t('reader.tabs.feedback'), icon: Star }
+    { id: 'profile', name: currentLanguage === 'ar' ? 'الملف الشخصي' : 'Profile', icon: User },
+    { id: 'services', name: currentLanguage === 'ar' ? 'الخدمات' : 'Services', icon: Settings },
+    { id: 'spreads', name: currentLanguage === 'ar' ? 'إدارة الانتشارات' : 'Tarot Spreads', icon: Sparkles },
+    { id: 'working-hours', name: currentLanguage === 'ar' ? 'ساعات العمل' : 'Working Hours', icon: Clock },
+    { id: 'calendar', name: currentLanguage === 'ar' ? 'التقويم' : 'Calendar', icon: Calendar },
+    { id: 'bookings', name: currentLanguage === 'ar' ? 'الحجوزات' : 'Bookings', icon: BookOpen },
+    { id: 'chat', name: currentLanguage === 'ar' ? 'المحادثة' : 'Chat', icon: MessageCircle },
+    { id: 'rewards', name: currentLanguage === 'ar' ? 'المكافآت' : 'Rewards', icon: Award },
+    { id: 'calls', name: currentLanguage === 'ar' ? 'المكالمات' : 'Calls', icon: Phone },
+    { id: 'notifications', name: currentLanguage === 'ar' ? 'الإشعارات' : 'Notifications', icon: Bell },
+    { id: 'feedback', name: currentLanguage === 'ar' ? 'التقييمات' : 'Feedback', icon: Star }
   ];
 
     return (
@@ -244,12 +266,15 @@ const ReaderDashboard = () => {
 
               <h1 className="text-4xl md:text-6xl font-bold leading-tight mb-4">
                 <span className="bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent">
-                  {t('reader.dashboard.title')}
+                  {currentLanguage === 'ar' ? 
+                    (profile?.gender === 'female' ? 'القارئة' : 'القارئ') : 
+                    'Reader'
+                  }
                 </span>
               </h1>
 
               <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-                {t('reader.dashboard.subtitle')}
+                {currentLanguage === 'ar' ? 'إدارة خدماتك وحجوزاتك ومتابعة أدائك' : 'Manage your services, bookings, and track your performance'}
           </p>
         </div>
           </motion.div>
@@ -260,7 +285,7 @@ const ReaderDashboard = () => {
               {[
                 { 
                   icon: Calendar, 
-                  label: t('reader.stats.todayBookings'), 
+                  label: currentLanguage === 'ar' ? 'حجوزات اليوم' : 'Today\'s Bookings', 
                   value: readerData.bookings.filter(b => 
                     new Date(b.scheduled_at).toDateString() === new Date().toDateString()
                   ).length,
@@ -268,25 +293,25 @@ const ReaderDashboard = () => {
                 },
                 { 
                   icon: Star, 
-                  label: t('reader.stats.completedSessions'), 
+                  label: currentLanguage === 'ar' ? 'الجلسات المكتملة' : 'Completed Sessions', 
                   value: readerData.bookings.filter(b => b.status === 'completed').length,
                   gradient: 'from-green-500 to-emerald-500'
                 },
                 { 
                   icon: Settings, 
-                  label: t('reader.stats.activeServices'), 
+                  label: currentLanguage === 'ar' ? 'الخدمات النشطة' : 'Active Services', 
                   value: readerData.services.length,
                   gradient: 'from-purple-500 to-pink-500'
                 },
                 { 
                   icon: MessageCircle, 
-                  label: t('reader.stats.activeChats'), 
+                  label: currentLanguage === 'ar' ? 'المحادثات النشطة' : 'Active Chats', 
                   value: readerData.conversations.length,
                   gradient: 'from-orange-500 to-red-500'
                 }
-              ].map((stat, index) => (
+              ].map((stat) => (
                 <motion.div
-                  key={index}
+                  key={stat.label}
                   whileHover={{ scale: 1.02, y: -5 }}
                   className="relative p-6 rounded-3xl bg-gradient-to-br from-gray-900/50 to-gray-800/50 backdrop-blur-xl border border-white/10 overflow-hidden"
                 >
@@ -314,7 +339,7 @@ const ReaderDashboard = () => {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                     className={`relative flex items-center gap-2 px-4 py-3 rounded-2xl font-medium transition-all duration-300 ${
                     activeTab === tab.id
                         ? 'bg-gradient-to-r from-cosmic-600 to-purple-600 text-white shadow-lg shadow-cosmic-500/25'
@@ -374,7 +399,7 @@ const ReaderDashboard = () => {
 // Tab Components
 const ProfileTab = () => {
   const { profile, user } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { currentLanguage, direction, getTextAlign } = useLanguage();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -387,11 +412,8 @@ const ProfileTab = () => {
     date_of_birth: profile?.date_of_birth || '',
     zodiac: profile?.zodiac || '',
     maritalStatus: profile?.maritalStatus || '',
-    bio: profile?.bio || '',
-    experience_years: profile?.experience_years || '',
-    specializations: profile?.specializations || [],
-    languages: profile?.languages || [],
-    status: profile?.status || 'available'
+    bio_ar: profile?.bio_ar || '',
+    bio_en: profile?.bio_en || ''
   });
 
   const handleInputChange = (e) => {
@@ -404,17 +426,34 @@ const ProfileTab = () => {
 
   const handleSave = async () => {
     if (!validateForm()) return;
-    
+
     setIsSaving(true);
+    setErrors({});
+
     try {
-      const result = await UserAPI.updateProfile(user.id, formData);
-      if (result.success) {
-        setSuccessMessage(t('profile.form.saveSuccess'));
-        setIsEditing(false);
-        setTimeout(() => setSuccessMessage(''), 3000);
-      } else {
-        setErrors({ general: result.error });
-      }
+      const updates = {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone: formData.phone,
+        country: formData.country,
+        date_of_birth: formData.date_of_birth,
+        zodiac: formData.zodiac,
+        maritalStatus: formData.maritalStatus,
+        bio_ar: formData.bio_ar,
+        bio_en: formData.bio_en
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setSuccessMessage(currentLanguage === 'ar' ? 'تم حفظ التغييرات بنجاح' : 'Profile updated successfully');
+      setIsEditing(false);
+      
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       setErrors({ general: error.message });
     } finally {
@@ -424,8 +463,19 @@ const ProfileTab = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.first_name?.trim()) newErrors.first_name = t('profile.form.firstNameRequired');
-    if (!formData.last_name?.trim()) newErrors.last_name = t('profile.form.lastNameRequired');
+    if (!formData.first_name?.trim()) {
+      newErrors.first_name = currentLanguage === 'ar' ? 'الاسم الأول مطلوب' : 'First name is required';
+    }
+    if (!formData.last_name?.trim()) {
+      newErrors.last_name = currentLanguage === 'ar' ? 'اسم العائلة مطلوب' : 'Last name is required';
+    }
+    if (!formData.phone?.trim()) {
+      newErrors.phone = currentLanguage === 'ar' ? 'رقم الهاتف مطلوب' : 'Phone number is required';
+    }
+    if (!formData.country?.trim()) {
+      newErrors.country = currentLanguage === 'ar' ? 'البلد مطلوب' : 'Country is required';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -434,7 +484,7 @@ const ProfileTab = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent">
-          {t('reader.profile.title')}
+          {currentLanguage === 'ar' ? 'الملف الشخصي' : 'Profile'}
         </h2>
         <div className="flex gap-3">
           {isEditing ? (
@@ -449,14 +499,14 @@ const ProfileTab = () => {
                 ) : (
                   <Save className="w-4 h-4 mr-2" />
                 )}
-                {t('common.save')}
+                {currentLanguage === 'ar' ? 'حفظ' : 'Save'}
               </Button>
               <Button
                 onClick={() => setIsEditing(false)}
                 variant="outline"
                 className="border-gray-600 text-gray-300 hover:bg-gray-700"
               >
-                {t('common.cancel')}
+                {currentLanguage === 'ar' ? 'إلغاء' : 'Cancel'}
               </Button>
             </>
           ) : (
@@ -465,7 +515,7 @@ const ProfileTab = () => {
               className="bg-gradient-to-r from-cosmic-600 to-purple-600 hover:from-cosmic-700 hover:to-purple-700"
             >
               <Edit3 className="w-4 h-4 mr-2" />
-              {t('common.edit')}
+              {currentLanguage === 'ar' ? 'تعديل' : 'Edit'}
             </Button>
           )}
         </div>
@@ -510,12 +560,12 @@ const ProfileTab = () => {
               {profile?.first_name} {profile?.last_name}
               </h3>
               <p className="text-cosmic-400">
-                {profile?.role === 'reader' ? t('reader.title') : profile?.role}
+                {profile?.role === 'reader' ? (currentLanguage === 'ar' ? 'قارئ' : 'Reader') : profile?.role}
               </p>
               
               {/* Status Toggle */}
               <div className="mt-4 flex items-center justify-center gap-2">
-                <span className="text-sm text-gray-400">{t('reader.profile.status')}</span>
+                <span className="text-sm text-gray-400">{currentLanguage === 'ar' ? 'الحالة' : 'Status'}</span>
                 <button
                   onClick={() => handleInputChange({ target: { name: 'status', value: formData.status === 'available' ? 'busy' : 'available' }})}
                   disabled={!isEditing}
@@ -525,7 +575,7 @@ const ProfileTab = () => {
                       : 'bg-red-500/20 text-red-400 border border-red-500/30'
                   } ${!isEditing ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}`}
                 >
-                  {formData.status === 'available' ? t('reader.status.available') : t('reader.status.busy')}
+                  {formData.status === 'available' ? (currentLanguage === 'ar' ? 'متاح' : 'Available') : (currentLanguage === 'ar' ? 'مشغول' : 'Busy')}
                 </button>
               </div>
             </div>
@@ -538,7 +588,7 @@ const ProfileTab = () => {
             {/* First Name */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gold-300">
-                {t('profile.form.firstName')} *
+                {currentLanguage === 'ar' ? 'الاسم الأول' : 'First Name'} *
               </label>
                 <input
                   type="text"
@@ -549,7 +599,7 @@ const ProfileTab = () => {
                 className={`w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-400 transition-all duration-300 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 ${
                   !isEditing ? 'opacity-50 cursor-not-allowed' : ''
                 } ${errors.first_name ? 'border-red-500' : ''}`}
-                dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}
+                dir={direction}
               />
               {errors.first_name && (
                 <p className="text-red-400 text-sm">{errors.first_name}</p>
@@ -559,7 +609,7 @@ const ProfileTab = () => {
             {/* Last Name */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gold-300">
-                {t('profile.form.lastName')} *
+                {currentLanguage === 'ar' ? 'اسم العائلة' : 'Last Name'} *
               </label>
                 <input
                   type="text"
@@ -570,7 +620,7 @@ const ProfileTab = () => {
                 className={`w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-400 transition-all duration-300 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 ${
                   !isEditing ? 'opacity-50 cursor-not-allowed' : ''
                 } ${errors.last_name ? 'border-red-500' : ''}`}
-                dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}
+                dir={direction}
               />
               {errors.last_name && (
                 <p className="text-red-400 text-sm">{errors.last_name}</p>
@@ -580,7 +630,7 @@ const ProfileTab = () => {
             {/* Phone */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gold-300">
-                {t('profile.form.phone')}
+                {currentLanguage === 'ar' ? 'رقم الهاتف' : 'Phone'}
               </label>
               <input
                 type="tel"
@@ -597,25 +647,25 @@ const ProfileTab = () => {
             {/* Country */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gold-300">
-                {t('profile.form.country')}
+                {currentLanguage === 'ar' ? 'البلد' : 'Country'}
               </label>
                 <input
                   type="text"
                 name="country"
-                  value={formData.country}
+                value={formData.country}
                 onChange={handleInputChange}
                 disabled={!isEditing}
                 className={`w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-400 transition-all duration-300 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 ${
                   !isEditing ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
-                dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}
+                dir={direction}
               />
             </div>
 
             {/* Date of Birth */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gold-300">
-                {t('profile.form.dateOfBirth')}
+                {currentLanguage === 'ar' ? 'تاريخ الميلاد' : 'Date of Birth'}
               </label>
               <input
                 type="date"
@@ -632,7 +682,7 @@ const ProfileTab = () => {
             {/* Zodiac Sign */}
               <div className="space-y-2">
               <label className="block text-sm font-medium text-gold-300">
-                {t('profile.form.zodiacSign')}
+                ⭐ {currentLanguage === 'ar' ? 'البرج' : 'Zodiac Sign'}
               </label>
                     <input
                 type="text"
@@ -640,14 +690,14 @@ const ProfileTab = () => {
                 value={formData.zodiac}
                 readOnly
                 className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-cosmic-400 cursor-not-allowed"
-                placeholder={t('profile.form.zodiacAutoCalculated')}
+                placeholder={currentLanguage === 'ar' ? 'يتم حساب البرج تلقائياً' : 'Zodiac calculated automatically'}
               />
             </div>
 
             {/* Marital Status */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gold-300">
-                💍 {i18n.language === 'ar' ? 'الوضع العائلي' : 'Marital Status'}
+                💍 {currentLanguage === 'ar' ? 'الوضع العائلي' : 'Marital Status'}
                   </label>
               <select
                 name="maritalStatus"
@@ -657,21 +707,21 @@ const ProfileTab = () => {
                 className={`w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white transition-all duration-300 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 ${
                   !isEditing ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
-                dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}
+                dir={direction}
               >
-                <option value="">{i18n.language === 'ar' ? 'اختر الوضع العائلي' : 'Select marital status'}</option>
-                <option value="single">{i18n.language === 'ar' ? 'أعزب/عزباء' : 'Single'}</option>
-                <option value="married">{i18n.language === 'ar' ? 'متزوج/متزوجة' : 'Married'}</option>
-                <option value="engaged">{i18n.language === 'ar' ? 'مخطوب/مخطوبة' : 'Engaged'}</option>
-                <option value="relationship">{i18n.language === 'ar' ? 'في علاقة' : 'In a Relationship'}</option>
-                <option value="complicated">{i18n.language === 'ar' ? 'الأمر معقد' : "It's Complicated"}</option>
+                <option value="">{currentLanguage === 'ar' ? 'اختر الوضع العائلي' : 'Select marital status'}</option>
+                <option value="single">{currentLanguage === 'ar' ? 'أعزب/عزباء' : 'Single'}</option>
+                <option value="married">{currentLanguage === 'ar' ? 'متزوج/متزوجة' : 'Married'}</option>
+                <option value="engaged">{currentLanguage === 'ar' ? 'مخطوب/مخطوبة' : 'Engaged'}</option>
+                <option value="relationship">{currentLanguage === 'ar' ? 'في علاقة' : 'In a Relationship'}</option>
+                <option value="complicated">{currentLanguage === 'ar' ? 'الأمر معقد' : "It's Complicated"}</option>
               </select>
           </div>
 
             {/* Experience Years */}
               <div className="space-y-2">
               <label className="block text-sm font-medium text-gold-300">
-                {t('reader.profile.experience')}
+                🎯 {currentLanguage === 'ar' ? 'سنوات الخبرة' : 'Experience Years'}
               </label>
                     <input
                 type="number"
@@ -689,20 +739,23 @@ const ProfileTab = () => {
 
             {/* Bio */}
             <div className="md:col-span-2 space-y-2">
-              <label className="block text-sm font-medium text-gold-300">
-                {t('reader.profile.bio')}
-                  </label>
-              <textarea
-                name="bio"
-                value={formData.bio}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                rows={4}
-                className={`w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-400 transition-all duration-300 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 resize-none ${
-                  !isEditing ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-                dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}
-                placeholder={t('reader.profile.bioPlaceholder')}
+              <BilingualBio
+                profile={profile}
+                isEditing={isEditing}
+                onSave={async (bioData) => {
+                  // Update formData with the new bio data
+                  setFormData(prev => ({
+                    ...prev,
+                    bio_ar: bioData.bio_ar,
+                    bio_en: bioData.bio_en
+                  }));
+                }}
+                placeholder={{
+                  ar: 'اكتب نبذة تعريفية عن نفسك وخبراتك في قراءة التاروت...',
+                  en: 'Write a brief description about yourself and your tarot reading experience...'
+                }}
+                className="w-full"
+                showLanguageToggle={true}
               />
               </div>
           </div>
@@ -715,7 +768,7 @@ const ProfileTab = () => {
 // Services Tab Component
 const ServicesTab = () => {
   const { user } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { currentLanguage, direction } = useLanguage();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -758,12 +811,12 @@ const ServicesTab = () => {
   }, []);
 
   const serviceTypes = [
-    { id: 'tarot', name: t('services.tarot'), icon: '🔮' },
-    { id: 'astrology', name: t('services.astrology'), icon: '⭐' },
-    { id: 'numerology', name: t('services.numerology'), icon: '🔢' },
-    { id: 'palmistry', name: t('services.palmistry'), icon: '✋' },
-    { id: 'dream_interpretation', name: t('services.dreamInterpretation'), icon: '💭' },
-    { id: 'spiritual_guidance', name: t('services.spiritualGuidance'), icon: '🙏' }
+    { id: 'tarot', name: currentLanguage === 'ar' ? 'قراءة التاروت' : 'Tarot Reading', icon: '🔮' },
+    { id: 'astrology', name: currentLanguage === 'ar' ? 'علم الفلك' : 'Astrology', icon: '⭐' },
+    { id: 'numerology', name: currentLanguage === 'ar' ? 'علم الأرقام' : 'Numerology', icon: '🔢' },
+    { id: 'palmistry', name: currentLanguage === 'ar' ? 'قراءة الكف' : 'Palmistry', icon: '✋' },
+    { id: 'dream_interpretation', name: currentLanguage === 'ar' ? 'تفسير الأحلام' : 'Dream Interpretation', icon: '💭' },
+    { id: 'spiritual_guidance', name: currentLanguage === 'ar' ? 'الإرشاد الروحي' : 'Spiritual Guidance', icon: '🙏' }
   ];
 
   if (loading) {
@@ -778,14 +831,14 @@ const ServicesTab = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent">
-          {t('reader.services.title')}
+          {currentLanguage === 'ar' ? 'الخدمات' : 'Services'}
         </h2>
         <Button
           onClick={() => setShowAddModal(true)}
           className="bg-gradient-to-r from-cosmic-600 to-purple-600 hover:from-cosmic-700 hover:to-purple-700"
         >
           <Plus className="w-4 h-4 mr-2" />
-          {t('reader.services.addNew')}
+          {currentLanguage === 'ar' ? 'إضافة خدمة جديدة' : 'Add New Service'}
         </Button>
       </div>
 
@@ -799,16 +852,16 @@ const ServicesTab = () => {
             🔮
           </div>
           <h3 className="text-xl font-semibold text-gray-300 mb-2">
-            {t('reader.services.noServices')}
+            {currentLanguage === 'ar' ? 'لا توجد خدمات' : 'No Services Yet'}
           </h3>
           <p className="text-gray-500 mb-6">
-            {t('reader.services.addFirstService')}
+            {currentLanguage === 'ar' ? 'أضف خدمتك الأولى لتبدأ في استقبال الحجوزات' : 'Add your first service to start receiving bookings'}
           </p>
           <Button
             onClick={() => setShowAddModal(true)}
             className="bg-gradient-to-r from-cosmic-600 to-purple-600 hover:from-cosmic-700 hover:to-purple-700"
           >
-            {t('reader.services.getStarted')}
+            {currentLanguage === 'ar' ? 'ابدأ الآن' : 'Get Started'}
           </Button>
         </motion.div>
       ) : (
@@ -863,11 +916,11 @@ const ServicesTab = () => {
                   <div className="flex items-center gap-4">
                     <div className="text-center">
                       <p className="text-2xl font-bold text-gold-400">${service.price}</p>
-                      <p className="text-xs text-gray-500">{t('reader.services.perSession')}</p>
+                      <p className="text-xs text-gray-500">{currentLanguage === 'ar' ? 'لكل جلسة' : 'Per Session'}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-lg font-semibold text-cyan-400">{service.duration}min</p>
-                      <p className="text-xs text-gray-500">{t('reader.services.duration')}</p>
+                      <p className="text-xs text-gray-500">{currentLanguage === 'ar' ? 'المدة' : 'Duration'}</p>
                     </div>
                   </div>
 
@@ -876,7 +929,7 @@ const ServicesTab = () => {
                       ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
                       : 'bg-red-500/20 text-red-400 border border-red-500/30'
                   }`}>
-                    {service.is_active ? t('common.active') : t('common.inactive')}
+                    {service.is_active ? (currentLanguage === 'ar' ? 'نشط' : 'Active') : (currentLanguage === 'ar' ? 'غير نشط' : 'Inactive')}
                   </div>
                 </div>
               </div>
@@ -906,17 +959,13 @@ const ServicesTab = () => {
 
 // Spreads Tab Component
 const SpreadsTab = () => {
-  return (
-    <div className="space-y-8">
-      <SpreadManager />
-    </div>
-  );
+  return <ReaderSpreadsTab />;
 };
 
 // Service Modal Component
 const ServiceModal = ({ service, onClose, onSave }) => {
   const { user } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { currentLanguage, direction } = useLanguage();
   const [formData, setFormData] = useState({
     name: service?.name || '',
     type: service?.type || '',
@@ -929,12 +978,12 @@ const ServiceModal = ({ service, onClose, onSave }) => {
   const [errors, setErrors] = useState({});
 
   const serviceTypes = [
-    { id: 'tarot', name: t('services.tarot') },
-    { id: 'astrology', name: t('services.astrology') },
-    { id: 'numerology', name: t('services.numerology') },
-    { id: 'palmistry', name: t('services.palmistry') },
-    { id: 'dream_interpretation', name: t('services.dreamInterpretation') },
-    { id: 'spiritual_guidance', name: t('services.spiritualGuidance') }
+    { id: 'tarot', name: currentLanguage === 'ar' ? 'قراءة التاروت' : 'Tarot Reading' },
+    { id: 'astrology', name: currentLanguage === 'ar' ? 'علم الفلك' : 'Astrology' },
+    { id: 'numerology', name: currentLanguage === 'ar' ? 'علم الأرقام' : 'Numerology' },
+    { id: 'palmistry', name: currentLanguage === 'ar' ? 'قراءة الكف' : 'Palmistry' },
+    { id: 'dream_interpretation', name: currentLanguage === 'ar' ? 'تفسير الأحلام' : 'Dream Interpretation' },
+    { id: 'spiritual_guidance', name: currentLanguage === 'ar' ? 'الإرشاد الروحي' : 'Spiritual Guidance' }
   ];
 
   const handleSave = async () => {
@@ -975,10 +1024,10 @@ const ServiceModal = ({ service, onClose, onSave }) => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name?.trim()) newErrors.name = t('reader.services.nameRequired');
-    if (!formData.type) newErrors.type = t('reader.services.typeRequired');
-    if (!formData.price || formData.price <= 0) newErrors.price = t('reader.services.priceRequired');
-    if (!formData.duration || formData.duration <= 0) newErrors.duration = t('reader.services.durationRequired');
+    if (!formData.name?.trim()) newErrors.name = currentLanguage === 'ar' ? 'اسم الخدمة مطلوب' : 'Service name is required';
+    if (!formData.type) newErrors.type = currentLanguage === 'ar' ? 'نوع الخدمة مطلوب' : 'Service type is required';
+    if (!formData.price || formData.price <= 0) newErrors.price = currentLanguage === 'ar' ? 'السعر مطلوب' : 'Price is required';
+    if (!formData.duration || formData.duration <= 0) newErrors.duration = currentLanguage === 'ar' ? 'المدة مطلوبة' : 'Duration is required';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -1001,7 +1050,7 @@ const ServiceModal = ({ service, onClose, onSave }) => {
       >
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-2xl font-bold text-gold-300">
-            {service ? t('reader.services.editService') : t('reader.services.addService')}
+            {service ? (currentLanguage === 'ar' ? 'تعديل الخدمة' : 'Edit Service') : (currentLanguage === 'ar' ? 'إضافة خدمة' : 'Add Service')}
           </h3>
           <button
             onClick={onClose}
@@ -1020,7 +1069,7 @@ const ServiceModal = ({ service, onClose, onSave }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gold-300">
-              {t('reader.services.serviceName')} *
+              {currentLanguage === 'ar' ? 'اسم الخدمة' : 'Service Name'} *
             </label>
                 <input
               type="text"
@@ -1029,14 +1078,14 @@ const ServiceModal = ({ service, onClose, onSave }) => {
               className={`w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white transition-all duration-300 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 ${
                 errors.name ? 'border-red-500' : ''
               }`}
-              dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}
+              dir={direction}
             />
             {errors.name && <p className="text-red-400 text-sm">{errors.name}</p>}
           </div>
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gold-300">
-              {t('reader.services.serviceType')} *
+              {currentLanguage === 'ar' ? 'نوع الخدمة' : 'Service Type'} *
               </label>
             <select
               value={formData.type}
@@ -1045,7 +1094,7 @@ const ServiceModal = ({ service, onClose, onSave }) => {
                 errors.type ? 'border-red-500' : ''
               }`}
             >
-              <option value="">{t('reader.services.selectType')}</option>
+              <option value="">{currentLanguage === 'ar' ? 'اختر نوع الخدمة' : 'Select Service Type'}</option>
               {serviceTypes.map(type => (
                 <option key={type.id} value={type.id}>{type.name}</option>
               ))}
@@ -1055,7 +1104,7 @@ const ServiceModal = ({ service, onClose, onSave }) => {
             
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gold-300">
-              {t('reader.services.price')} *
+              {currentLanguage === 'ar' ? 'السعر' : 'Price'} *
             </label>
             <input
               type="number"
@@ -1072,7 +1121,7 @@ const ServiceModal = ({ service, onClose, onSave }) => {
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gold-300">
-              {t('reader.services.duration')} ({t('reader.services.minutes')}) *
+              {currentLanguage === 'ar' ? 'المدة' : 'Duration'} ({currentLanguage === 'ar' ? 'دقيقة' : 'Minutes'}) *
             </label>
             <input
               type="number"
@@ -1090,15 +1139,15 @@ const ServiceModal = ({ service, onClose, onSave }) => {
 
           <div className="md:col-span-2 space-y-2">
             <label className="block text-sm font-medium text-gold-300">
-              {t('reader.services.description')}
+              {currentLanguage === 'ar' ? 'الوصف' : 'Description'}
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               rows={4}
               className="w-full px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-400 transition-all duration-300 hover:border-white/30 focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400 resize-none"
-              dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}
-              placeholder={t('reader.services.descriptionPlaceholder')}
+              dir={direction}
+              placeholder={currentLanguage === 'ar' ? 'اكتب وصفاً للخدمة...' : 'Write a description for the service...'}
             />
           </div>
       </div>
@@ -1109,7 +1158,7 @@ const ServiceModal = ({ service, onClose, onSave }) => {
             variant="outline"
             className="border-gray-600 text-gray-300 hover:bg-gray-700"
           >
-            {t('common.cancel')}
+            {currentLanguage === 'ar' ? 'إلغاء' : 'Cancel'}
           </Button>
           <Button
             onClick={handleSave}
@@ -1121,7 +1170,7 @@ const ServiceModal = ({ service, onClose, onSave }) => {
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            {t('common.save')}
+            {currentLanguage === 'ar' ? 'حفظ' : 'Save'}
           </Button>
     </div>
       </motion.div>
@@ -1132,7 +1181,7 @@ const ServiceModal = ({ service, onClose, onSave }) => {
 // Bookings Tab Component
 const BookingsTab = () => {
   const { user } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { currentLanguage, direction } = useLanguage();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -1212,19 +1261,32 @@ const BookingsTab = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent">
-          {t('reader.bookings.title')}
+          {currentLanguage === 'ar' ? 'الحجوزات' : 'Bookings'}
         </h2>
         <div className="flex gap-2">
           {['all', 'pending', 'confirmed', 'in_progress', 'completed'].map(status => (
             <button
-              key={status}
+              key={`booking-status-${status}`}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 status === 'all' 
                   ? 'bg-cosmic-500/20 text-cosmic-400' 
                   : `${getStatusColor(status)} hover:opacity-80`
               }`}
             >
-              {t(`reader.bookings.${status}`)}
+              {currentLanguage === 'ar' ? 
+                (status === 'all' ? 'الكل' : 
+                 status === 'pending' ? 'في الانتظار' : 
+                 status === 'confirmed' ? 'مؤكد' : 
+                 status === 'in_progress' ? 'جاري' : 
+                 status === 'completed' ? 'مكتمل' : 
+                 'ملغي') : 
+                (status === 'all' ? 'All' : 
+                 status === 'pending' ? 'Pending' : 
+                 status === 'confirmed' ? 'Confirmed' : 
+                 status === 'in_progress' ? 'In Progress' : 
+                 status === 'completed' ? 'Completed' : 
+                 'Cancelled')
+              }
             </button>
           ))}
         </div>
@@ -1240,10 +1302,10 @@ const BookingsTab = () => {
             📅
                   </div>
           <h3 className="text-xl font-semibold text-gray-300 mb-2">
-            {t('reader.bookings.noBookings')}
+            {currentLanguage === 'ar' ? 'لا توجد حجوزات' : 'No Bookings Yet'}
           </h3>
           <p className="text-gray-500">
-            {t('reader.bookings.bookingsWillAppear')}
+            {currentLanguage === 'ar' ? 'ستظهر الحجوزات هنا عند توفرها' : 'Bookings will appear here when available'}
           </p>
         </motion.div>
       ) : (
@@ -1270,39 +1332,50 @@ const BookingsTab = () => {
                         <h3 className="text-lg font-semibold text-white">
                           {booking.profiles?.first_name} {booking.profiles?.last_name}
                         </h3>
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                          {t(`reader.bookings.status.${booking.status}`)}
-            </div>
+                                                <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
+                          {currentLanguage === 'ar' ? 
+                            (booking.status === 'pending' ? 'في الانتظار' : 
+                             booking.status === 'confirmed' ? 'مؤكد' : 
+                             booking.status === 'in_progress' ? 'جاري' : 
+                             booking.status === 'completed' ? 'مكتمل' : 
+                             'ملغي') : 
+                            (booking.status === 'pending' ? 'Pending' : 
+                             booking.status === 'confirmed' ? 'Confirmed' : 
+                             booking.status === 'in_progress' ? 'In Progress' : 
+                             booking.status === 'completed' ? 'Completed' : 
+                             'Cancelled')
+                          }
+                        </div>
                         {canStartSession(booking) && (
                           <div className="px-3 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30 animate-pulse">
-                            {t('reader.bookings.sessionLive')}
+                            {currentLanguage === 'ar' ? 'جلسة مباشرة' : 'Session Live'}
                           </div>
           )}
         </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <p className="text-sm text-gray-400 mb-1">{t('reader.bookings.service')}</p>
+                                                <div>
+                          <p className="text-sm text-gray-400 mb-1">{currentLanguage === 'ar' ? 'الخدمة' : 'Service'}</p>
                           <p className="text-white font-medium">{booking.service?.name}</p>
-                  </div>
+                        </div>
                         <div>
-                          <p className="text-sm text-gray-400 mb-1">{t('reader.bookings.datetime')}</p>
+                          <p className="text-sm text-gray-400 mb-1">{currentLanguage === 'ar' ? 'التاريخ والوقت' : 'Date & Time'}</p>
                           <p className="text-white font-medium">
                             {new Date(booking.scheduled_at).toLocaleDateString()} • {new Date(booking.scheduled_at).toLocaleTimeString()}
                           </p>
                         </div>
                         <div>
-                          <p className="text-sm text-gray-400 mb-1">{t('reader.bookings.duration')}</p>
-                          <p className="text-white font-medium">{booking.service?.duration || 30} {t('reader.bookings.minutes')}</p>
+                          <p className="text-sm text-gray-400 mb-1">{currentLanguage === 'ar' ? 'المدة' : 'Duration'}</p>
+                          <p className="text-white font-medium">{booking.service?.duration || 30} {currentLanguage === 'ar' ? 'دقيقة' : 'minutes'}</p>
                         </div>
                       </div>
 
-                  {booking.notes && (
+                                        {booking.notes && (
                         <div className="mb-4">
-                          <p className="text-sm text-gray-400 mb-1">{t('reader.bookings.clientNotes')}</p>
+                          <p className="text-sm text-gray-400 mb-1">{currentLanguage === 'ar' ? 'ملاحظات العميل' : 'Client Notes'}</p>
                           <p className="text-gray-300 text-sm italic">&ldquo;{booking.notes}&rdquo;</p>
                         </div>
-                  )}
+                      )}
                 </div>
                   </div>
 
@@ -1314,14 +1387,14 @@ const BookingsTab = () => {
                           onClick={() => updateBookingStatus(booking.id, 'confirmed')}
                           className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-sm px-3 py-1"
                         >
-                          {t('reader.bookings.accept')}
+                          {currentLanguage === 'ar' ? 'قبول' : 'Accept'}
                         </Button>
                         <Button
                           onClick={() => updateBookingStatus(booking.id, 'cancelled')}
                           variant="outline"
                           className="border-red-600 text-red-400 hover:bg-red-700 text-sm px-3 py-1"
                         >
-                          {t('reader.bookings.decline')}
+                          {currentLanguage === 'ar' ? 'رفض' : 'Decline'}
                         </Button>
                       </>
                     )}
@@ -1335,20 +1408,20 @@ const BookingsTab = () => {
                               className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-sm px-3 py-1"
                             >
                               <MessageCircle className="w-4 h-4 mr-1" />
-                              {t('reader.bookings.startChat')}
+                              {currentLanguage === 'ar' ? 'بدء المحادثة' : 'Start Chat'}
                             </Button>
                             {booking.service?.type !== 'text_only' && (
                               <Button
                                 className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-sm px-3 py-1"
                               >
                                 <Phone className="w-4 h-4 mr-1" />
-                                {t('reader.bookings.startCall')}
+                                {currentLanguage === 'ar' ? 'بدء المكالمة' : 'Start Call'}
                               </Button>
                             )}
             </div>
           ) : (
                           <div className="text-center">
-                            <p className="text-xs text-gray-400 mb-1">{t('reader.bookings.sessionStarts')}</p>
+                            <p className="text-xs text-gray-400 mb-1">{currentLanguage === 'ar' ? 'بداية الجلسة' : 'Session Starts'}</p>
                             <p className="text-xs text-cyan-400 font-medium">
                               {new Date(booking.scheduled_at).toLocaleTimeString()}
                             </p>
@@ -1363,13 +1436,13 @@ const BookingsTab = () => {
                           className="bg-gradient-to-r from-cosmic-600 to-purple-600 hover:from-cosmic-700 hover:to-purple-700 text-sm px-3 py-1"
                         >
                           <MessageCircle className="w-4 h-4 mr-1" />
-                          {t('reader.bookings.continueChat')}
+                          {currentLanguage === 'ar' ? 'متابعة المحادثة' : 'Continue Chat'}
                         </Button>
                         <Button
                           onClick={() => updateBookingStatus(booking.id, 'completed')}
                           className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-sm px-3 py-1"
                         >
-                          {t('reader.bookings.completeSession')}
+                          {currentLanguage === 'ar' ? 'إكمال الجلسة' : 'Complete Session'}
                         </Button>
                       </div>
                     )}
@@ -1380,7 +1453,7 @@ const BookingsTab = () => {
                       className="border-gray-600 text-gray-300 hover:bg-gray-700 text-sm px-3 py-1"
                     >
                       <Eye className="w-4 h-4 mr-1" />
-                      {t('reader.bookings.viewDetails')}
+                      {currentLanguage === 'ar' ? 'عرض التفاصيل' : 'View Details'}
                     </Button>
         </div>
       </div>
@@ -1388,13 +1461,13 @@ const BookingsTab = () => {
                 {/* Progress indicator for in-progress sessions */}
                 {booking.status === 'in_progress' && (
                   <div className="mt-4 pt-4 border-t border-white/10">
-                    <div className="flex items-center gap-2 text-sm text-green-400">
+                                        <div className="flex items-center gap-2 text-sm text-green-400">
                       <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                      {t('reader.bookings.sessionInProgress')}
+                      {currentLanguage === 'ar' ? 'جلسة جارية' : 'Session In Progress'}
                       <div className="ml-auto text-xs text-gray-400">
-                        {booking.messages?.length || 0} {t('reader.bookings.messages')}
-        </div>
+                        {booking.messages?.length || 0} {currentLanguage === 'ar' ? 'رسالة' : 'messages'}
                       </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1416,7 +1489,7 @@ const BookingsTab = () => {
 
 // Booking Details Modal Component
 const BookingDetailsModal = ({ booking, onClose }) => {
-  const { t, i18n } = useTranslation();
+  const { currentLanguage, direction } = useLanguage();
 
   return (
     <motion.div
@@ -1435,7 +1508,7 @@ const BookingDetailsModal = ({ booking, onClose }) => {
       >
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-2xl font-bold text-gold-300">
-            {t('reader.bookings.bookingDetails')}
+            {currentLanguage === 'ar' ? 'تفاصيل الحجز' : 'Booking Details'}
           </h3>
           <button
             onClick={onClose}
@@ -1448,41 +1521,41 @@ const BookingDetailsModal = ({ booking, onClose }) => {
         <div className="space-y-6">
           {/* Client Information */}
           <div className="p-4 rounded-2xl bg-gradient-to-br from-gray-800/30 to-gray-700/30 backdrop-blur-xl border border-white/10">
-            <h4 className="text-lg font-semibold text-cosmic-400 mb-3">{t('reader.bookings.clientInfo')}</h4>
+                        <h4 className="text-lg font-semibold text-cosmic-400 mb-3">{currentLanguage === 'ar' ? 'معلومات العميل' : 'Client Info'}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-400">{t('reader.bookings.name')}</p>
+                <p className="text-sm text-gray-400">{currentLanguage === 'ar' ? 'الاسم' : 'Name'}</p>
                 <p className="text-white font-medium">
-                          {booking.profiles?.first_name} {booking.profiles?.last_name}
+                  {booking.profiles?.first_name} {booking.profiles?.last_name}
                 </p>
-                        </div>
+              </div>
               <div>
-                <p className="text-sm text-gray-400">{t('reader.bookings.phone')}</p>
-                <p className="text-white font-medium">{booking.profiles?.phone || t('common.notProvided')}</p>
-                      </div>
-                    </div>
+                <p className="text-sm text-gray-400">{currentLanguage === 'ar' ? 'الهاتف' : 'Phone'}</p>
+                <p className="text-white font-medium">{booking.profiles?.phone || (currentLanguage === 'ar' ? 'غير محدد' : 'Not Provided')}</p>
+              </div>
+            </div>
         </div>
 
           {/* Session Information */}
           <div className="p-4 rounded-2xl bg-gradient-to-br from-gray-800/30 to-gray-700/30 backdrop-blur-xl border border-white/10">
-            <h4 className="text-lg font-semibold text-cosmic-400 mb-3">{t('reader.bookings.sessionInfo')}</h4>
+                        <h4 className="text-lg font-semibold text-cosmic-400 mb-3">{currentLanguage === 'ar' ? 'معلومات الجلسة' : 'Session Info'}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-400">{t('reader.bookings.service')}</p>
+                <p className="text-sm text-gray-400">{currentLanguage === 'ar' ? 'الخدمة' : 'Service'}</p>
                 <p className="text-white font-medium">{booking.service?.name}</p>
-      </div>
+              </div>
               <div>
-                <p className="text-sm text-gray-400">{t('reader.bookings.type')}</p>
+                <p className="text-sm text-gray-400">{currentLanguage === 'ar' ? 'النوع' : 'Type'}</p>
                 <p className="text-white font-medium">{booking.service?.type}</p>
-    </div>
+              </div>
               <div>
-                <p className="text-sm text-gray-400">{t('reader.bookings.datetime')}</p>
+                <p className="text-sm text-gray-400">{currentLanguage === 'ar' ? 'التاريخ والوقت' : 'Date & Time'}</p>
                 <p className="text-white font-medium">
                   {new Date(booking.scheduled_at).toLocaleDateString()} • {new Date(booking.scheduled_at).toLocaleTimeString()}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-400">{t('reader.bookings.price')}</p>
+                <p className="text-sm text-gray-400">{currentLanguage === 'ar' ? 'السعر' : 'Price'}</p>
                 <p className="text-white font-medium">${booking.service?.price}</p>
               </div>
             </div>
@@ -1491,22 +1564,35 @@ const BookingDetailsModal = ({ booking, onClose }) => {
           {/* Notes */}
           {booking.notes && (
             <div className="p-4 rounded-2xl bg-gradient-to-br from-gray-800/30 to-gray-700/30 backdrop-blur-xl border border-white/10">
-              <h4 className="text-lg font-semibold text-cosmic-400 mb-3">{t('reader.bookings.clientNotes')}</h4>
+              <h4 className="text-lg font-semibold text-cosmic-400 mb-3">{currentLanguage === 'ar' ? 'ملاحظات العميل' : 'Client Notes'}</h4>
               <p className="text-gray-300 italic">&ldquo;{booking.notes}&rdquo;</p>
             </div>
           )}
 
           {/* Payment Information */}
           <div className="p-4 rounded-2xl bg-gradient-to-br from-gray-800/30 to-gray-700/30 backdrop-blur-xl border border-white/10">
-            <h4 className="text-lg font-semibold text-cosmic-400 mb-3">{t('reader.bookings.paymentInfo')}</h4>
+            <h4 className="text-lg font-semibold text-cosmic-400 mb-3">{currentLanguage === 'ar' ? 'معلومات الدفع' : 'Payment Info'}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-400">{t('reader.bookings.paymentStatus')}</p>
-                <p className="text-white font-medium">{booking.payment_status || t('common.pending')}</p>
+                <p className="text-sm text-gray-400">{currentLanguage === 'ar' ? 'حالة الدفع' : 'Payment Status'}</p>
+                <p className="text-white font-medium">{booking.payment_status || (currentLanguage === 'ar' ? 'في الانتظار' : 'Pending')}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-400">{t('reader.bookings.bookingStatus')}</p>
-                <p className="text-white font-medium">{t(`reader.bookings.status.${booking.status}`)}</p>
+                <p className="text-sm text-gray-400">{currentLanguage === 'ar' ? 'حالة الحجز' : 'Booking Status'}</p>
+                <p className="text-white font-medium">
+                  {currentLanguage === 'ar' ? 
+                    (booking.status === 'pending' ? 'في الانتظار' : 
+                     booking.status === 'confirmed' ? 'مؤكد' : 
+                     booking.status === 'in_progress' ? 'جاري' : 
+                     booking.status === 'completed' ? 'مكتمل' : 
+                     'ملغي') : 
+                    (booking.status === 'pending' ? 'Pending' : 
+                     booking.status === 'confirmed' ? 'Confirmed' : 
+                     booking.status === 'in_progress' ? 'In Progress' : 
+                     booking.status === 'completed' ? 'Completed' : 
+                     'Cancelled')
+                  }
+                </p>
               </div>
             </div>
           </div>
@@ -1517,7 +1603,7 @@ const BookingDetailsModal = ({ booking, onClose }) => {
             onClick={onClose}
             className="bg-gradient-to-r from-cosmic-600 to-purple-600 hover:from-cosmic-700 hover:to-purple-700"
           >
-            {t('common.close')}
+            {currentLanguage === 'ar' ? 'إغلاق' : 'Close'}
           </Button>
         </div>
       </motion.div>
@@ -1528,7 +1614,7 @@ const BookingDetailsModal = ({ booking, onClose }) => {
 // Chat Tab Component
 const ChatTab = () => {
   const { user } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { currentLanguage, direction } = useLanguage();
   const [activeChats, setActiveChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1609,11 +1695,11 @@ const ChatTab = () => {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent">
-          {t('reader.chat.title')}
+          {currentLanguage === 'ar' ? 'المحادثات' : 'Chat'}
         </h2>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-          <span className="text-sm text-green-400">{t('reader.chat.liveChats', { count: activeChats.length })}</span>
+          <span className="text-sm text-green-400">{currentLanguage === 'ar' ? `${activeChats.length} محادثة مباشرة` : `${activeChats.length} Live Chats`}</span>
         </div>
       </div>
 
@@ -1627,10 +1713,10 @@ const ChatTab = () => {
             💬
                     </div>
           <h3 className="text-xl font-semibold text-gray-300 mb-2">
-            {t('reader.chat.noActiveChats')}
+            {currentLanguage === 'ar' ? 'لا توجد محادثات نشطة' : 'No Active Chats'}
           </h3>
           <p className="text-gray-500">
-            {t('reader.chat.chatsWillAppear')}
+            {currentLanguage === 'ar' ? 'ستظهر المحادثات هنا عند بدء الجلسات' : 'Chats will appear here when sessions start'}
           </p>
         </motion.div>
       ) : (
@@ -1638,7 +1724,7 @@ const ChatTab = () => {
           {/* Chat List */}
           <div className="lg:col-span-1 space-y-4 overflow-y-auto">
             <h3 className="text-lg font-semibold text-gold-300 mb-4">
-              {t('reader.chat.activeChats')}
+              {currentLanguage === 'ar' ? 'المحادثات النشطة' : 'Active Chats'}
             </h3>
             {activeChats.map((chat, index) => (
               <motion.div
@@ -1685,10 +1771,10 @@ const ChatTab = () => {
                 <div className="text-center">
                   <MessageCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-300 mb-2">
-                    {t('reader.chat.selectChat')}
+                    {currentLanguage === 'ar' ? 'اختر محادثة' : 'Select a Chat'}
                   </h3>
                   <p className="text-gray-500">
-                    {t('reader.chat.selectChatDescription')}
+                    {currentLanguage === 'ar' ? 'اختر محادثة من القائمة لبدء التفاعل' : 'Select a chat from the list to start interacting'}
                   </p>
                 </div>
               </div>
@@ -1703,7 +1789,7 @@ const ChatTab = () => {
 // Chat Interface Component
 const ChatInterface = ({ chat, onUpdate }) => {
   const { user } = useAuth();
-  const { t, i18n } = useTranslation();
+  const { currentLanguage, direction } = useLanguage();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -1818,7 +1904,7 @@ const ChatInterface = ({ chat, onUpdate }) => {
             {isSessionActive() && (
               <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                {t('reader.chat.sessionActive')}
+                {currentLanguage === 'ar' ? 'جلسة نشطة' : 'Session Active'}
               </div>
             )}
             <button className="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors">
@@ -1831,16 +1917,16 @@ const ChatInterface = ({ chat, onUpdate }) => {
         </div>
               </div>
 
-              {/* Messages */}
+      {/* Messages */}
       <div className="flex-1 p-6 overflow-y-auto space-y-4">
         {messages.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
-            {t('reader.chat.noMessages')}
+            {currentLanguage === 'ar' ? 'لا توجد رسائل' : 'No messages yet'}
           </div>
         ) : (
-          messages.map((message, index) => (
-                  <div
-                    key={message.id}
+          messages.map((message) => (
+            <div
+              key={message.id}
               className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'}`}
             >
               <div
@@ -1849,20 +1935,20 @@ const ChatInterface = ({ chat, onUpdate }) => {
                     ? 'bg-gradient-to-r from-cosmic-600 to-purple-600 text-white'
                     : 'bg-white/10 text-white border border-white/20'
                 }`}
-                dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}
+                dir={direction}
               >
-                      <p className="text-sm">{message.content}</p>
+                <p className="text-sm">{message.content}</p>
                 <p className="text-xs opacity-70 mt-1">
-                        {new Date(message.created_at).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
+                  {new Date(message.created_at).toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
           ))
         )}
         <div ref={messagesEndRef} />
-              </div>
+      </div>
 
-              {/* Message Input */}
+      {/* Message Input */}
       <div className="p-6 border-t border-white/10">
         {isSessionActive() ? (
           <div className="flex gap-3">
@@ -1870,10 +1956,10 @@ const ChatInterface = ({ chat, onUpdate }) => {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={t('reader.chat.typeMessage')}
+              placeholder={currentLanguage === 'ar' ? 'اكتب رسالة...' : 'Type a message...'}
               className="flex-1 px-4 py-3 bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-gold-400/50 focus:border-gold-400"
               rows={2}
-              dir={i18n.language === 'ar' ? 'rtl' : 'ltr'}
+              dir={direction}
             />
                     <button
                       onClick={sendMessage}
@@ -1883,17 +1969,17 @@ const ChatInterface = ({ chat, onUpdate }) => {
               {sending ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                t('reader.chat.send')
+                currentLanguage === 'ar' ? 'إرسال' : 'Send'
               )}
                     </button>
                   </div>
         ) : (
           <div className="text-center py-4">
             <p className="text-gray-400 text-sm mb-2">
-              {t('reader.chat.sessionNotActive')}
+              {currentLanguage === 'ar' ? 'الجلسة غير نشطة' : 'Session not active'}
             </p>
             <p className="text-xs text-gray-500">
-              {t('reader.chat.sessionTime')}: {new Date(chat.scheduled_at).toLocaleString()}
+              {currentLanguage === 'ar' ? 'وقت الجلسة' : 'Session time'}: {new Date(chat.scheduled_at).toLocaleString()}
             </p>
             </div>
           )}
@@ -1904,12 +1990,12 @@ const ChatInterface = ({ chat, onUpdate }) => {
 
 // Other tab components
 const CalendarTab = () => {
-  const { t } = useTranslation();
+  const { currentLanguage } = useLanguage();
   
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent">
-        {t('reader.calendar.title')}
+        {currentLanguage === 'ar' ? 'التقويم' : 'Calendar'}
       </h2>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -1920,10 +2006,10 @@ const CalendarTab = () => {
           📅
         </div>
         <h3 className="text-xl font-semibold text-gray-300 mb-2">
-          Calendar View Coming Soon
+          {currentLanguage === 'ar' ? 'عرض التقويم قريباً' : 'Calendar View Coming Soon'}
         </h3>
         <p className="text-gray-500">
-          Advanced calendar integration for booking management
+          {currentLanguage === 'ar' ? 'تكامل تقويم متقدم لإدارة الحجوزات' : 'Advanced calendar integration for booking management'}
         </p>
       </motion.div>
     </div>
@@ -1931,12 +2017,12 @@ const CalendarTab = () => {
 };
 
 const CallsTab = () => {
-  const { t } = useTranslation();
+  const { currentLanguage } = useLanguage();
   
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent">
-        {t('reader.calls.title')}
+        {currentLanguage === 'ar' ? 'المكالمات' : 'Calls'}
       </h2>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -1947,10 +2033,10 @@ const CallsTab = () => {
           📞
         </div>
         <h3 className="text-xl font-semibold text-gray-300 mb-2">
-          Voice & Video Calls
+          {currentLanguage === 'ar' ? 'المكالمات الصوتية والمرئية' : 'Voice & Video Calls'}
         </h3>
         <p className="text-gray-500">
-          WebRTC integration for seamless audio/video sessions
+          {currentLanguage === 'ar' ? 'تكامل WebRTC للجلسات الصوتية والمرئية السلسة' : 'WebRTC integration for seamless audio/video sessions'}
         </p>
       </motion.div>
     </div>
@@ -1958,12 +2044,12 @@ const CallsTab = () => {
 };
 
 const NotificationsTab = () => {
-  const { t } = useTranslation();
+  const { currentLanguage } = useLanguage();
   
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent">
-        {t('reader.notifications.title')}
+        {currentLanguage === 'ar' ? 'الإشعارات' : 'Notifications'}
       </h2>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -1974,10 +2060,10 @@ const NotificationsTab = () => {
           🔔
         </div>
         <h3 className="text-xl font-semibold text-gray-300 mb-2">
-          Admin Notifications
+          {currentLanguage === 'ar' ? 'إشعارات الإدارة' : 'Admin Notifications'}
         </h3>
         <p className="text-gray-500">
-          Real-time notifications from admins and system updates
+          {currentLanguage === 'ar' ? 'إشعارات فورية من الإدارة وتحديثات النظام' : 'Real-time notifications from admins and system updates'}
         </p>
       </motion.div>
     </div>
@@ -1985,12 +2071,12 @@ const NotificationsTab = () => {
 };
 
 const FeedbackTab = () => {
-  const { t } = useTranslation();
+  const { currentLanguage } = useLanguage();
   
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent">
-        {t('reader.feedback.title')}
+        {currentLanguage === 'ar' ? 'التقييمات' : 'Feedback'}
       </h2>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -2001,10 +2087,10 @@ const FeedbackTab = () => {
           ⭐
         </div>
         <h3 className="text-xl font-semibold text-gray-300 mb-2">
-          Client Feedback & Reviews
+          {currentLanguage === 'ar' ? 'تقييمات ومراجعات العملاء' : 'Client Feedback & Reviews'}
         </h3>
         <p className="text-gray-500">
-          View ratings and testimonials from your clients
+          {currentLanguage === 'ar' ? 'عرض التقييمات والشهادات من عملائك' : 'View ratings and testimonials from your clients'}
         </p>
       </motion.div>
     </div>

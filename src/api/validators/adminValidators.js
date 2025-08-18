@@ -3,7 +3,11 @@
 // =============================================================================
 // Input validation schemas for admin operations
 
-const Joi = require('joi');
+// CREDENTIAL SOURCE POLICY COMPLIANCE:
+// - Supabase credentials: ONLY from .env (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)
+// - All other API keys: ONLY from Super Admin Dashboard/Database, NEVER from .env
+
+import Joi from 'joi';
 
 // =============================================================================
 // VALIDATION SCHEMAS
@@ -62,9 +66,8 @@ const serviceUpdateSchema = Joi.object({
 
 // Complaint resolution validation schema
 const complaintResolutionSchema = Joi.object({
-  resolution_notes: Joi.string().min(10).max(1000).required(),
-  resolution_action: Joi.string()
-    .valid('resolved', 'escalated', 'dismissed', 'refunded', 'compensated')
+  resolution: Joi.string().min(10).max(1000).required(),
+  resolution_notes: Joi.string().max(1000).allow('')
 }).required();
 
 // =============================================================================
@@ -77,7 +80,7 @@ const complaintResolutionSchema = Joi.object({
  * @param {Object} res - Express response object
  * @param {Function} next - Express next function
  */
-const validateUserUpdate = (req, res, next) => {
+export const validateUserUpdate = (req, res, next) => {
   const { error, value } = userUpdateSchema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true
@@ -113,7 +116,7 @@ const validateUserUpdate = (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next function
  */
-const validateRoleChange = (req, res, next) => {
+export const validateRoleChange = (req, res, next) => {
   const { error, value } = roleChangeSchema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true
@@ -145,12 +148,6 @@ const validateRoleChange = (req, res, next) => {
     });
   }
 
-  // Prevent admin from demoting super_admin
-  if (currentUserRole === 'admin') {
-    // Get target user's current role (would need database query)
-    // For now, assume this check happens in the controller
-  }
-
   req.validatedData = value;
   req.validationInfo = {
     validated_at: new Date().toISOString(),
@@ -167,7 +164,7 @@ const validateRoleChange = (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next function
  */
-const validateBookingUpdate = (req, res, next) => {
+export const validateBookingUpdate = (req, res, next) => {
   const { error, value } = bookingUpdateSchema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true
@@ -199,15 +196,15 @@ const validateBookingUpdate = (req, res, next) => {
   if (req.method === 'DELETE' && !value.reason) {
     return res.status(400).json({
       success: false,
-      error: 'Reason is required for booking cancellation',
-      code: 'CANCELLATION_REASON_REQUIRED'
+      error: 'Cancellation reason is required',
+      code: 'MISSING_CANCELLATION_REASON'
     });
   }
 
   req.validatedData = value;
   req.validationInfo = {
     validated_at: new Date().toISOString(),
-    operation_type: req.method === 'DELETE' ? 'cancellation' : 'update',
+    update_type: value.status || 'general_update',
     validator: 'bookingUpdateSchema'
   };
 
@@ -220,7 +217,7 @@ const validateBookingUpdate = (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next function
  */
-const validatePaymentAction = (req, res, next) => {
+export const validatePaymentAction = (req, res, next) => {
   const { error, value } = paymentActionSchema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true
@@ -239,20 +236,19 @@ const validatePaymentAction = (req, res, next) => {
     });
   }
 
-  // Check if rejection requires reason
-  const isRejectAction = req.path.includes('/reject');
-  if (isRejectAction && !value.reason) {
+  // For rejection operations, reason is required
+  if (req.path.includes('reject') && !value.reason) {
     return res.status(400).json({
       success: false,
-      error: 'Reason is required for payment rejection',
-      code: 'REJECTION_REASON_REQUIRED'
+      error: 'Rejection reason is required',
+      code: 'MISSING_REJECTION_REASON'
     });
   }
 
   req.validatedData = value;
   req.validationInfo = {
     validated_at: new Date().toISOString(),
-    action_type: isRejectAction ? 'rejection' : 'approval',
+    action_type: req.path.includes('approve') ? 'approval' : 'rejection',
     validator: 'paymentActionSchema'
   };
 
@@ -265,7 +261,7 @@ const validatePaymentAction = (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next function
  */
-const validateServiceUpdate = (req, res, next) => {
+export const validateServiceUpdate = (req, res, next) => {
   const { error, value } = serviceUpdateSchema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true
@@ -288,7 +284,7 @@ const validateServiceUpdate = (req, res, next) => {
   if (value.price && value.price < 0.01) {
     return res.status(400).json({
       success: false,
-      error: 'Service price must be at least 0.01',
+      error: 'Service price must be at least $0.01',
       code: 'INVALID_PRICE_RANGE'
     });
   }
@@ -304,7 +300,8 @@ const validateServiceUpdate = (req, res, next) => {
   req.validatedData = value;
   req.validationInfo = {
     validated_at: new Date().toISOString(),
-    updated_fields: Object.keys(value),
+    price_changed: value.hasOwnProperty('price'),
+    status_changed: value.hasOwnProperty('is_active'),
     validator: 'serviceUpdateSchema'
   };
 
@@ -317,7 +314,7 @@ const validateServiceUpdate = (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next function
  */
-const validateComplaintResolution = (req, res, next) => {
+export const validateComplaintResolution = (req, res, next) => {
   const { error, value } = complaintResolutionSchema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true
@@ -339,7 +336,7 @@ const validateComplaintResolution = (req, res, next) => {
   req.validatedData = value;
   req.validationInfo = {
     validated_at: new Date().toISOString(),
-    resolution_type: value.resolution_action || 'general',
+    resolution_length: value.resolution.length,
     validator: 'complaintResolutionSchema'
   };
 
@@ -510,29 +507,17 @@ const validateUUID = (id, fieldName = 'id') => {
   return { valid: true };
 };
 
-module.exports = {
-  // Main validation middleware
+// =============================================================================
+// EXPORTS
+// =============================================================================
+
+const adminValidators = {
   validateUserUpdate,
   validateRoleChange,
   validateBookingUpdate,
   validatePaymentAction,
   validateServiceUpdate,
-  validateComplaintResolution,
+  validateComplaintResolution
+};
 
-  // Utility validators
-  validatePagination,
-  validateDateRange,
-  validateFilters,
-  validateAdminPermissions,
-  validateUUID,
-
-  // Raw schemas for testing
-  schemas: {
-    userUpdateSchema,
-    roleChangeSchema,
-    bookingUpdateSchema,
-    paymentActionSchema,
-    serviceUpdateSchema,
-    complaintResolutionSchema
-  }
-}; 
+export default adminValidators; 

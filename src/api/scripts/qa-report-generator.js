@@ -88,7 +88,7 @@ const testDatabaseStructure = async () => {
   let tablesExist = 0;
   for (const table of requiredTables) {
     try {
-      const { data, error } = await supabase.from(table).select('*').limit(1);
+      const { error } = await supabase.from(table).select('*').limit(1);
       
       if (error) {
         if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
@@ -129,7 +129,7 @@ const testMissingColumns = async () => {
 
   for (const check of columnChecks) {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from(check.table)
         .select(check.column)
         .limit(1);
@@ -383,7 +383,7 @@ const testIntegrations = async () => {
 
 const testSupabaseIntegration = async () => {
   try {
-    const { data, error } = await supabase.from('profiles').select('count').limit(1);
+    const { error } = await supabase.from('profiles').select('count').limit(1);
     if (error) throw error;
     return { success: true, message: 'Database connection successful' };
   } catch (error) {
@@ -423,7 +423,7 @@ const testPerformance = async () => {
   log('\n⚡ Testing Performance Metrics', 'header');
   
   // Simple performance tests
-  const startTime = Date.now();
+  // const startTime = Date.now();
   
   try {
     // Test database query speed

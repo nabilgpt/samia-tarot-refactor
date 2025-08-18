@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { UserAPI } from '../../api/userApi.js';
+import api from '../../services/frontendApi.js';
 
 const WalletManagement = () => {
   const { user, profile } = useAuth();
@@ -22,7 +22,7 @@ const WalletManagement = () => {
     setLoading(true);
     try {
       // This would need to be implemented in the API
-      // const result = await UserAPI.getAllWallets();
+      // const result = await api.getAllWallets();
       // For now, we'll use placeholder data
       setWallets([
         {
@@ -64,7 +64,7 @@ const WalletManagement = () => {
   const loadTransactions = async (walletId) => {
     try {
       // This would need to be implemented in the API
-      // const result = await UserAPI.getWalletTransactions(walletId);
+      // const result = await api.getWalletTransactions(walletId);
       // For now, we'll use placeholder data
       setTransactions([
         {
@@ -101,7 +101,7 @@ const WalletManagement = () => {
     setError(null);
 
     try {
-      const result = await UserAPI.addWalletFunds(
+      const result = await api.addWalletFunds(
         selectedWallet.user_id,
         parseFloat(fundAmount),
         fundDescription || `Admin credit - ${new Date().toLocaleDateString()}`,
@@ -399,7 +399,7 @@ const WalletManagement = () => {
     );
   };
 
-  if (!profile || profile.role !== 'admin') {
+  if (!profile || !['admin', 'super_admin'].includes(profile.role)) {
     return (
       <div className="text-center py-8">
         <p className="text-red-600">Access denied. Admin privileges required.</p>

@@ -9,7 +9,7 @@ import {
   XCircle,
   Loader
 } from 'lucide-react';
-import { TarotAPI } from '../../api/tarotApi.js';
+import api from '../../services/frontendApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import TarotCardPicker from './TarotCardPicker.jsx';
 import ReaderTarotView from './ReaderTarotView.jsx';
@@ -55,7 +55,7 @@ const EmergencyTarotSession = ({
       setError('');
 
       // Create emergency tarot session
-      const sessionResult = await TarotAPI.createEmergencySession({
+      const sessionResult = await api.createEmergencySession({
         booking_id: bookingId,
         call_id: callId,
         user_id: user.id,
@@ -67,7 +67,7 @@ const EmergencyTarotSession = ({
       }
 
       // Get quick 3-card spread for emergency readings
-      const spreadResult = await TarotAPI.getSpread('emergency-3-card');
+      const spreadResult = await api.getSpread('emergency-3-card');
       if (!spreadResult.success) {
         // Fallback to simple 3-card spread
         setSpreadConfig({
@@ -99,7 +99,7 @@ const EmergencyTarotSession = ({
       setSessionState('active');
       
       // Update session with selected cards
-      const updateResult = await TarotAPI.updateEmergencySession(session.id, {
+      const updateResult = await api.updateEmergencySession(session.id, {
         cards_drawn: selectedCards,
         status: 'cards_selected',
         cards_selected_at: new Date().toISOString()

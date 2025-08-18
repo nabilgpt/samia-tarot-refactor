@@ -26,7 +26,7 @@ import {
   X
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { MonitorAPI } from '../../api/monitorApi';
+import api from '../../services/frontendApi.js';
 
 const MonitorLiveSessions = ({ onStatsUpdate }) => {
   const { t } = useTranslation();
@@ -80,112 +80,14 @@ const MonitorLiveSessions = ({ onStatsUpdate }) => {
   const loadActiveSessions = async () => {
     try {
       setLoading(true);
-      const response = await MonitorAPI.getActiveSessions();
+      const response = await api.getActiveSessions();
       
       if (response.success) {
         setSessions(response.data);
       } else {
-        // Mock data for demonstration
-        const mockSessions = [
-          {
-            id: '1',
-            status: 'in_progress',
-            session_type: 'video',
-            started_at: '2024-01-25T15:30:00Z',
-            duration: 15,
-            services: {
-              name: 'Tarot Reading',
-              name_ar: 'قراءة التاروت',
-              type: 'tarot',
-              duration: 30
-            },
-            client: {
-              first_name: 'Ahmed',
-              last_name: 'Al-Rashid',
-              avatar_url: null
-            },
-            reader: {
-              first_name: 'Samia',
-              last_name: 'Al-Mystique',
-              avatar_url: null
-            },
-            session_data: {
-              quality: 'good',
-              participants_count: 2,
-              audio_enabled: true,
-              video_enabled: true
-            },
-            flagged_reports: []
-          },
-          {
-            id: '2',
-            status: 'active',
-            session_type: 'audio',
-            started_at: '2024-01-25T15:15:00Z',
-            duration: 30,
-            services: {
-              name: 'Astrology Consultation',
-              name_ar: 'استشارة فلكية',
-              type: 'astrology',
-              duration: 45
-            },
-            client: {
-              first_name: 'Fatima',
-              last_name: 'Al-Zahra',
-              avatar_url: null
-            },
-            reader: {
-              first_name: 'Omar',
-              last_name: 'Al-Kindi',
-              avatar_url: null
-            },
-            session_data: {
-              quality: 'excellent',
-              participants_count: 2,
-              audio_enabled: true,
-              video_enabled: false
-            },
-            flagged_reports: []
-          },
-          {
-            id: '3',
-            status: 'in_progress',
-            session_type: 'video',
-            started_at: '2024-01-25T15:00:00Z',
-            duration: 45,
-            services: {
-              name: 'Palm Reading',
-              name_ar: 'قراءة الكف',
-              type: 'palmistry',
-              duration: 30
-            },
-            client: {
-              first_name: 'Khalid',
-              last_name: 'Al-Mansouri',
-              avatar_url: null
-            },
-            reader: {
-              first_name: 'Layla',
-              last_name: 'Al-Fares',
-              avatar_url: null
-            },
-            session_data: {
-              quality: 'fair',
-              participants_count: 2,
-              audio_enabled: true,
-              video_enabled: true
-            },
-            flagged_reports: [
-              {
-                id: 'flag1',
-                reason: 'Inappropriate content detected',
-                severity: 'high',
-                created_at: '2024-01-25T15:30:00Z'
-              }
-            ]
-          }
-        ];
-        setSessions(mockSessions);
+        console.error('Failed to load active sessions:', response.error);
+        setSessions([]);
+        showError(response.error || (language === 'ar' ? 'فشل في تحميل الجلسات النشطة' : 'Failed to load active sessions'));
       }
     } catch (error) {
       console.error('Error loading active sessions:', error);
@@ -239,7 +141,7 @@ const MonitorLiveSessions = ({ onStatsUpdate }) => {
   const handleJoinSession = async (sessionId) => {
     try {
       setMonitoringSession(sessionId);
-      const response = await MonitorAPI.joinSessionAsMonitor(sessionId, 'current_monitor_id');
+      const response = await api.joinSessionAsMonitor(sessionId, 'current_monitor_id');
       
       if (response.success) {
         showSuccess(language === 'ar' ? 'انضممت للجلسة كمراقب' : 'Joined session as monitor');
@@ -259,7 +161,7 @@ const MonitorLiveSessions = ({ onStatsUpdate }) => {
     if (!selectedSession || !flagReason) return;
 
     try {
-      const response = await MonitorAPI.flagSession(selectedSession.id, flagReason, flagSeverity);
+      const response = await api.flagSession(selectedSession.id, flagReason, flagSeverity);
       
       if (response.success) {
         showSuccess(language === 'ar' ? 'تم الإبلاغ عن الجلسة' : 'Session flagged successfully');

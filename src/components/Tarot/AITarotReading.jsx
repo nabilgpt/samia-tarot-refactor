@@ -4,9 +4,12 @@
 
 import React, { useState } from 'react';
 import { Sparkles, Clock, Star, MessageCircle } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 import openaiService from '../../services/openaiService';
 
 const AITarotReading = ({ onReadingComplete }) => {
+  const { currentLanguage, getDirection } = useLanguage();
+  const direction = getDirection();
   const [question, setQuestion] = useState('');
   const [readingType, setReadingType] = useState('quick_guidance');
   const [selectedCards, setSelectedCards] = useState([]);
@@ -47,7 +50,7 @@ const AITarotReading = ({ onReadingComplete }) => {
 
   const generateReading = async () => {
     if (!question.trim()) {
-      setError('Please enter a question for your reading');
+      setError(currentLanguage === 'ar' ? 'يرجى إدخال سؤال للقراءة' : 'Please enter a question for your reading');
       return;
     }
 
@@ -60,7 +63,7 @@ const AITarotReading = ({ onReadingComplete }) => {
       switch (readingType) {
         case 'card_interpretation':
           if (selectedCards.length === 0) {
-            setError('Please select at least one card for interpretation');
+            setError(currentLanguage === 'ar' ? 'يرجى اختيار بطاقة واحدة على الأقل للتفسير' : 'Please select at least one card for interpretation');
             return;
           }
           result = await openaiService.generateCardInterpretation(
@@ -72,7 +75,7 @@ const AITarotReading = ({ onReadingComplete }) => {
           
         case 'full_reading':
           if (selectedCards.length === 0) {
-            setError('Please select cards for a full reading');
+            setError(currentLanguage === 'ar' ? 'يرجى اختيار البطاقات للقراءة الكاملة' : 'Please select cards for a full reading');
             return;
           }
           result = await openaiService.generateFullReading(
@@ -107,36 +110,42 @@ const AITarotReading = ({ onReadingComplete }) => {
 
   if (reading) {
     return (
-      <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
+      <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto" dir={direction}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900 flex items-center">
             <Sparkles className="h-6 w-6 text-purple-600 mr-2" />
-            Your AI Tarot Reading
+            {currentLanguage === 'ar' ? 'قراءة التاروت بالذكاء الاصطناعي' : 'Your AI Tarot Reading'}
           </h2>
           <button
             onClick={resetReading}
             className="px-4 py-2 text-purple-600 border border-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
           >
-            New Reading
+            {currentLanguage === 'ar' ? 'قراءة جديدة' : 'New Reading'}
           </button>
         </div>
 
         <div className="space-y-6">
           <div className="bg-purple-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-gray-900 mb-2">Your Question:</h3>
+            <h3 className="font-semibold text-gray-900 mb-2">
+              {currentLanguage === 'ar' ? 'سؤالك:' : 'Your Question:'}
+            </h3>
             <p className="text-gray-700">{question}</p>
           </div>
 
           {selectedCards.length > 0 && (
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-3">Selected Cards:</h3>
+              <h3 className="font-semibold text-gray-900 mb-3">
+                {currentLanguage === 'ar' ? 'البطاقات المختارة:' : 'Selected Cards:'}
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {selectedCards.map((card, index) => (
                   <div key={index} className="bg-white px-3 py-2 rounded-lg border">
                     <span className="font-medium">{card.name}</span>
                     <span className="text-sm text-gray-500 ml-2">({card.position})</span>
                     {card.reversed && (
-                      <span className="text-xs text-red-500 ml-1">(Reversed)</span>
+                      <span className="text-xs text-red-500 ml-1">
+                        ({currentLanguage === 'ar' ? 'مقلوب' : 'Reversed'})
+                      </span>
                     )}
                   </div>
                 ))}
@@ -147,7 +156,7 @@ const AITarotReading = ({ onReadingComplete }) => {
           <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-lg">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
               <Star className="h-5 w-5 text-purple-600 mr-2" />
-              AI Reading Interpretation
+              {currentLanguage === 'ar' ? 'تفسير القراءة بالذكاء الاصطناعي' : 'AI Reading Interpretation'}
             </h3>
             <div className="prose prose-purple max-w-none">
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
@@ -159,11 +168,11 @@ const AITarotReading = ({ onReadingComplete }) => {
           <div className="flex items-center justify-between text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
             <div className="flex items-center">
               <Clock className="h-4 w-4 mr-1" />
-              Generated: {new Date(reading.timestamp).toLocaleString()}
+              {currentLanguage === 'ar' ? 'تم الإنشاء:' : 'Generated:'} {new Date(reading.timestamp).toLocaleString()}
             </div>
             <div className="flex items-center">
               <MessageCircle className="h-4 w-4 mr-1" />
-              Tokens used: {reading.tokens_used}
+              {currentLanguage === 'ar' ? 'الرموز المستخدمة:' : 'Tokens used:'} {reading.tokens_used}
             </div>
           </div>
         </div>
@@ -172,60 +181,72 @@ const AITarotReading = ({ onReadingComplete }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
+    <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto" dir={direction}>
       <div className="text-center mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center justify-center">
           <Sparkles className="h-6 w-6 text-purple-600 mr-2" />
-          AI-Powered Tarot Reading
+          {currentLanguage === 'ar' ? 'قراءة التاروت بالذكاء الاصطناعي' : 'AI-Powered Tarot Reading'}
         </h2>
-        <p className="text-gray-600">Get insights powered by artificial intelligence</p>
+        <p className="text-gray-600">
+          {currentLanguage === 'ar' ? 'احصل على رؤى مدعومة بالذكاء الاصطناعي' : 'Get insights powered by artificial intelligence'}
+        </p>
       </div>
 
       <div className="space-y-6">
         {/* Question Input */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            What would you like guidance on?
+          <label className={`block text-sm font-medium text-gray-700 mb-2 ${currentLanguage === 'ar' ? 'text-right' : 'text-left'}`}>
+            {currentLanguage === 'ar' ? 'ما الذي تريد إرشاداً بشأنه؟' : 'What would you like guidance on?'}
           </label>
           <textarea
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Enter your question or area of focus..."
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder={currentLanguage === 'ar' ? 'أدخل سؤالك أو مجال التركيز...' : 'Enter your question or area of focus...'}
+            className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${currentLanguage === 'ar' ? 'text-right' : 'text-left'}`}
             rows={3}
             maxLength={500}
+            dir={direction}
           />
-          <div className="text-sm text-gray-500 mt-1">
-            {question.length}/500 characters
+          <div className={`text-sm text-gray-500 mt-1 ${currentLanguage === 'ar' ? 'text-right' : 'text-left'}`}>
+            {question.length}/500 {currentLanguage === 'ar' ? 'حرف' : 'characters'}
           </div>
         </div>
 
         {/* Reading Type Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Reading Type
+          <label className={`block text-sm font-medium text-gray-700 mb-2 ${currentLanguage === 'ar' ? 'text-right' : 'text-left'}`}>
+            {currentLanguage === 'ar' ? 'نوع القراءة' : 'Reading Type'}
           </label>
           <select
             value={readingType}
             onChange={(e) => setReadingType(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${currentLanguage === 'ar' ? 'text-right' : 'text-left'}`}
+            dir={direction}
           >
-            <option value="quick_guidance">Quick Guidance</option>
-            <option value="card_interpretation">Card Interpretation</option>
-            <option value="full_reading">Full Reading</option>
+            <option value="quick_guidance">
+              {currentLanguage === 'ar' ? 'إرشاد سريع' : 'Quick Guidance'}
+            </option>
+            <option value="card_interpretation">
+              {currentLanguage === 'ar' ? 'تفسير البطاقة' : 'Card Interpretation'}
+            </option>
+            <option value="full_reading">
+              {currentLanguage === 'ar' ? 'قراءة كاملة' : 'Full Reading'}
+            </option>
           </select>
         </div>
 
         {/* Card Selection (for card_interpretation and full_reading) */}
         {(readingType === 'card_interpretation' || readingType === 'full_reading') && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Cards (up to 3)
+            <label className={`block text-sm font-medium text-gray-700 mb-2 ${currentLanguage === 'ar' ? 'text-right' : 'text-left'}`}>
+              {currentLanguage === 'ar' ? 'اختر البطاقات (حتى 3)' : 'Select Cards (up to 3)'}
             </label>
             
             {selectedCards.length > 0 && (
               <div className="mb-4 p-3 bg-purple-50 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2">Selected Cards:</h4>
+                <h4 className="font-medium text-gray-900 mb-2">
+                  {currentLanguage === 'ar' ? 'البطاقات المختارة:' : 'Selected Cards:'}
+                </h4>
                 <div className="flex flex-wrap gap-2">
                   {selectedCards.map((card, index) => (
                     <div key={index} className="bg-white px-3 py-2 rounded-lg border flex items-center">
@@ -261,15 +282,18 @@ const AITarotReading = ({ onReadingComplete }) => {
         {/* Spread Type (for full_reading) */}
         {readingType === 'full_reading' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Spread Type (Optional)
+            <label className={`block text-sm font-medium text-gray-700 mb-2 ${currentLanguage === 'ar' ? 'text-right' : 'text-left'}`}>
+              {currentLanguage === 'ar' ? 'نوع الانتشار (اختياري)' : 'Spread Type (Optional)'}
             </label>
             <select
               value={spreadType}
               onChange={(e) => setSpreadType(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${currentLanguage === 'ar' ? 'text-right' : 'text-left'}`}
+              dir={direction}
             >
-              <option value="">Custom Spread</option>
+              <option value="">
+                {currentLanguage === 'ar' ? 'انتشار مخصص' : 'Custom Spread'}
+              </option>
               {spreadTypes.map((spread) => (
                 <option key={spread} value={spread}>{spread}</option>
               ))}
@@ -287,7 +311,9 @@ const AITarotReading = ({ onReadingComplete }) => {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <h3 className="text-sm font-medium text-red-800">
+                  {currentLanguage === 'ar' ? 'خطأ' : 'Error'}
+                </h3>
                 <p className="text-sm text-red-700 mt-1">{error}</p>
               </div>
             </div>
@@ -303,12 +329,12 @@ const AITarotReading = ({ onReadingComplete }) => {
           {isLoading ? (
             <>
               <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-              Generating Reading...
+              {currentLanguage === 'ar' ? 'جاري إنشاء القراءة...' : 'Generating Reading...'}
             </>
           ) : (
             <>
               <Sparkles className="h-5 w-5 mr-2" />
-              Generate AI Reading
+              {currentLanguage === 'ar' ? 'إنشاء قراءة بالذكاء الاصطناعي' : 'Generate AI Reading'}
             </>
           )}
         </button>

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase.js';
 
 export class SessionLogger {
   static logBuffer = new Map();

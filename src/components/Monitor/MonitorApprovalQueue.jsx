@@ -27,7 +27,7 @@ import {
   Plus
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { ApprovalAPI } from '../../api/approvalApi';
+import api from '../../services/frontendApi.js';
 
 const MonitorApprovalQueue = () => {
   const { t } = useTranslation();
@@ -87,7 +87,7 @@ const MonitorApprovalQueue = () => {
   const loadApprovalData = async () => {
     try {
       setLoading(true);
-      const response = await ApprovalAPI.getAllRequests(1, 100, { status: statusFilter });
+      const response = await api.getAllRequests(1, 100, { status: statusFilter });
       
       if (response.success) {
         setRequests(response.data);
@@ -104,7 +104,7 @@ const MonitorApprovalQueue = () => {
 
   const loadStats = async () => {
     try {
-      const response = await ApprovalAPI.getApprovalStats();
+      const response = await api.getApprovalStats();
       if (response.success) {
         setStats(response.data);
       }
@@ -139,7 +139,7 @@ const MonitorApprovalQueue = () => {
 
   const handleApproval = async (requestId, action, reason = '') => {
     try {
-      const response = await ApprovalAPI.reviewRequest(requestId, action, reason);
+      const response = await api.reviewRequest(requestId, action, reason);
       
       if (response.success) {
         await loadApprovalData();

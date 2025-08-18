@@ -1,6 +1,6 @@
-import express from 'express';
-import { supabase } from '../lib/supabase.js';
-import { auth } from '../middleware/auth.js';
+const express = require('express');
+const { supabase } = require('../lib/supabase.js');
+const { authenticateToken, requireRole } = require('../middleware/auth.js');
 
 const router = express.Router();
 
@@ -310,7 +310,7 @@ router.get('/spreads/:id', async (req, res) => {
  * @route POST /api/moroccan-tarot/spreads
  * @desc Create custom Moroccan spread (requires authentication)
  */
-router.post('/spreads', auth, async (req, res) => {
+router.post('/spreads', authenticateToken, async (req, res) => {
   try {
     const {
       name,
@@ -406,7 +406,7 @@ router.post('/spreads', auth, async (req, res) => {
  * @route PUT /api/moroccan-tarot/spreads/:id
  * @desc Update custom spread (requires authentication and ownership)
  */
-router.put('/spreads/:id', auth, async (req, res) => {
+router.put('/spreads/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -499,7 +499,7 @@ router.put('/spreads/:id', auth, async (req, res) => {
  * @route DELETE /api/moroccan-tarot/spreads/:id
  * @desc Delete custom spread (requires authentication and ownership)
  */
-router.delete('/spreads/:id', auth, async (req, res) => {
+router.delete('/spreads/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -553,7 +553,7 @@ router.delete('/spreads/:id', auth, async (req, res) => {
  * @route POST /api/moroccan-tarot/reading
  * @desc Perform a reading with Moroccan cards and selected spread
  */
-router.post('/reading', auth, async (req, res) => {
+router.post('/reading', authenticateToken, async (req, res) => {
   try {
     const {
       spread_id,
@@ -744,4 +744,4 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-export default router; 
+module.exports = router; 

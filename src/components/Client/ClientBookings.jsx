@@ -23,7 +23,7 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { useUI } from '../../context/UIContext';
-import { ClientAPI } from '../../api/clientApi';
+import api from '../../services/frontendApi.js';
 
 const ClientBookings = () => {
   const { t } = useTranslation();
@@ -75,87 +75,14 @@ const ClientBookings = () => {
   const loadBookings = async () => {
     try {
       setLoading(true);
-      const response = await ClientAPI.getBookings();
+      const response = await api.getBookings();
       
       if (response.success) {
         setBookings(response.data);
       } else {
-        // Mock data for demonstration
-        const mockBookings = [
-          {
-            id: '1',
-            service_id: 'service1',
-            reader_id: 'reader1',
-            scheduled_at: '2024-01-25T15:00:00Z',
-            duration: 30,
-            status: 'confirmed',
-            payment_status: 'paid',
-            total_amount: 75.00,
-            services: {
-              name: 'Tarot Reading',
-              name_ar: 'قراءة التاروت',
-              price: 75.00,
-              duration: 30
-            },
-            readers: {
-              profiles: {
-                first_name: 'Samia',
-                last_name: 'Al-Mystique',
-                avatar_url: null
-              }
-            },
-            created_at: '2024-01-20T10:00:00Z'
-          },
-          {
-            id: '2',
-            service_id: 'service2',
-            reader_id: 'reader2',
-            scheduled_at: '2024-01-28T18:00:00Z',
-            duration: 45,
-            status: 'pending',
-            payment_status: 'pending',
-            total_amount: 100.00,
-            services: {
-              name: 'Palm Reading',
-              name_ar: 'قراءة الكف',
-              price: 100.00,
-              duration: 45
-            },
-            readers: {
-              profiles: {
-                first_name: 'Ahmed',
-                last_name: 'Al-Seer',
-                avatar_url: null
-              }
-            },
-            created_at: '2024-01-22T14:30:00Z'
-          },
-          {
-            id: '3',
-            service_id: 'service3',
-            reader_id: 'reader1',
-            scheduled_at: '2024-01-15T16:30:00Z',
-            duration: 30,
-            status: 'completed',
-            payment_status: 'paid',
-            total_amount: 75.00,
-            services: {
-              name: 'Astrology Reading',
-              name_ar: 'قراءة الأبراج',
-              price: 75.00,
-              duration: 30
-            },
-            readers: {
-              profiles: {
-                first_name: 'Samia',
-                last_name: 'Al-Mystique',
-                avatar_url: null
-              }
-            },
-            created_at: '2024-01-10T11:00:00Z'
-          }
-        ];
-        setBookings(mockBookings);
+        console.error('Failed to load bookings:', response.error);
+        setBookings([]);
+        showError(response.error || (language === 'ar' ? 'فشل في تحميل الحجوزات' : 'Failed to load bookings'));
       }
     } catch (error) {
       console.error('Error loading bookings:', error);
@@ -233,7 +160,7 @@ const ClientBookings = () => {
 
     try {
       setLoading(true);
-      const response = await ClientAPI.cancelBooking(selectedBooking.id, cancelReason);
+      const response = await api.cancelBooking(selectedBooking.id, cancelReason);
       
       if (response.success) {
         showSuccess(language === 'ar' ? 'تم إلغاء الحجز بنجاح' : 'Booking cancelled successfully');
@@ -256,7 +183,7 @@ const ClientBookings = () => {
 
     try {
       setLoading(true);
-      const response = await ClientAPI.rescheduleBooking(selectedBooking.id, newDateTime);
+      const response = await api.rescheduleBooking(selectedBooking.id, newDateTime);
       
       if (response.success) {
         showSuccess(language === 'ar' ? 'تم تعديل موعد الحجز بنجاح' : 'Booking rescheduled successfully');

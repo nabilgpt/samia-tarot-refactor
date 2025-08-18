@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase.js';
+import { supabase } from './lib/supabase.js';
 import { format, subDays } from 'date-fns';
 
 export const AnalyticsAPI = {

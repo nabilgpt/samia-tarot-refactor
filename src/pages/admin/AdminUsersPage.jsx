@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search, Filter, Plus, Edit, Trash2, Shield, UserCheck, UserX } from 'lucide-react';
 import AdminLayout from '../../components/Layout/AdminLayout';
+import api from '../../services/frontendApi.js';
 
 const AdminUsersPage = () => {
   const [users, setUsers] = useState([]);
@@ -16,45 +17,37 @@ const AdminUsersPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual API call
-      const response = await fetch('/api/admin/users');
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data);
+      console.log('🔄 AdminUsersPage: Starting to fetch users...');
+      
+      const response = await api.get('/admin/users');
+      console.log('📥 AdminUsersPage: API Response received:', response);
+      
+      if (response.data.success) {
+        // Transform API data to match component expectations
+        const transformedUsers = (response.data.data || []).map(user => ({
+          ...user,
+          // Create display name from available fields
+          name: user.display_name || 
+                `${user.first_name || ''} ${user.last_name || ''}`.trim() || 
+                user.email?.split('@')[0] || 
+                'مستخدم غير محدد',
+          // Transform is_active to status
+          status: user.is_active ? 'active' : 'inactive',
+          // Format dates
+          joinDate: user.created_at ? new Date(user.created_at).toLocaleDateString('ar-SA') : 'غير محدد',
+          lastActive: user.updated_at ? new Date(user.updated_at).toLocaleDateString('ar-SA') : 'غير محدد'
+        }));
+        
+        console.log('✅ AdminUsersPage: Successfully loaded and transformed users:', transformedUsers.length);
+        setUsers(transformedUsers);
       } else {
-        // Mock data for now
-        setUsers([
-          {
-            id: 1,
-            name: 'أحمد محمد',
-            email: 'ahmed@example.com',
-            role: 'client',
-            status: 'active',
-            joinDate: '2024-01-15',
-            lastActive: '2024-01-20'
-          },
-          {
-            id: 2,
-            name: 'فاطمة علي',
-            email: 'fatima@example.com',
-            role: 'reader',
-            status: 'active',
-            joinDate: '2024-01-10',
-            lastActive: '2024-01-19'
-          },
-          {
-            id: 3,
-            name: 'محمد حسن',
-            email: 'mohamed@example.com',
-            role: 'admin',
-            status: 'active',
-            joinDate: '2024-01-05',
-            lastActive: '2024-01-20'
-          }
-        ]);
+        throw new Error(response.data.error || 'Failed to fetch users');
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('❌ AdminUsersPage: Error fetching users:', error);
+      // Show error to user instead of mock data
+      alert(`خطأ في تحميل المستخدمين: ${error.message}`);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -85,8 +78,10 @@ const AdminUsersPage = () => {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.last_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === 'all' || user.role === filterRole;
     return matchesSearch && matchesRole;
   });

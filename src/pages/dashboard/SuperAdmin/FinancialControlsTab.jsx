@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import SuperAdminAPI from '../../../api/superAdminApi.js';
+import api from '../../../services/frontendApi.js';
 import {
   CurrencyDollarIcon,
   WalletIcon,
@@ -37,7 +37,7 @@ const FinancialControlsTab = () => {
   const loadFinancialData = async () => {
     try {
       setLoading(true);
-      const result = await SuperAdminAPI.getFinancialOverview();
+      const result = await api.getFinancialOverview();
       if (result.success) {
         setFinancialData(result.data);
       } else {
@@ -55,7 +55,7 @@ const FinancialControlsTab = () => {
       if (!selectedTransaction || !refundAmount) return;
       
       setLoading(true);
-      const result = await SuperAdminAPI.processRefund(
+      const result = await api.processRefund(
         selectedTransaction.id,
         parseFloat(refundAmount),
         refundReason

@@ -16,11 +16,14 @@ import {
   Eye
 } from 'lucide-react';
 import { useUI } from '../context/UIContext';
+import { useLanguage } from '../context/LanguageContext';
 import Button from '../components/Button';
+import { MonolingualInput, MonolingualTextarea } from '../components/UI/BilingualFormComponents';
 
 const Contact = () => {
   const { t } = useTranslation();
-  const { language, showSuccess, showError } = useUI();
+  const { language } = useLanguage();
+  const { showSuccess, showError } = useUI();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -192,11 +195,7 @@ const Contact = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      showSuccess(
-        language === 'ar' 
-          ? 'تم إرسال رسالتك بنجاح! سنتواصل معك قريباً'
-          : 'Your message has been sent successfully! We will contact you soon'
-      );
+      showSuccess(t('contact.success'));
       
       setFormData({
         name: '',
@@ -206,11 +205,7 @@ const Contact = () => {
         message: ''
       });
     } catch (error) {
-      showError(
-        language === 'ar' 
-          ? 'حدث خطأ في إرسال الرسالة. يرجى المحاولة مرة أخرى'
-          : 'An error occurred while sending the message. Please try again'
-      );
+      showError(t('contact.error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -405,14 +400,11 @@ const Contact = () => {
           >
             <h2 className="text-4xl md:text-6xl font-bold mb-6">
               <span className="bg-gradient-to-r from-gold-400 via-cosmic-400 to-cyan-400 bg-clip-text text-transparent">
-                {language === 'ar' ? 'أرسل رسالة' : 'Send Message'}
+                {t('contact.sendMessage')}
               </span>
             </h2>
             <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-              {language === 'ar' 
-                ? 'املأ النموذج أدناه وسنتواصل معك في أقرب وقت ممكن'
-                : 'Fill out the form below and we will contact you as soon as possible'
-              }
+              {t('contact.formDescription')}
             </p>
           </motion.div>
 
@@ -428,80 +420,58 @@ const Contact = () => {
             
             <form onSubmit={handleSubmit} className="relative z-10 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-gold-300 font-semibold mb-2">
-                    {language === 'ar' ? 'الاسم' : 'Name'}
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/20 transition-all duration-300"
-                    placeholder={language === 'ar' ? 'اسمك الكامل' : 'Your full name'}
-                  />
-                </div>
-                <div>
-                  <label className="block text-gold-300 font-semibold mb-2">
-                    {language === 'ar' ? 'البريد الإلكتروني' : 'Email'}
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/20 transition-all duration-300"
-                    placeholder={language === 'ar' ? 'بريدك الإلكتروني' : 'Your email address'}
-                  />
-                </div>
+                <MonolingualInput
+                  name="name"
+                  labelKey="contact.form.name"
+                  placeholderKey="contact.form.namePlaceholder"
+                  value={formData.name}
+                  onChange={(value) => setFormData(prev => ({ ...prev, name: value }))}
+                  required
+                  className="cosmic-form-field"
+                />
+                <MonolingualInput
+                  name="email"
+                  type="email"
+                  labelKey="contact.form.email"
+                  placeholderKey="contact.form.emailPlaceholder"
+                  value={formData.email}
+                  onChange={(value) => setFormData(prev => ({ ...prev, email: value }))}
+                  required
+                  className="cosmic-form-field"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-gold-300 font-semibold mb-2">
-                    {language === 'ar' ? 'رقم الهاتف' : 'Phone'}
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 rounded-xl bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/20 transition-all duration-300"
-                    placeholder={language === 'ar' ? 'رقم هاتفك' : 'Your phone number'}
-                  />
-                </div>
-                <div>
-                  <label className="block text-gold-300 font-semibold mb-2">
-                    {language === 'ar' ? 'الموضوع' : 'Subject'}
-                  </label>
-                  <input
-                    type="text"
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/20 transition-all duration-300"
-                    placeholder={language === 'ar' ? 'موضوع الرسالة' : 'Message subject'}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-gold-300 font-semibold mb-2">
-                  {language === 'ar' ? 'الرسالة' : 'Message'}
-                </label>
-                <textarea
-                  name="message"
-                  value={formData.message}
-                  onChange={handleInputChange}
+                <MonolingualInput
+                  name="phone"
+                  type="tel"
+                  labelKey="contact.form.phone"
+                  placeholderKey="contact.form.phonePlaceholder"
+                  value={formData.phone}
+                  onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+                  className="cosmic-form-field"
+                />
+                <MonolingualInput
+                  name="subject"
+                  labelKey="contact.form.subject"
+                  placeholderKey="contact.form.subjectPlaceholder"
+                  value={formData.subject}
+                  onChange={(value) => setFormData(prev => ({ ...prev, subject: value }))}
                   required
-                  rows={6}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 focus:border-gold-400 focus:ring-2 focus:ring-gold-400/20 transition-all duration-300 resize-none"
-                  placeholder={language === 'ar' ? 'اكتب رسالتك هنا...' : 'Write your message here...'}
+                  className="cosmic-form-field"
                 />
               </div>
+
+              <MonolingualTextarea
+                name="message"
+                labelKey="contact.form.message"
+                placeholderKey="contact.form.messagePlaceholder"
+                value={formData.message}
+                onChange={(value) => setFormData(prev => ({ ...prev, message: value }))}
+                rows={6}
+                required
+                className="cosmic-form-field"
+              />
 
               <div className="text-center">
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -514,12 +484,12 @@ const Contact = () => {
                     {isSubmitting ? (
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
-                        <span>{language === 'ar' ? 'جاري الإرسال...' : 'Sending...'}</span>
+                        <span>{t('contact.sending')}</span>
                       </div>
                     ) : (
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <Send className="w-6 h-6" />
-                        <span>{language === 'ar' ? 'إرسال الرسالة' : 'Send Message'}</span>
+                        <span>{t('contact.sendButton')}</span>
                       </div>
                     )}
                   </Button>
