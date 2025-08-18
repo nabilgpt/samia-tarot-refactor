@@ -33,7 +33,7 @@ backend.flatTables.canaryPercentage = 10  # Start with 10%
 ### 3. Safety Net (Optional - Instant Rollback)
 ```sql
 -- Apply compatibility views for zero-downtime rollback
-psql -f backend_api_alignment/db/compat_views.sql
+psql -f backend_api_alignment_pkg/db/compat_views.sql
 ```
 
 ## 🧪 Smoke Tests (Pre-Production)

@@ -1,7 +1,7 @@
 # Backend API Alignment Integration Guide
 
 **Status**: ✅ Ready for Production Integration  
-**Package Location**: `./backend_api_alignment/`  
+**Package Location**: `./backend_api_alignment_pkg/`  
 **Theme Preservation**: ✅ No theme/branding changes
 
 ## Quick Integration Steps
@@ -14,12 +14,12 @@ git checkout -b chore/backend-table-alignment
 
 ### 2. Review Changes (Dry Run)
 ```bash
-bash backend_api_alignment/scripts/align_tables.sh --dry-run
+bash backend_api_alignment_pkg/scripts/align_tables.sh --dry-run
 ```
 
 ### 3. Apply Table Name Alignment
 ```bash
-bash backend_api_alignment/scripts/align_tables.sh
+bash backend_api_alignment_pkg/scripts/align_tables.sh
 git diff  # Review all changes
 ```
 
@@ -27,7 +27,7 @@ git diff  # Review all changes
 
 Replace hardcoded table names with:
 ```typescript
-import { TABLES } from './backend_api_alignment/src/db/tables';
+import { TABLES } from './backend_api_alignment_pkg/src/db/tables';
 
 // Instead of: supabase.from('tarot.deck_cards')
 // Use: supabase.from(TABLES.DECK_CARDS)
@@ -35,7 +35,7 @@ import { TABLES } from './backend_api_alignment/src/db/tables';
 
 ### 5. Integrate Repository Classes (Optional)
 
-Copy optimized repositories from `./backend_api_alignment/src/repos/`:
+Copy optimized repositories from `./backend_api_alignment_pkg/src/repos/`:
 - `PaymentsRepository` - Short, focused payment & wallet operations
 - `CallsRepository` - Consent logging & emergency extensions
 - `AvailabilityRepository` - Reader scheduling & emergency opt-in
@@ -50,7 +50,7 @@ Copy optimized repositories from `./backend_api_alignment/src/repos/`:
 ## Package Contents
 
 ```
-backend_api_alignment/
+backend_api_alignment_pkg/
 ├── README.md                    # Integration instructions
 ├── scripts/
 │   └── align_tables.sh         # Automated table name replacement
@@ -99,7 +99,7 @@ All 8 production features (A-H) remain fully functional:
 If issues arise:
 ```sql
 -- Apply compatibility views for instant rollback
-psql -f backend_api_alignment/db/compat_views.sql
+psql -f backend_api_alignment_pkg/db/compat_views.sql
 -- All old schema-based queries will work immediately
 ```
 
@@ -107,10 +107,10 @@ psql -f backend_api_alignment/db/compat_views.sql
 
 ```bash
 # Run alignment tests
-npm test backend_api_alignment/tests/alignment.spec.ts
+npm test backend_api_alignment_pkg/tests/alignment.spec.ts
 
 # Verify table constants
-node -e "console.log(require('./backend_api_alignment/src/db/tables.js').TABLES)"
+node -e "console.log(require('./backend_api_alignment_pkg/src/db/tables.js').TABLES)"
 ```
 
 ---
