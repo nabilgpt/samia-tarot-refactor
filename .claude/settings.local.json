@@ -1,26 +1,27 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pip install:*)",
-      "Bash(python:*)",
-      "Bash(npm install:*)",
-      "Bash(git add:*)",
-      "Bash(git push:*)",
-      "Bash(git config:*)",
-      "Bash(mkdir:*)",
-      "Bash(mv:*)",
-      "Bash(git commit:*)",
-      "Bash(cp:*)",
-      "Bash(chmod:*)",
-      "Bash(rm:*)",
-      "Bash(git rm:*)",
-      "Bash(node:*)",
-      "Bash(export:*)",
-      "Bash(./scripts/setup-test-accounts.sh:*)",
-      "Bash(curl:*)",
-      "Bash(bash:*)"
+      "Bash",
+      "Bash(*)",
+      "Read",
+      "Write", 
+      "Edit",
+      "Glob",
+      "Grep",
+      "MultiEdit",
+      "TodoWrite",
+      "Task",
+      "ExitPlanMode",
+      "WebFetch",
+      "WebSearch",
+      "BashOutput",
+      "KillBash",
+      "NotebookEdit"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "C:\\Users\\saeee\\OneDrive\\Documents\\project"
+    ]
   }
 }
