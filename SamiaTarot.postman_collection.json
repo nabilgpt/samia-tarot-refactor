@@ -1,0 +1,1770 @@
+{
+  "info": {
+    "name": "SAMIA-TAROT API Collection",
+    "description": "Complete API collection for SAMIA-TAROT platform (M1-M11)",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "x_user_id",
+      "value": "00000000-0000-0000-0000-000000000000",
+      "type": "string"
+    },
+    {
+      "key": "job_token",
+      "value": "your-job-token-here",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Other",
+      "item": [
+        {
+          "name": "HEAD /openapi.json",
+          "request": {
+            "method": "HEAD",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/openapi.json",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "openapi.json"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /openapi.json",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/openapi.json",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "openapi.json"
+              ]
+            }
+          }
+        },
+        {
+          "name": "HEAD /docs",
+          "request": {
+            "method": "HEAD",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/docs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "docs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /docs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/docs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "docs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "HEAD /docs/oauth2-redirect",
+          "request": {
+            "method": "HEAD",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/docs/oauth2-redirect",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "docs",
+                "oauth2-redirect"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /docs/oauth2-redirect",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/docs/oauth2-redirect",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "docs",
+                "oauth2-redirect"
+              ]
+            }
+          }
+        },
+        {
+          "name": "HEAD /redoc",
+          "request": {
+            "method": "HEAD",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/redoc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "redoc"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /redoc",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/redoc",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "redoc"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/cron/purge_old",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Job-Token",
+                "value": "{{job_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cron/purge_old",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cron",
+                "purge_old"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/cron/voice/refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-Job-Token",
+                "value": "{{job_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cron/voice/refresh",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cron",
+                "voice",
+                "refresh"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/zodiacs/settings/propose",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/zodiacs/settings/propose",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "zodiacs",
+                "settings",
+                "propose"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/zodiacs/settings/approve/{request_id}",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/zodiacs/settings/approve/{request_id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "zodiacs",
+                "settings",
+                "approve",
+                "{request_id}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/zodiacs/settings/reject/{request_id}",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/zodiacs/settings/reject/{request_id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "zodiacs",
+                "settings",
+                "reject",
+                "{request_id}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth & Verification",
+      "item": [
+        {
+          "name": "POST /api/auth/sync",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/sync",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "sync"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/verify/phone/start",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/verify/phone/start",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "verify",
+                "phone",
+                "start"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{x_user_id}}\",\n  \"phone\": \"+1234567890\",\n  \"channel\": \"sms\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/verify/phone/check",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/verify/phone/check",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "verify",
+                "phone",
+                "check"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/auth/status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "status"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Metadata",
+      "item": [
+        {
+          "name": "GET /api/meta/countries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/meta/countries",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "meta",
+                "countries"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/meta/zodiacs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/meta/zodiacs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "meta",
+                "zodiacs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/profile/requirements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/profile/requirements",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "profile",
+                "requirements"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/profile/complete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/profile/complete",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "profile",
+                "complete"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Internal AI Assist",
+      "item": [
+        {
+          "name": "POST /api/assist/draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/assist/draft",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "assist",
+                "draft"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/assist/search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/assist/search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "assist",
+                "search"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/assist/knowledge/add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/assist/knowledge/add",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "assist",
+                "knowledge",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/assist/drafts/{order_id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/assist/drafts/{order_id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "assist",
+                "drafts",
+                "{order_id}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Operations",
+      "item": [
+        {
+          "name": "GET /api/ops/snapshot",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/ops/snapshot",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ops",
+                "snapshot"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/ops/export",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/ops/export",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ops",
+                "export"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"range\": {\n    \"from\": \"2025-09-01\",\n    \"to\": \"2025-09-07\"\n  },\n  \"entities\": [\n    \"orders\",\n    \"horoscopes\"\n  ],\n  \"pii\": \"masked\"\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/ops/metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/ops/metrics",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ops",
+                "metrics"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/ops/rate_limits",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/ops/rate_limits",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ops",
+                "rate_limits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/ops/health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/ops/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "ops",
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Orders Workflow",
+      "item": [
+        {
+          "name": "POST /api/orders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_code\": \"tarot\",\n  \"question_text\": \"Sample question\",\n  \"is_gold\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/orders/{order_id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/{order_id}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{order_id}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/orders/{order_id}/assign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/{order_id}/assign",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{order_id}",
+                "assign"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_code\": \"tarot\",\n  \"question_text\": \"Sample question\",\n  \"is_gold\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/orders/{order_id}/start",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/{order_id}/start",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{order_id}",
+                "start"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_code\": \"tarot\",\n  \"question_text\": \"Sample question\",\n  \"is_gold\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/orders/{order_id}/result",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/{order_id}/result",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{order_id}",
+                "result"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_code\": \"tarot\",\n  \"question_text\": \"Sample question\",\n  \"is_gold\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/orders/{order_id}/approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/{order_id}/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{order_id}",
+                "approve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_code\": \"tarot\",\n  \"question_text\": \"Sample question\",\n  \"is_gold\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/orders/{order_id}/reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders/{order_id}/reject",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders",
+                "{order_id}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_code\": \"tarot\",\n  \"question_text\": \"Sample question\",\n  \"is_gold\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/orders",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Astro Service",
+      "item": [
+        {
+          "name": "POST /api/astro/order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/astro/order",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "astro",
+                "order"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/astro/draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/astro/draft",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "astro",
+                "draft"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/media/upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/media/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "media",
+                "upload"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Voice Calls",
+      "item": [
+        {
+          "name": "POST /api/calls/schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/calls/schedule",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "calls",
+                "schedule"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/calls/initiate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/calls/initiate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "calls",
+                "initiate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/voice/twiml",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/voice/twiml",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "voice",
+                "twiml"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/voice/events",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/voice/events",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "voice",
+                "events"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/calls/terminate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/calls/terminate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "calls",
+                "terminate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/healing/prep/mark",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/healing/prep/mark",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "healing",
+                "prep",
+                "mark"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Moderation",
+      "item": [
+        {
+          "name": "POST /api/mod/block",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/mod/block",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "mod",
+                "block"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/mod/unblock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/mod/unblock",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "mod",
+                "unblock"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Horoscopes",
+      "item": [
+        {
+          "name": "POST /api/horoscopes/ingest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/horoscopes/ingest",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "horoscopes",
+                "ingest"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/horoscopes/pending",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/horoscopes/pending",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "horoscopes",
+                "pending"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/horoscopes/{horoscope_id}/approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/horoscopes/{horoscope_id}/approve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "horoscopes",
+                "{horoscope_id}",
+                "approve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "POST /api/horoscopes/{horoscope_id}/reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/horoscopes/{horoscope_id}/reject",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "horoscopes",
+                "{horoscope_id}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/horoscopes/daily",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/horoscopes/daily",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "horoscopes",
+                "daily"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/horoscopes/regenerate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/horoscopes/regenerate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "horoscopes",
+                "regenerate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \n}"
+            }
+          }
+        },
+        {
+          "name": "GET /api/horoscopes/archive",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-User-ID",
+                "value": "{{x_user_id}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/horoscopes/archive",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "horoscopes",
+                "archive"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

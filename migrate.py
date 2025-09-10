@@ -17,6 +17,11 @@ def load_migration_file(filename):
 
 MIGRATIONS = [
     ("001_core.sql", load_migration_file("001_core.sql")),
+    ("002_ops.sql", load_migration_file("002_ops.sql")),
+    ("003_astro.sql", load_migration_file("003_astro.sql")),
+    ("004_calls.sql", load_migration_file("004_calls.sql")),
+    ("005_security.sql", load_migration_file("005_security.sql")),
+    ("006_ai.sql", load_migration_file("006_ai.sql")),
 ]
 
 def exec_sql(sql: str):

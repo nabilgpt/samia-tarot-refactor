@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Date>2025-09-09T00:00:00.0000000</Date>
+    <Author>SAMIA-TAROT</Author>
+    <Description>Monthly voice model refresh - clear cache and reload voice synthesis models</Description>
+    <URI>\SAMIA-TAROT\Voice Refresh</URI>
+  </RegistrationInfo>
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>2025-10-01T01:00:00</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByMonth>
+        <DaysOfMonth>
+          <Day>1</Day>
+        </DaysOfMonth>
+        <Months>
+          <January />
+          <February />
+          <March />
+          <April />
+          <May />
+          <June />
+          <July />
+          <August />
+          <September />
+          <October />
+          <November />
+          <December />
+        </Months>
+      </ScheduleByMonth>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>S-1-5-18</UserId>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>true</RunOnlyIfNetworkAvailable>
+    <IdleSettings>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <DisallowStartOnRemoteAppSession>false</DisallowStartOnRemoteAppSession>
+    <UseUnifiedSchedulingEngine>true</UseUnifiedSchedulingEngine>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT15M</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>curl</Command>
+      <Arguments>-X POST https://<API_BASE_URL>/api/cron/voice/refresh -H "X-User-ID: <SUPERADMIN_USER_UUID>" -H "X-Job-Token: $env:JOB_TOKEN"</Arguments>
+      <WorkingDirectory>C:\</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+
+<!-- 
+SETUP INSTRUCTIONS:
+1. Replace <API_BASE_URL> with your API domain (e.g., api.samia-tarot.com)
+2. Replace <SUPERADMIN_USER_UUID> with an actual superadmin user UUID  
+3. Set JOB_TOKEN environment variable (same token as daily purge)
+4. Import via: schtasks /Create /XML cron_voice_monthly.xml /TN "SAMIA-TAROT\Voice Refresh"
+5. Verify: schtasks /Query /TN "SAMIA-TAROT\Voice Refresh"
+
+NOTES:
+- Runs on 1st of every month at 01:00 UTC
+- Network connection required  
+- 15 minute timeout (voice refresh may take longer)
+- SuperAdmin access required
+- Will not start if another instance is running
+-->
