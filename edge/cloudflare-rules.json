@@ -1,0 +1,259 @@
+{
+  "name": "SAMIA-TAROT Edge Security Rules",
+  "description": "Cloudflare WAF and security rules for SAMIA-TAROT API protection",
+  "rules": [
+    {
+      "id": "force_https",
+      "action": "redirect",
+      "priority": 1,
+      "status": "active",
+      "description": "Force HTTPS redirect (except ACME challenges)",
+      "expression": "(http.request.uri.scheme == \"http\") and not (http.request.uri.path matches \"^/.well-known/acme-challenge/\")",
+      "action_parameters": {
+        "from_value": {
+          "status_code": 301,
+          "target_url": {
+            "value": "https://<API_DOMAIN>${uri.path}${uri.query_string}"
+          },
+          "preserve_query_string": true
+        }
+      }
+    },
+    {
+      "id": "cors_enforcement",
+      "action": "block",
+      "priority": 2,
+      "status": "active",
+      "description": "Block requests with disallowed origins",
+      "expression": "(http.request.method == \"POST\" or http.request.method == \"GET\") and http.request.headers[\"origin\"] exists and not (http.request.headers[\"origin\"] in {\"https://<PRIMARY_WEB_ORIGIN>\" \"https://<ADMIN_ORIGIN>\"})"
+    },
+    {
+      "id": "rate_limit_assist",
+      "action": "challenge",
+      "priority": 3,
+      "status": "active",
+      "description": "Rate limit AI assist endpoints",
+      "expression": "http.request.uri.path matches \"^/api/assist/\"",
+      "action_parameters": {
+        "ratelimit": {
+          "characteristics": ["ip.src"],
+          "period": 60,
+          "requests_per_period": 60,
+          "mitigation_timeout": 300
+        }
+      }
+    },
+    {
+      "id": "rate_limit_orders",
+      "action": "challenge", 
+      "priority": 4,
+      "status": "active",
+      "description": "Rate limit order creation endpoints",
+      "expression": "http.request.uri.path matches \"^/api/orders\" and http.request.method == \"POST\"",
+      "action_parameters": {
+        "ratelimit": {
+          "characteristics": ["ip.src"],
+          "period": 60,
+          "requests_per_period": 20,
+          "mitigation_timeout": 600
+        }
+      }
+    },
+    {
+      "id": "rate_limit_verify",
+      "action": "challenge",
+      "priority": 5, 
+      "status": "active",
+      "description": "Rate limit verification endpoints",
+      "expression": "http.request.uri.path matches \"^/api/verify/\"",
+      "action_parameters": {
+        "ratelimit": {
+          "characteristics": ["ip.src"],
+          "period": 60,
+          "requests_per_period": 10,
+          "mitigation_timeout": 900
+        }
+      }
+    },
+    {
+      "id": "lockdown_ops_endpoints",
+      "action": "block",
+      "priority": 6,
+      "status": "active",
+      "description": "Protect ops endpoints - require job token and optional IP allowlist",
+      "expression": "http.request.uri.path matches \"^/api/ops/\" and not (http.request.headers[\"x-job-token\"] == \"<JOB_TOKEN>\")"
+    },
+    {
+      "id": "lockdown_cron_endpoints", 
+      "action": "block",
+      "priority": 7,
+      "status": "active",
+      "description": "Protect cron endpoints - require job token and optional IP allowlist",
+      "expression": "http.request.uri.path matches \"^/api/cron/\" and not (http.request.headers[\"x-job-token\"] == \"<JOB_TOKEN>\")"
+    },
+    {
+      "id": "ops_ip_allowlist",
+      "action": "block", 
+      "priority": 8,
+      "status": "disabled",
+      "description": "Optional: IP allowlist for ops/cron endpoints (enable and configure IPs in production)",
+      "expression": "(http.request.uri.path matches \"^/api/ops/\" or http.request.uri.path matches \"^/api/cron/\") and not (ip.src in {1.2.3.4 5.6.7.8})",
+      "notes": "Replace IP addresses with actual admin/monitoring server IPs and enable rule"
+    },
+    {
+      "id": "bot_fight_mode",
+      "action": "managed_challenge",
+      "priority": 9,
+      "status": "active", 
+      "description": "Enhanced bot protection for suspicious requests",
+      "expression": "cf.bot_management.score < 30 or cf.threat_score > 10"
+    },
+    {
+      "id": "js_challenge_scanners",
+      "action": "js_challenge",
+      "priority": 10,
+      "status": "active",
+      "description": "JS challenge for common scanner user agents", 
+      "expression": "http.user_agent matches \"(sqlmap|nmap|nikto|wpscan|gobuster|masscan|dirb|dirbuster)\""
+    },
+    {
+      "id": "block_http_methods",
+      "action": "block",
+      "priority": 11,
+      "status": "active",
+      "description": "Block non-allowed HTTP methods",
+      "expression": "not (http.request.method in {\"GET\" \"POST\" \"OPTIONS\"})"
+    },
+    {
+      "id": "cache_bypass_api",
+      "action": "rewrite",
+      "priority": 12,
+      "status": "active",
+      "description": "Bypass cache for all API endpoints except metadata",
+      "expression": "http.request.uri.path matches \"^/api/\" and not (http.request.uri.path matches \"^/api/meta/\")",
+      "action_parameters": {
+        "headers": {
+          "cache-control": {
+            "operation": "set",
+            "value": "no-store, max-age=0"
+          }
+        }
+      }
+    },
+    {
+      "id": "cache_metadata",
+      "action": "rewrite",
+      "priority": 13,
+      "status": "active", 
+      "description": "Allow short-term caching for metadata endpoints",
+      "expression": "http.request.uri.path matches \"^/api/meta/\"",
+      "action_parameters": {
+        "headers": {
+          "cache-control": {
+            "operation": "set",
+            "value": "public, max-age=60"
+          }
+        }
+      }
+    },
+    {
+      "id": "security_headers",
+      "action": "rewrite",
+      "priority": 14,
+      "status": "active",
+      "description": "Add security headers to all responses",
+      "expression": "true",
+      "action_parameters": {
+        "headers": {
+          "strict-transport-security": {
+            "operation": "set",
+            "value": "max-age=31536000; includeSubDomains; preload"
+          },
+          "x-frame-options": {
+            "operation": "set", 
+            "value": "DENY"
+          },
+          "x-content-type-options": {
+            "operation": "set",
+            "value": "nosniff"
+          },
+          "referrer-policy": {
+            "operation": "set",
+            "value": "no-referrer"
+          },
+          "permissions-policy": {
+            "operation": "set",
+            "value": "microphone=(), camera=(), geolocation=()"
+          }
+        }
+      }
+    }
+  ],
+  "page_rules": [
+    {
+      "targets": [
+        {
+          "target": "url",
+          "constraint": {
+            "operator": "matches",
+            "value": "<API_DOMAIN>/api/meta/*"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "cache_level",
+          "value": "cache_everything"
+        },
+        {
+          "id": "edge_cache_ttl",
+          "value": 60
+        }
+      ],
+      "priority": 1,
+      "status": "active"
+    },
+    {
+      "targets": [
+        {
+          "target": "url", 
+          "constraint": {
+            "operator": "matches",
+            "value": "<API_DOMAIN>/api/*"
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "cache_level",
+          "value": "bypass"
+        }
+      ],
+      "priority": 2,
+      "status": "active"
+    }
+  ],
+  "configuration_notes": {
+    "placeholders_to_replace": [
+      "<API_DOMAIN>: Your API domain (e.g., api.samia-tarot.com)",
+      "<PRIMARY_WEB_ORIGIN>: Main web app origin (e.g., https://app.samia-tarot.com)", 
+      "<ADMIN_ORIGIN>: Admin panel origin (e.g., https://admin.samia-tarot.com)",
+      "<JOB_TOKEN>: Secure token for ops/cron endpoints (generate with: openssl rand -hex 32)"
+    ],
+    "setup_instructions": [
+      "1. Replace all placeholder values with actual production values",
+      "2. Import rules via Cloudflare Dashboard → Security → WAF → Custom rules",
+      "3. Import page rules via Cloudflare Dashboard → Rules → Page Rules", 
+      "4. Enable 'ops_ip_allowlist' rule and configure actual IP addresses for production",
+      "5. Monitor rule performance and adjust rate limits based on usage patterns",
+      "6. Test all rules in staging environment before applying to production"
+    ],
+    "security_considerations": [
+      "Rate limits may need adjustment based on legitimate usage patterns",
+      "IP allowlist for ops endpoints strongly recommended for production",
+      "Monitor bot management scores and adjust thresholds as needed",
+      "Regularly review and update scanner detection patterns",
+      "Consider geographic restrictions if service is region-specific"
+    ]
+  }
+}
