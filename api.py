@@ -134,6 +134,22 @@ class HoroscopeRegenerateRequest(BaseModel):
     tiktok_url: Optional[str] = None  # required if source='tiktok'
     script_text: Optional[str] = None  # optional guidance if source='voice_model'
 
+# M18 - New models for compliant horoscope ingestion
+class HoroscopeUploadRequest(BaseModel):
+    zodiac: str
+    ref_date: str  # YYYY-MM-DD format
+    audio_file_base64: str  # Base64 encoded audio file
+    content_type: str  # audio/mpeg, audio/m4a
+    
+class HoroscopeTikTokIngestRequest(BaseModel):
+    zodiac: str
+    ref_date: str  # YYYY-MM-DD format
+    tiktok_url: str  # Official TikTok post URL
+    api_metadata: Optional[dict] = None  # From official TikTok API
+
+class HoroscopeScheduleRequest(BaseModel):
+    ref_date: str  # YYYY-MM-DD format
+
 class SettingsChangeRequest(BaseModel):
     kind: str  # 'app' or 'zodiac'
     target_key: str
@@ -341,6 +357,112 @@ def get_user_role(user_id: str) -> str:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Role validation failed: {str(e)}")
+
+# M16.2 - RLS Route Guards (mirror DB policies)
+def can_access_profile(user_id: str, target_id: str) -> bool:
+    """Check if user can access profile (mirror RLS policy)"""
+    role = get_user_role(user_id)
+    return user_id == target_id or role in ('admin', 'superadmin')
+
+def can_delete_profile(user_id: str) -> bool:
+    """Check if user can delete profiles (superadmin only)"""
+    role = get_user_role(user_id)
+    return role == 'superadmin'
+
+def can_access_order(user_id: str, order_id: int) -> bool:
+    """Check if user can access order (mirror RLS policy)"""
+    role = get_user_role(user_id)
+    if role in ('monitor', 'admin', 'superadmin'):
+        return True
+    
+    # Check if user owns or is assigned to order
+    result = db_fetchone("""
+        SELECT 1 FROM orders 
+        WHERE id = %s AND (user_id = %s OR assigned_reader = %s)
+    """, (order_id, user_id, user_id))
+    return result is not None
+
+def can_access_media_asset(user_id: str, asset_id: int) -> bool:
+    """Check if user can access media asset (mirror RLS policy)"""
+    role = get_user_role(user_id)
+    if role in ('admin', 'monitor', 'superadmin'):
+        return True
+    
+    # Check if user owns asset or is assigned to order referencing it
+    result = db_fetchone("""
+        SELECT 1 FROM media_assets ma
+        WHERE ma.id = %s AND (
+            ma.owner_id = %s OR
+            EXISTS (
+                SELECT 1 FROM orders o
+                WHERE (o.input_media_id = ma.id OR o.output_media_id = ma.id)
+                AND o.assigned_reader = %s
+            )
+        )
+    """, (asset_id, user_id, user_id))
+    return result is not None
+
+def can_access_horoscope(user_id: str, horoscope_id: int = None, for_management: bool = False) -> bool:
+    """Check if user can access horoscope (mirror RLS policy)"""
+    role = get_user_role(user_id)
+    
+    if for_management:
+        # Create/update/approve operations
+        return role in ('monitor', 'admin', 'superadmin')
+    
+    if role in ('monitor', 'admin', 'superadmin'):
+        return True
+    
+    if horoscope_id:
+        # Check if horoscope is approved
+        result = db_fetchone("""
+            SELECT 1 FROM horoscopes 
+            WHERE id = %s AND approved_at IS NOT NULL
+        """, (horoscope_id,))
+        return result is not None
+    
+    return True  # Public access to approved horoscopes
+
+def can_access_call(user_id: str, call_id: int = None, order_id: int = None) -> bool:
+    """Check if user can access call (mirror RLS policy)"""
+    role = get_user_role(user_id)
+    if role in ('monitor', 'admin', 'superadmin'):
+        return True
+    
+    if order_id:
+        # Check if user is client or assigned reader for the order
+        result = db_fetchone("""
+            SELECT 1 FROM orders 
+            WHERE id = %s AND (user_id = %s OR assigned_reader = %s)
+        """, (order_id, user_id, user_id))
+        return result is not None
+    
+    if call_id:
+        # Check via call's order
+        result = db_fetchone("""
+            SELECT 1 FROM calls c
+            JOIN orders o ON o.id = c.order_id
+            WHERE c.id = %s AND (o.user_id = %s OR o.assigned_reader = %s)
+        """, (call_id, user_id, user_id))
+        return result is not None
+    
+    return False
+
+def can_access_admin_data(user_id: str) -> bool:
+    """Check if user can access admin-only data (moderation, audit, payments, wallets)"""
+    role = get_user_role(user_id)
+    return role in ('monitor', 'admin', 'superadmin')
+
+def can_access_wallet(user_id: str, target_user_id: str = None) -> bool:
+    """Check if user can access wallet (owner or admin)"""
+    role = get_user_role(user_id)
+    if role in ('monitor', 'admin', 'superadmin'):
+        return True
+    
+    if target_user_id:
+        return user_id == target_user_id
+    
+    return True  # Own wallet access
 
 # M7 - Twilio Voice helpers
 def twilio_client():
@@ -1771,11 +1893,15 @@ def get_order(order_id: int, x_user_id: str = Header(...)):
 
 @app.post("/api/orders/{order_id}/assign")
 def assign_reader(order_id: int, request: AssignReaderRequest, x_user_id: str = Header(...)):
-    """Assign reader to order (admin/superadmin only)"""
+    """Assign reader to order (admin/superadmin only) - M17 compliant"""
     try:
         user_id = x_user_id
-        role = get_user_role(user_id)
         
+        # M16.2 RLS route guard
+        if not can_access_order(user_id, order_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
         if role not in ['admin', 'superadmin']:
             raise HTTPException(status_code=403, detail="Admin access required")
         
@@ -1871,17 +1997,21 @@ def start_work(order_id: int, x_user_id: str = Header(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Start work failed: {str(e)}")
 
-@app.post("/api/orders/{order_id}/result")
-def upload_result(order_id: int, request: UploadResultRequest, x_user_id: str = Header(...)):
-    """Upload result media (reader only)"""
+@app.post("/api/orders/{order_id}/output")
+def upload_output(order_id: int, request: UploadResultRequest, x_user_id: str = Header(...)):
+    """Upload output media/text (reader only) - M17 compliant"""
     try:
         user_id = x_user_id
-        role = get_user_role(user_id)
         
+        # M16.2 RLS route guard
+        if not can_access_order(user_id, order_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
         if role != 'reader':
             raise HTTPException(status_code=403, detail="Reader access required")
         
-        # Check order ownership and status
+        # Check order assignment and status
         order = db_fetchone("""
             SELECT status, assigned_reader FROM orders WHERE id = %s
         """, (order_id,))
@@ -1893,8 +2023,9 @@ def upload_result(order_id: int, request: UploadResultRequest, x_user_id: str = 
         if assigned_reader != user_id:
             raise HTTPException(status_code=403, detail="Order not assigned to you")
         
-        if status not in ['in_progress', 'rejected']:
-            raise HTTPException(status_code=409, detail=f"Cannot upload result for status: {status}")
+        # M17 state machine: only allow from assigned or rejected
+        if status not in ['assigned', 'rejected']:
+            raise HTTPException(status_code=409, detail=f"Cannot upload output for status: {status}")
         
         # Verify media exists
         media = db_fetchone("SELECT id FROM media_assets WHERE id = %s", (request.output_media_id,))
@@ -1926,11 +2057,15 @@ def upload_result(order_id: int, request: UploadResultRequest, x_user_id: str = 
 
 @app.post("/api/orders/{order_id}/approve")
 def approve_order(order_id: int, request: ApproveRequest, x_user_id: str = Header(...)):
-    """Approve order and deliver (monitor/admin/superadmin)"""
+    """Approve order (monitor/admin/superadmin) - M17 compliant"""
     try:
         user_id = x_user_id
-        role = get_user_role(user_id)
         
+        # M16.2 RLS route guard
+        if not can_access_order(user_id, order_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
         if role not in ['monitor', 'admin', 'superadmin']:
             raise HTTPException(status_code=403, detail="Monitor access required")
         
@@ -1951,12 +2086,12 @@ def approve_order(order_id: int, request: ApproveRequest, x_user_id: str = Heade
         if not email_verified or not phone_verified:
             raise HTTPException(status_code=400, detail="Client verification status changed")
         
-        # Approve and deliver
+        # M17: Only approve, don't deliver yet
         db_exec("""
             UPDATE orders 
-            SET status = 'delivered', delivered_at = %s, updated_at = %s
+            SET status = 'approved', updated_at = %s
             WHERE id = %s
-        """, (datetime.utcnow(), datetime.utcnow(), order_id))
+        """, (datetime.utcnow(), order_id))
         
         # Moderation action
         db_exec("""
@@ -1973,6 +2108,47 @@ def approve_order(order_id: int, request: ApproveRequest, x_user_id: str = Heade
             meta={"note": request.note}
         )
         
+        return {"success": True, "order_id": order_id, "status": "approved"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Order approval failed: {str(e)}")
+
+@app.post("/api/orders/{order_id}/deliver")
+def deliver_order(order_id: int, x_user_id: str = Header(...)):
+    """Deliver approved order (system/admin) - M17 compliant"""
+    try:
+        user_id = x_user_id
+        
+        # M16.2 RLS route guard
+        if not can_access_order(user_id, order_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required for delivery")
+        
+        # Check order status
+        order = db_fetchone("""
+            SELECT status, user_id FROM orders WHERE id = %s
+        """, (order_id,))
+        
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        status, order_user_id = order
+        if status != 'approved':
+            raise HTTPException(status_code=409, detail=f"Cannot deliver order with status: {status}")
+        
+        # Deliver
+        db_exec("""
+            UPDATE orders 
+            SET status = 'delivered', delivered_at = %s, updated_at = %s
+            WHERE id = %s
+        """, (datetime.utcnow(), datetime.utcnow(), order_id))
+        
+        # Audit delivery
         write_audit(
             actor=user_id,
             event="order_deliver",
@@ -1986,15 +2162,19 @@ def approve_order(order_id: int, request: ApproveRequest, x_user_id: str = Heade
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Order approval failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Order delivery failed: {str(e)}")
 
 @app.post("/api/orders/{order_id}/reject")
 def reject_order(order_id: int, request: RejectRequest, x_user_id: str = Header(...)):
-    """Reject order (monitor/admin/superadmin)"""
+    """Reject order (monitor/admin/superadmin) - M17 compliant"""
     try:
         user_id = x_user_id
-        role = get_user_role(user_id)
         
+        # M16.2 RLS route guard
+        if not can_access_order(user_id, order_id):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
         if role not in ['monitor', 'admin', 'superadmin']:
             raise HTTPException(status_code=403, detail="Monitor access required")
         
@@ -3059,29 +3239,37 @@ def list_pending_horoscopes(x_user_id: str = Header(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pending horoscopes list failed: {str(e)}")
 
-@app.post("/api/horoscopes/{horoscope_id}/approve")
+@app.post("/api/monitor/horoscopes/{horoscope_id}/approve")
 def approve_horoscope(horoscope_id: int, request: HoroscopeApproveRequest, x_user_id: str = Header(...)):
-    """Approve horoscope for public release (monitor/admin/superadmin only)"""
+    """Approve horoscope for public release (monitor/admin/superadmin only) - M18 compliant"""
     try:
         user_id = x_user_id
-        role = get_user_role(user_id)
         
+        # M16.2 RLS route guard
+        if not can_access_horoscope(user_id, for_management=True):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
         if role not in ['monitor', 'admin', 'superadmin']:
             raise HTTPException(status_code=403, detail="Monitor access required")
         
-        # Check horoscope exists and has audio
+        # Check horoscope exists
         horoscope = db_fetchone("""
-            SELECT audio_media_id, approved_by, zodiac, ref_date 
+            SELECT audio_media_id, approved_by, zodiac, ref_date, source_kind
             FROM horoscopes WHERE id = %s
         """, (horoscope_id,))
         
         if not horoscope:
             raise HTTPException(status_code=404, detail="Horoscope not found")
         
-        audio_media_id, approved_by, zodiac, ref_date = horoscope
+        audio_media_id, approved_by, zodiac, ref_date, source_kind = horoscope
         
-        if not audio_media_id:
-            raise HTTPException(status_code=400, detail="Horoscope has no audio media")
+        # M18: Audio optional for TikTok-linked content
+        if source_kind == 'original_upload' and not audio_media_id:
+            raise HTTPException(status_code=400, detail="Original upload horoscope requires audio media")
+        
+        if approved_by:
+            raise HTTPException(status_code=409, detail="Horoscope already approved")
         
         # Approve
         db_exec("""
@@ -3116,25 +3304,32 @@ def approve_horoscope(horoscope_id: int, request: HoroscopeApproveRequest, x_use
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Horoscope approval failed: {str(e)}")
 
-@app.post("/api/horoscopes/{horoscope_id}/reject")
+@app.post("/api/monitor/horoscopes/{horoscope_id}/reject")
 def reject_horoscope(horoscope_id: int, request: HoroscopeRejectRequest, x_user_id: str = Header(...)):
-    """Reject horoscope (monitor/admin/superadmin only)"""
+    """Reject horoscope (monitor/admin/superadmin only) - M18 compliant"""
     try:
         user_id = x_user_id
-        role = get_user_role(user_id)
         
+        # M16.2 RLS route guard
+        if not can_access_horoscope(user_id, for_management=True):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
         if role not in ['monitor', 'admin', 'superadmin']:
             raise HTTPException(status_code=403, detail="Monitor access required")
         
         # Check horoscope exists
         horoscope = db_fetchone("""
-            SELECT zodiac, ref_date FROM horoscopes WHERE id = %s
+            SELECT zodiac, ref_date, approved_by FROM horoscopes WHERE id = %s
         """, (horoscope_id,))
         
         if not horoscope:
             raise HTTPException(status_code=404, detail="Horoscope not found")
         
-        zodiac, ref_date = horoscope
+        zodiac, ref_date, approved_by = horoscope
+        
+        if approved_by:
+            raise HTTPException(status_code=409, detail="Cannot reject already approved horoscope")
         
         # Reject (clear approval, add note to text_content for rework)
         db_exec("""
@@ -3464,6 +3659,298 @@ def get_horoscope_archive(days: int = Query(50), x_user_id: str = Header(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Archive access failed: {str(e)}")
+
+# M18 - Compliant Horoscope Ingestion Endpoints
+
+@app.post("/api/admin/horoscopes/upload-audio")
+def upload_horoscope_audio(request: HoroscopeUploadRequest, x_user_id: str = Header(...)):
+    """Upload original audio for daily horoscope (admin/superadmin only) - M18 compliant"""
+    try:
+        user_id = x_user_id
+        
+        # M16.2 RLS route guard
+        if not can_access_horoscope(user_id, for_management=True):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Validate inputs
+        zodiac = validate_zodiac(request.zodiac)
+        ref_date = validate_date(request.ref_date)
+        
+        # Validate audio format
+        if request.content_type not in ['audio/mpeg', 'audio/m4a']:
+            raise HTTPException(status_code=400, detail="Unsupported audio format. Use mp3 or m4a")
+        
+        # Decode base64 audio
+        try:
+            audio_bytes = base64.b64decode(request.audio_file_base64)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid base64 audio data")
+        
+        # Basic validation
+        if len(audio_bytes) < 1024:  # At least 1KB
+            raise HTTPException(status_code=400, detail="Audio file too small")
+        if len(audio_bytes) > 50 * 1024 * 1024:  # Max 50MB
+            raise HTTPException(status_code=400, detail="Audio file too large")
+        
+        # Calculate SHA256
+        sha256_hash = hashlib.sha256(audio_bytes).hexdigest()
+        
+        # Build storage path
+        extension = "mp3" if request.content_type == "audio/mpeg" else "m4a"
+        storage_path = f"horoscopes/daily/{ref_date}/{zodiac}.{extension}"
+        
+        # Upload to Supabase Storage
+        storage_key = storage_upload_bytes(SUPABASE_BUCKET, storage_path, audio_bytes, request.content_type)
+        
+        # Insert media asset
+        media_id = db_fetchone("""
+            INSERT INTO media_assets(owner_id, kind, url, bytes, sha256, created_at)
+            VALUES (%s, 'audio', %s, %s, %s, %s)
+            RETURNING id
+        """, (user_id, storage_key, len(audio_bytes), sha256_hash, datetime.utcnow()))[0]
+        
+        # Upsert horoscope (M18: pending state, source_kind=original_upload)
+        horoscope_id = db_fetchone("""
+            INSERT INTO horoscopes(scope, zodiac, ref_date, audio_media_id, source_kind, source_ref, approved_by, approved_at)
+            VALUES ('daily', %s, %s, %s, 'original_upload', NULL, NULL, NULL)
+            ON CONFLICT (scope, zodiac, ref_date) 
+            DO UPDATE SET 
+                audio_media_id = EXCLUDED.audio_media_id,
+                source_kind = EXCLUDED.source_kind,
+                source_ref = NULL,
+                approved_by = NULL,
+                approved_at = NULL
+            RETURNING id
+        """, (zodiac, ref_date, media_id))[0]
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="horoscope_audio_upload",
+            entity="horoscope",
+            entity_id=str(horoscope_id),
+            meta={"zodiac": zodiac, "ref_date": ref_date, "source_kind": "original_upload", "bytes": len(audio_bytes)}
+        )
+        
+        return {
+            "success": True,
+            "horoscope_id": horoscope_id,
+            "status": "pending",
+            "zodiac": zodiac,
+            "ref_date": ref_date
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Audio upload failed: {str(e)}")
+
+@app.post("/api/admin/horoscopes/schedule")
+def schedule_horoscopes(request: HoroscopeScheduleRequest, x_user_id: str = Header(...)):
+    """Seed daily pending horoscope rows for all 12 zodiacs (admin/superadmin only) - M18 compliant"""
+    try:
+        user_id = x_user_id
+        
+        # M16.2 RLS route guard
+        if not can_access_horoscope(user_id, for_management=True):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        ref_date = validate_date(request.ref_date)
+        
+        # All 12 zodiac signs
+        zodiac_signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+                       'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
+        
+        created_count = 0
+        existing_count = 0
+        
+        for zodiac in zodiac_signs:
+            # Check if exists
+            existing = db_fetchone("""
+                SELECT id FROM horoscopes 
+                WHERE scope = 'daily' AND zodiac = %s AND ref_date = %s
+            """, (zodiac, ref_date))
+            
+            if existing:
+                existing_count += 1
+            else:
+                # Create pending row (no audio yet)
+                db_exec("""
+                    INSERT INTO horoscopes(scope, zodiac, ref_date, source_kind, approved_by, approved_at)
+                    VALUES ('daily', %s, %s, 'original_upload', NULL, NULL)
+                """, (zodiac, ref_date))
+                created_count += 1
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="horoscope_schedule",
+            entity="horoscopes",
+            entity_id=None,
+            meta={"ref_date": ref_date, "created": created_count, "existing": existing_count}
+        )
+        
+        return {
+            "success": True,
+            "ref_date": ref_date,
+            "created": created_count,
+            "existing": existing_count,
+            "total_signs": len(zodiac_signs)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Scheduling failed: {str(e)}")
+
+@app.post("/api/admin/horoscopes/ingest/tiktok")
+def ingest_tiktok_horoscope(request: HoroscopeTikTokIngestRequest, x_user_id: str = Header(...)):
+    """Ingest TikTok metadata for daily horoscope (admin/superadmin only) - M18 compliant"""
+    try:
+        user_id = x_user_id
+        
+        # M16.2 RLS route guard
+        if not can_access_horoscope(user_id, for_management=True):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Validate inputs
+        zodiac = validate_zodiac(request.zodiac)
+        ref_date = validate_date(request.ref_date)
+        
+        # Validate TikTok URL format (basic check)
+        if not request.tiktok_url.startswith(('https://www.tiktok.com/', 'https://vm.tiktok.com/')):
+            raise HTTPException(status_code=400, detail="Invalid TikTok URL format")
+        
+        # M18 Compliance: This is a placeholder for official TikTok API integration
+        # In real implementation, would use official TikTok Business/Developer APIs
+        # Never scrape or download unauthorized content
+        
+        # For now, store metadata only (compliance-first approach)
+        source_kind = 'tiktok_linked'  # Just linking, not API ingestion yet
+        
+        # Upsert horoscope (M18: pending state with TikTok reference)
+        horoscope_id = db_fetchone("""
+            INSERT INTO horoscopes(scope, zodiac, ref_date, source_kind, source_ref, approved_by, approved_at)
+            VALUES ('daily', %s, %s, %s, %s, NULL, NULL)
+            ON CONFLICT (scope, zodiac, ref_date) 
+            DO UPDATE SET 
+                source_kind = EXCLUDED.source_kind,
+                source_ref = EXCLUDED.source_ref,
+                approved_by = NULL,
+                approved_at = NULL
+            RETURNING id
+        """, (zodiac, ref_date, source_kind, request.tiktok_url))[0]
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="horoscope_tiktok_ingest",
+            entity="horoscope", 
+            entity_id=str(horoscope_id),
+            meta={
+                "zodiac": zodiac, 
+                "ref_date": ref_date, 
+                "source_kind": source_kind,
+                "tiktok_url": request.tiktok_url,
+                "compliance_note": "metadata_only"
+            }
+        )
+        
+        return {
+            "success": True,
+            "horoscope_id": horoscope_id,
+            "status": "pending", 
+            "zodiac": zodiac,
+            "ref_date": ref_date,
+            "source_kind": source_kind,
+            "note": "TikTok metadata stored. Requires Monitor approval before public visibility."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TikTok ingestion failed: {str(e)}")
+
+@app.get("/api/monitor/horoscopes/pending")
+def get_pending_horoscopes(x_user_id: str = Header(...)):
+    """Get queue of unapproved horoscopes (monitor/admin/superadmin only) - M18 compliant"""
+    try:
+        user_id = x_user_id
+        
+        # M16.2 RLS route guard
+        if not can_access_horoscope(user_id, for_management=True):
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        role = get_user_role(user_id)
+        if role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Monitor access required")
+        
+        # Get pending horoscopes
+        pending_data = db_fetchall("""
+            SELECT h.id, h.scope, h.zodiac, h.ref_date, h.source_kind, h.source_ref,
+                   h.audio_media_id, ma.url as audio_url, ma.bytes, h.created_at
+            FROM horoscopes h
+            LEFT JOIN media_assets ma ON ma.id = h.audio_media_id
+            WHERE h.approved_at IS NULL
+            ORDER BY h.ref_date DESC, h.zodiac
+        """)
+        
+        result = []
+        for row in pending_data:
+            h_id, scope, zodiac, ref_date, source_kind, source_ref, audio_media_id, audio_url, bytes_size, created_at = row
+            
+            # Generate signed URL for audio if exists
+            signed_url = None
+            if audio_url and '/' in audio_url:
+                bucket, path = audio_url.split('/', 1) 
+                try:
+                    signed_url = storage_sign_url(bucket, path, expires=3600)
+                except:
+                    signed_url = None
+            
+            result.append({
+                "id": h_id,
+                "scope": scope,
+                "zodiac": zodiac,
+                "ref_date": str(ref_date),
+                "source_kind": source_kind,
+                "source_ref": source_ref,
+                "has_audio": audio_media_id is not None,
+                "audio_bytes": bytes_size,
+                "audio_preview_url": signed_url,
+                "created_at": str(created_at)
+            })
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="pending_horoscopes_review",
+            entity="horoscopes",
+            entity_id=None,
+            meta={"count": len(result)}
+        )
+        
+        return {
+            "pending_horoscopes": result,
+            "count": len(result)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pending horoscopes fetch failed: {str(e)}")
 
 @app.post("/api/cron/voice/refresh")
 def refresh_voice_model(x_user_id: str = Header(...)):

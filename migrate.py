@@ -22,6 +22,10 @@ MIGRATIONS = [
     ("004_calls.sql", load_migration_file("004_calls.sql")),
     ("005_security.sql", load_migration_file("005_security.sql")),
     ("006_ai.sql", load_migration_file("006_ai.sql")),
+    ("007_payments.sql", load_migration_file("007_payments.sql")),
+    ("008_notifications.sql", load_migration_file("008_notifications.sql")),
+    ("009_privacy.sql", load_migration_file("009_privacy.sql")),
+    ("010_rls.sql", load_migration_file("010_rls.sql")),
 ]
 
 def exec_sql(sql: str):
