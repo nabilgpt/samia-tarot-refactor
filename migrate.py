@@ -18,6 +18,7 @@ def load_migration_file(filename):
 MIGRATIONS = [
     ("001_core.sql", load_migration_file("001_core.sql")),
     ("002_personalization_schema.sql", load_migration_file("002_personalization_schema.sql")),
+    ("003_ar_i18n_schema.sql", load_migration_file("003_ar_i18n_schema.sql")),
     ("002_ops.sql", load_migration_file("002_ops.sql")),
     ("003_astro.sql", load_migration_file("003_astro.sql")),
     ("004_calls.sql", load_migration_file("004_calls.sql")),
