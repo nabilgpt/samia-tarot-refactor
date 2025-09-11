@@ -8805,6 +8805,612 @@ def get_content_metrics(from_date: str = Query(None), to_date: str = Query(None)
                        {"error": str(e)}, request_id)
         raise HTTPException(status_code=500, detail=f"Content metrics failed: {str(e)}")
 
+# =============================================================================
+# M24: COMMUNITY FEATURES (FEATURE-FLAGGED)
+# =============================================================================
+
+def check_community_enabled():
+    """Check if community features are enabled via feature flag"""
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT is_community_enabled()")
+            return cur.fetchone()[0] if cur.rowcount > 0 else False
+
+def write_audit_m24(user_id: str, event: str, entity: str, entity_id: str, metadata: dict, request_id: str):
+    """Write M24 community audit entry"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO audit_log (actor, actor_role, event, entity, entity_id, meta, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, now())
+                """, (user_id, get_user_role(user_id), event, entity, entity_id, json.dumps(metadata)))
+    except Exception as e:
+        print(f"Audit write failed: {e}")
+
+@app.post("/community/comments")
+def create_community_comment(
+    comment_data: dict,
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Create comment on delivered content (feature-flagged)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    if not check_community_enabled():
+        write_audit_m24(x_user_id, "community_disabled_access", "feature_flag", "community_enabled", 
+                       {"attempted_action": "create_comment"}, request_id)
+        raise HTTPException(status_code=403, detail="Community features are disabled")
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        
+        # Validate required fields
+        required_fields = ['subject_ref', 'body']
+        for field in required_fields:
+            if field not in comment_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        subject_ref = comment_data['subject_ref']
+        body = comment_data['body'].strip()
+        lang = comment_data.get('lang', 'en')
+        
+        # Validate body length
+        if not (1 <= len(body) <= 2000):
+            raise HTTPException(status_code=400, detail="Comment body must be 1-2000 characters")
+        
+        # Validate language
+        if lang not in ['en', 'ar']:
+            raise HTTPException(status_code=400, detail="Language must be 'en' or 'ar'")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Validate subject reference and deliverability
+                cur.execute("SELECT validate_community_subject(%s)", (subject_ref,))
+                is_valid = cur.fetchone()[0]
+                
+                if not is_valid:
+                    write_audit_m24(x_user_id, "comment_invalid_subject", "community", subject_ref,
+                                   {"subject_ref": subject_ref}, request_id)
+                    raise HTTPException(status_code=400, detail="Invalid or undelivered subject reference")
+                
+                # Create comment
+                cur.execute("""
+                    INSERT INTO community_comments (subject_ref, author_id, body, lang, status)
+                    VALUES (%s, %s, %s, %s, 'pending')
+                    RETURNING id, created_at
+                """, (subject_ref, x_user_id, body, lang))
+                
+                result = cur.fetchone()
+                comment_id = result[0]
+                created_at = result[1]
+                
+                write_audit_m24(x_user_id, "comment_created", "community_comment", str(comment_id),
+                               {"subject_ref": subject_ref, "lang": lang}, request_id)
+                
+                return {
+                    "id": comment_id,
+                    "subject_ref": subject_ref,
+                    "status": "pending",
+                    "created_at": created_at.isoformat(),
+                    "message": "Comment submitted for review"
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m24(x_user_id, "comment_creation_failed", "community", None,
+                       {"error": str(e), "subject_ref": comment_data.get('subject_ref')}, request_id)
+        raise HTTPException(status_code=500, detail=f"Comment creation failed: {str(e)}")
+
+@app.get("/community/threads")
+def get_community_threads(
+    subject_ref: str = Query(...),
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Get community threads for subject (role-aware, feature-flagged)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    if not check_community_enabled():
+        write_audit_m24(x_user_id, "community_disabled_access", "feature_flag", "community_enabled",
+                       {"attempted_action": "get_threads"}, request_id)
+        raise HTTPException(status_code=403, detail="Community features are disabled")
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Set RLS context
+                cur.execute("SET app.current_user_id = %s", (x_user_id,))
+                
+                # Get comments (RLS will filter based on role)
+                cur.execute("""
+                    SELECT c.id, c.subject_ref, c.body, c.lang, c.status, c.created_at,
+                           p.first_name, p.last_name,
+                           COUNT(r.id) as reaction_count
+                    FROM community_comments c
+                    JOIN profiles p ON c.author_id = p.id
+                    LEFT JOIN community_reactions r ON r.subject_ref = 'comment:' || c.id
+                    WHERE c.subject_ref = %s
+                    GROUP BY c.id, c.subject_ref, c.body, c.lang, c.status, c.created_at, p.first_name, p.last_name
+                    ORDER BY c.created_at ASC
+                """, (subject_ref,))
+                
+                comments = []
+                for row in cur.fetchall():
+                    comment = {
+                        "id": row[0],
+                        "subject_ref": row[1],
+                        "body": row[2],
+                        "lang": row[3],
+                        "status": row[4],
+                        "created_at": row[5].isoformat(),
+                        "author": {
+                            "first_name": row[6],
+                            "last_name": row[7]
+                        },
+                        "reaction_count": row[8]
+                    }
+                    
+                    # Get reactions for this comment
+                    cur.execute("""
+                        SELECT kind, COUNT(*) as count
+                        FROM community_reactions 
+                        WHERE subject_ref = %s
+                        GROUP BY kind
+                    """, (f"comment:{row[0]}",))
+                    
+                    reactions = {kind: count for kind, count in cur.fetchall()}
+                    comment["reactions"] = reactions
+                    
+                    comments.append(comment)
+                
+                write_audit_m24(x_user_id, "threads_accessed", "community", subject_ref,
+                               {"comment_count": len(comments)}, request_id)
+                
+                return {
+                    "subject_ref": subject_ref,
+                    "comments": comments,
+                    "total_count": len(comments)
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m24(x_user_id, "threads_access_failed", "community", subject_ref,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Thread access failed: {str(e)}")
+
+@app.post("/community/reactions")
+def create_community_reaction(
+    reaction_data: dict,
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Add reaction to community content (feature-flagged)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    if not check_community_enabled():
+        write_audit_m24(x_user_id, "community_disabled_access", "feature_flag", "community_enabled",
+                       {"attempted_action": "create_reaction"}, request_id)
+        raise HTTPException(status_code=403, detail="Community features are disabled")
+    
+    try:
+        # Validate required fields
+        required_fields = ['subject_ref', 'kind']
+        for field in required_fields:
+            if field not in reaction_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        subject_ref = reaction_data['subject_ref']
+        kind = reaction_data['kind']
+        
+        # Validate reaction kind
+        valid_kinds = ['like', 'insightful', 'helpful', 'inspiring']
+        if kind not in valid_kinds:
+            raise HTTPException(status_code=400, detail=f"Invalid reaction kind. Must be one of: {valid_kinds}")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Insert or update reaction (upsert pattern)
+                cur.execute("""
+                    INSERT INTO community_reactions (subject_ref, author_id, kind)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (subject_ref, author_id, kind) DO NOTHING
+                    RETURNING id, created_at
+                """, (subject_ref, x_user_id, kind))
+                
+                result = cur.fetchone()
+                if result:
+                    reaction_id, created_at = result
+                    action = "created"
+                else:
+                    # Reaction already exists
+                    cur.execute("""
+                        SELECT id, created_at FROM community_reactions 
+                        WHERE subject_ref = %s AND author_id = %s AND kind = %s
+                    """, (subject_ref, x_user_id, kind))
+                    reaction_id, created_at = cur.fetchone()
+                    action = "existing"
+                
+                write_audit_m24(x_user_id, f"reaction_{action}", "community_reaction", str(reaction_id),
+                               {"subject_ref": subject_ref, "kind": kind}, request_id)
+                
+                return {
+                    "id": reaction_id,
+                    "subject_ref": subject_ref,
+                    "kind": kind,
+                    "action": action,
+                    "created_at": created_at.isoformat()
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m24(x_user_id, "reaction_creation_failed", "community", None,
+                       {"error": str(e), "subject_ref": reaction_data.get('subject_ref')}, request_id)
+        raise HTTPException(status_code=500, detail=f"Reaction creation failed: {str(e)}")
+
+@app.post("/community/flags")
+def create_community_flag(
+    flag_data: dict,
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Flag community content for moderation (feature-flagged)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    if not check_community_enabled():
+        write_audit_m24(x_user_id, "community_disabled_access", "feature_flag", "community_enabled",
+                       {"attempted_action": "create_flag"}, request_id)
+        raise HTTPException(status_code=403, detail="Community features are disabled")
+    
+    try:
+        # Validate required fields
+        required_fields = ['subject_ref', 'reason']
+        for field in required_fields:
+            if field not in flag_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        subject_ref = flag_data['subject_ref']
+        reason = flag_data['reason']
+        severity = flag_data.get('severity', 'low')
+        description = flag_data.get('description', '').strip()
+        evidence_refs = flag_data.get('evidence_refs', [])
+        
+        # Validate reason
+        valid_reasons = ['harassment', 'spam', 'inappropriate', 'copyright', 'fraud', 'safety']
+        if reason not in valid_reasons:
+            raise HTTPException(status_code=400, detail=f"Invalid reason. Must be one of: {valid_reasons}")
+        
+        # Validate severity
+        valid_severities = ['low', 'medium', 'high', 'critical']
+        if severity not in valid_severities:
+            raise HTTPException(status_code=400, detail=f"Invalid severity. Must be one of: {valid_severities}")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Create flag
+                cur.execute("""
+                    INSERT INTO community_flags (subject_ref, reason, severity, created_by, description, evidence_refs)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id, created_at
+                """, (subject_ref, reason, severity, x_user_id, description, evidence_refs))
+                
+                flag_id, created_at = cur.fetchone()
+                
+                # Auto-create moderation case
+                cur.execute("""
+                    SELECT create_community_moderation_case(%s, %s, %s, %s)
+                """, (subject_ref, 'flag', reason, severity))
+                
+                case_id = cur.fetchone()[0]
+                
+                write_audit_m24(x_user_id, "flag_created", "community_flag", str(flag_id),
+                               {"subject_ref": subject_ref, "reason": reason, "severity": severity, "case_id": case_id}, request_id)
+                
+                return {
+                    "id": flag_id,
+                    "subject_ref": subject_ref,
+                    "reason": reason,
+                    "severity": severity,
+                    "status": "pending",
+                    "moderation_case_id": case_id,
+                    "created_at": created_at.isoformat()
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m24(x_user_id, "flag_creation_failed", "community", None,
+                       {"error": str(e), "subject_ref": flag_data.get('subject_ref')}, request_id)
+        raise HTTPException(status_code=500, detail=f"Flag creation failed: {str(e)}")
+
+@app.post("/monitor/community/{case_id}/moderate")
+def moderate_community_content(
+    case_id: int,
+    moderation_data: dict,
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Apply moderation decision to community content (Monitor+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    if not check_community_enabled():
+        write_audit_m24(x_user_id, "community_disabled_access", "feature_flag", "community_enabled",
+                       {"attempted_action": "moderate_content"}, request_id)
+        raise HTTPException(status_code=403, detail="Community features are disabled")
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['monitor', 'admin', 'superadmin']:
+            write_audit_m24(x_user_id, "moderation_access_denied", "community_case", str(case_id),
+                           {"user_role": user_role}, request_id)
+            raise HTTPException(status_code=403, detail="Insufficient privileges for moderation")
+        
+        # Validate required fields
+        if 'decision' not in moderation_data:
+            raise HTTPException(status_code=400, detail="Missing required field: decision")
+        
+        decision = moderation_data['decision']
+        notes = moderation_data.get('notes', '').strip()
+        
+        # Validate decision
+        valid_decisions = ['hold', 'unlist', 'remove', 'escalate', 'approve', 'dismiss']
+        if decision not in valid_decisions:
+            raise HTTPException(status_code=400, detail=f"Invalid decision. Must be one of: {valid_decisions}")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Apply moderation decision
+                cur.execute("""
+                    SELECT apply_community_moderation_decision(%s, %s, %s, %s)
+                """, (case_id, decision, x_user_id, notes))
+                
+                # Get updated case info
+                cur.execute("""
+                    SELECT subject_ref, case_type, status, decided_at
+                    FROM community_moderation_cases 
+                    WHERE id = %s
+                """, (case_id,))
+                
+                case_info = cur.fetchone()
+                if not case_info:
+                    raise HTTPException(status_code=404, detail="Moderation case not found")
+                
+                subject_ref, case_type, status, decided_at = case_info
+                
+                write_audit_m24(x_user_id, "moderation_decision_applied", "community_case", str(case_id),
+                               {"decision": decision, "subject_ref": subject_ref, "case_type": case_type}, request_id)
+                
+                return {
+                    "case_id": case_id,
+                    "decision": decision,
+                    "status": status,
+                    "decided_at": decided_at.isoformat() if decided_at else None,
+                    "notes": notes
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m24(x_user_id, "moderation_failed", "community_case", str(case_id),
+                       {"error": str(e), "decision": moderation_data.get('decision')}, request_id)
+        raise HTTPException(status_code=500, detail=f"Moderation failed: {str(e)}")
+
+@app.get("/admin/community/stats")
+def get_community_stats(
+    start_date: str = Query(None),
+    end_date: str = Query(None),
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Get community metrics and stats (Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    if not check_community_enabled():
+        write_audit_m24(x_user_id, "community_disabled_access", "feature_flag", "community_enabled",
+                       {"attempted_action": "get_stats"}, request_id)
+        raise HTTPException(status_code=403, detail="Community features are disabled")
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            write_audit_m24(x_user_id, "stats_access_denied", "community", None,
+                           {"user_role": user_role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Default to last 30 days if no date range provided
+        if not start_date:
+            start_date = (datetime.utcnow() - timedelta(days=30)).strftime('%Y-%m-%d')
+        if not end_date:
+            end_date = datetime.utcnow().strftime('%Y-%m-%d')
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Comments stats
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_comments,
+                        COUNT(*) FILTER (WHERE status = 'approved') as approved_comments,
+                        COUNT(*) FILTER (WHERE status = 'pending') as pending_comments,
+                        COUNT(*) FILTER (WHERE status = 'removed') as removed_comments
+                    FROM community_comments 
+                    WHERE created_at BETWEEN %s AND %s + INTERVAL '1 day'
+                """, (start_date, end_date))
+                
+                comment_stats = cur.fetchone()
+                
+                # Reactions stats
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_reactions,
+                        kind,
+                        COUNT(*) as count
+                    FROM community_reactions 
+                    WHERE created_at BETWEEN %s AND %s + INTERVAL '1 day'
+                    GROUP BY kind
+                """, (start_date, end_date))
+                
+                reaction_stats = cur.fetchall()
+                total_reactions = sum(row[2] for row in reaction_stats) if reaction_stats else 0
+                reaction_breakdown = {row[1]: row[2] for row in reaction_stats} if reaction_stats else {}
+                
+                # Flags stats
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_flags,
+                        reason,
+                        COUNT(*) as count
+                    FROM community_flags 
+                    WHERE created_at BETWEEN %s AND %s + INTERVAL '1 day'
+                    GROUP BY reason
+                """, (start_date, end_date))
+                
+                flag_stats = cur.fetchall()
+                total_flags = sum(row[2] for row in flag_stats) if flag_stats else 0
+                flag_breakdown = {row[1]: row[2] for row in flag_stats} if flag_stats else {}
+                
+                # Moderation stats
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as total_cases,
+                        COUNT(*) FILTER (WHERE status = 'pending') as pending_cases,
+                        COUNT(*) FILTER (WHERE status = 'resolved') as resolved_cases,
+                        AVG(EXTRACT(EPOCH FROM (decided_at - created_at))/3600) FILTER (WHERE decided_at IS NOT NULL) as avg_resolution_hours
+                    FROM community_moderation_cases 
+                    WHERE created_at BETWEEN %s AND %s + INTERVAL '1 day'
+                """, (start_date, end_date))
+                
+                moderation_stats = cur.fetchone()
+                
+                write_audit_m24(x_user_id, "stats_accessed", "community", None,
+                               {"date_range": f"{start_date} to {end_date}"}, request_id)
+                
+                return {
+                    "period": {
+                        "start_date": start_date,
+                        "end_date": end_date
+                    },
+                    "comments": {
+                        "total": comment_stats[0],
+                        "approved": comment_stats[1],
+                        "pending": comment_stats[2],
+                        "removed": comment_stats[3]
+                    },
+                    "reactions": {
+                        "total": total_reactions,
+                        "breakdown": reaction_breakdown
+                    },
+                    "flags": {
+                        "total": total_flags,
+                        "breakdown": flag_breakdown
+                    },
+                    "moderation": {
+                        "total_cases": moderation_stats[0],
+                        "pending_cases": moderation_stats[1],
+                        "resolved_cases": moderation_stats[2],
+                        "avg_resolution_hours": round(float(moderation_stats[3] or 0), 2)
+                    }
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m24(x_user_id, "stats_access_failed", "community", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Stats access failed: {str(e)}")
+
+@app.get("/admin/features")
+def get_feature_flags(
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Get feature flags configuration (Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT feature_key, is_enabled, description, updated_at
+                    FROM feature_flags 
+                    ORDER BY feature_key
+                """)
+                
+                flags = []
+                for row in cur.fetchall():
+                    flags.append({
+                        "feature_key": row[0],
+                        "is_enabled": row[1],
+                        "description": row[2],
+                        "updated_at": row[3].isoformat() if row[3] else None
+                    })
+                
+                return {"feature_flags": flags}
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Feature flags access failed: {str(e)}")
+
+@app.post("/admin/features/{feature_key}/toggle")
+def toggle_feature_flag(
+    feature_key: str,
+    toggle_data: dict,
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Toggle feature flag (Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        if 'enabled' not in toggle_data:
+            raise HTTPException(status_code=400, detail="Missing 'enabled' field")
+        
+        enabled = toggle_data['enabled']
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE feature_flags 
+                    SET is_enabled = %s, updated_at = now()
+                    WHERE feature_key = %s
+                    RETURNING is_enabled, updated_at
+                """, (enabled, feature_key))
+                
+                result = cur.fetchone()
+                if not result:
+                    raise HTTPException(status_code=404, detail="Feature flag not found")
+                
+                # Write audit
+                cur.execute("""
+                    INSERT INTO audit_log (actor, actor_role, event, entity, entity_id, meta)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (x_user_id, user_role, 'feature_flag_toggled', 'feature_flag', feature_key,
+                      json.dumps({"enabled": enabled, "request_id": request_id})))
+                
+                return {
+                    "feature_key": feature_key,
+                    "is_enabled": result[0],
+                    "updated_at": result[1].isoformat()
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Feature flag toggle failed: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
