@@ -9411,6 +9411,1012 @@ def toggle_feature_flag(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Feature flag toggle failed: {str(e)}")
 
+# =============================================================================
+# M28: SECRETS & PROVIDERS OPS
+# =============================================================================
+
+import time
+from datetime import datetime, timedelta
+
+# Circuit breaker states per provider
+circuit_breakers = {}
+
+class CircuitBreaker:
+    def __init__(self, name, failure_threshold=5, reset_timeout=300):
+        self.name = name
+        self.failure_threshold = failure_threshold
+        self.reset_timeout = reset_timeout
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = 'closed'  # closed, open, half_open
+    
+    def is_available(self):
+        if self.state == 'closed':
+            return True
+        elif self.state == 'open':
+            if time.time() - self.last_failure_time >= self.reset_timeout:
+                self.state = 'half_open'
+                return True
+            return False
+        elif self.state == 'half_open':
+            return True
+        return False
+    
+    def record_success(self):
+        self.failure_count = 0
+        if self.state == 'half_open':
+            self.state = 'closed'
+    
+    def record_failure(self):
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        if self.failure_count >= self.failure_threshold:
+            self.state = 'open'
+
+def get_circuit_breaker(provider_name, service_type):
+    """Get or create circuit breaker for provider"""
+    key = f"{provider_name}:{service_type}"
+    if key not in circuit_breakers:
+        circuit_breakers[key] = CircuitBreaker(key)
+    return circuit_breakers[key]
+
+def check_provider_health(provider_name: str, service_type: str) -> dict:
+    """Check provider health with circuit breaker logic"""
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            # Get provider status from database
+            cur.execute("""
+                SELECT status, circuit_breaker_state, is_enabled, maintenance_mode,
+                       response_time_ms, last_health_check, circuit_breaker_failures
+                FROM provider_health_status
+                WHERE provider_name = %s AND service_type = %s
+            """, (provider_name, service_type))
+            
+            result = cur.fetchone()
+            if not result:
+                return {
+                    "provider": provider_name,
+                    "service": service_type,
+                    "status": "unknown",
+                    "available": False,
+                    "last_check": None
+                }
+            
+            status, cb_state, enabled, maintenance, response_ms, last_check, failures = result
+            
+            # Check circuit breaker availability
+            breaker = get_circuit_breaker(provider_name, service_type)
+            available = breaker.is_available() and enabled and not maintenance
+            
+            return {
+                "provider": provider_name,
+                "service": service_type,
+                "status": status,
+                "available": available,
+                "circuit_breaker_state": cb_state,
+                "enabled": enabled,
+                "maintenance_mode": maintenance,
+                "response_time_ms": response_ms,
+                "failure_count": failures,
+                "last_check": last_check.isoformat() if last_check else None
+            }
+
+def write_audit_m28(user_id: str, event: str, entity: str, entity_id: str, metadata: dict, request_id: str):
+    """Write M28 operations audit entry"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO audit_log (actor, actor_role, event, entity, entity_id, meta, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, now())
+                """, (user_id, get_user_role(user_id), event, entity, entity_id, json.dumps(metadata)))
+    except Exception as e:
+        print(f"Audit write failed: {e}")
+
+@app.get("/admin/providers/health")
+def get_providers_health_status(
+    provider: str = Query(None),
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Get provider health status summary (Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            write_audit_m28(x_user_id, "provider_health_access_denied", "provider_health", None,
+                           {"user_role": user_role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                if provider:
+                    # Get specific provider health
+                    cur.execute("""
+                        SELECT provider_name, service_type, status, circuit_breaker_state,
+                               is_enabled, maintenance_mode, response_time_ms, success_rate,
+                               last_health_check, circuit_breaker_failures
+                        FROM provider_health_status
+                        WHERE provider_name = %s
+                        ORDER BY service_type
+                    """, (provider,))
+                else:
+                    # Get all providers health
+                    cur.execute("""
+                        SELECT provider_name, service_type, status, circuit_breaker_state,
+                               is_enabled, maintenance_mode, response_time_ms, success_rate,
+                               last_health_check, circuit_breaker_failures
+                        FROM provider_health_status
+                        ORDER BY provider_name, service_type
+                    """)
+                
+                providers = []
+                for row in cur.fetchall():
+                    provider_info = {
+                        "provider": row[0],
+                        "service_type": row[1],
+                        "status": row[2],
+                        "circuit_breaker_state": row[3],
+                        "enabled": row[4],
+                        "maintenance_mode": row[5],
+                        "response_time_ms": row[6],
+                        "success_rate": float(row[7]) if row[7] else None,
+                        "last_health_check": row[8].isoformat() if row[8] else None,
+                        "failure_count": row[9],
+                        "available": is_provider_available(row[0], row[1])
+                    }
+                    providers.append(provider_info)
+                
+                # Get recent operational events
+                cur.execute("""
+                    SELECT provider_name, event_type, severity, summary, created_at
+                    FROM provider_operational_events
+                    WHERE created_at >= now() - INTERVAL '24 hours'
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                """)
+                
+                recent_events = []
+                for row in cur.fetchall():
+                    recent_events.append({
+                        "provider": row[0],
+                        "event_type": row[1],
+                        "severity": row[2],
+                        "summary": row[3],
+                        "created_at": row[4].isoformat()
+                    })
+                
+                write_audit_m28(x_user_id, "provider_health_accessed", "provider_health", provider or "all",
+                               {"provider_count": len(providers)}, request_id)
+                
+                return {
+                    "providers": providers,
+                    "recent_events": recent_events,
+                    "summary": {
+                        "total_providers": len(providers),
+                        "healthy": len([p for p in providers if p["status"] == "healthy"]),
+                        "unhealthy": len([p for p in providers if p["status"] == "unhealthy"]),
+                        "maintenance": len([p for p in providers if p["maintenance_mode"]]),
+                        "disabled": len([p for p in providers if not p["enabled"]])
+                    }
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m28(x_user_id, "provider_health_access_failed", "provider_health", provider or "all",
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Provider health access failed: {str(e)}")
+
+def is_provider_available(provider_name: str, service_type: str) -> bool:
+    """Check if provider is available (helper function)"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT is_provider_available(%s, %s)", (provider_name, service_type))
+                return cur.fetchone()[0]
+    except:
+        return False
+
+@app.post("/admin/providers/toggle")
+def toggle_provider_status(
+    toggle_data: dict,
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Toggle provider availability (Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            write_audit_m28(x_user_id, "provider_toggle_access_denied", "provider_toggle", None,
+                           {"user_role": user_role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Validate required fields
+        required_fields = ['provider_name', 'service_type', 'enabled']
+        for field in required_fields:
+            if field not in toggle_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        provider_name = toggle_data['provider_name']
+        service_type = toggle_data['service_type']
+        enabled = toggle_data['enabled']
+        reason = toggle_data.get('reason', 'Manual toggle by admin')
+        maintenance_mode = toggle_data.get('maintenance_mode', False)
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Check if provider exists
+                cur.execute("""
+                    SELECT id FROM provider_health_status
+                    WHERE provider_name = %s AND service_type = %s
+                """, (provider_name, service_type))
+                
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Provider not found")
+                
+                # Toggle provider using function
+                cur.execute("""
+                    SELECT toggle_provider(%s, %s, %s, %s, %s)
+                """, (provider_name, service_type, enabled, reason, x_user_id))
+                
+                # Update maintenance mode if specified
+                if 'maintenance_mode' in toggle_data:
+                    cur.execute("""
+                        UPDATE provider_health_status
+                        SET maintenance_mode = %s, updated_at = now()
+                        WHERE provider_name = %s AND service_type = %s
+                    """, (maintenance_mode, provider_name, service_type))
+                
+                # Get updated status
+                cur.execute("""
+                    SELECT status, is_enabled, maintenance_mode, updated_at
+                    FROM provider_health_status
+                    WHERE provider_name = %s AND service_type = %s
+                """, (provider_name, service_type))
+                
+                result = cur.fetchone()
+                status, is_enabled, is_maintenance, updated_at = result
+                
+                write_audit_m28(x_user_id, "provider_toggled", "provider", f"{provider_name}:{service_type}",
+                               {"enabled": enabled, "maintenance_mode": maintenance_mode, "reason": reason}, request_id)
+                
+                return {
+                    "provider_name": provider_name,
+                    "service_type": service_type,
+                    "status": status,
+                    "enabled": is_enabled,
+                    "maintenance_mode": is_maintenance,
+                    "updated_at": updated_at.isoformat(),
+                    "reason": reason
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m28(x_user_id, "provider_toggle_failed", "provider", f"{toggle_data.get('provider_name')}:{toggle_data.get('service_type')}",
+                       {"error": str(e), "enabled": toggle_data.get('enabled')}, request_id)
+        raise HTTPException(status_code=500, detail=f"Provider toggle failed: {str(e)}")
+
+@app.post("/admin/secrets/rotate")
+def request_secret_rotation(
+    rotation_data: dict,
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Request secret rotation (Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            write_audit_m28(x_user_id, "secret_rotation_access_denied", "secret_rotation", None,
+                           {"user_role": user_role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Validate required fields
+        required_fields = ['scope', 'key_name']
+        for field in required_fields:
+            if field not in rotation_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        scope = rotation_data['scope']
+        key_name = rotation_data['key_name']
+        rotation_type = rotation_data.get('rotation_type', 'manual')
+        force_rotation = rotation_data.get('force_rotation', False)
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Get secret configuration
+                cur.execute("""
+                    SELECT id, status, next_rotation_at, key_type
+                    FROM secrets_config
+                    WHERE scope = %s AND key_name = %s
+                """, (scope, key_name))
+                
+                secret_info = cur.fetchone()
+                if not secret_info:
+                    raise HTTPException(status_code=404, detail="Secret configuration not found")
+                
+                secret_id, status, next_rotation, key_type = secret_info
+                
+                # Check if rotation is needed or forced
+                if not force_rotation and not is_rotation_due(secret_id):
+                    next_due = next_rotation.isoformat() if next_rotation else "Manual rotation required"
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Rotation not due. Next rotation: {next_due}. Use force_rotation=true to override."
+                    )
+                
+                # Check if already rotating
+                if status == 'rotating':
+                    raise HTTPException(status_code=409, detail="Secret rotation already in progress")
+                
+                # Start rotation process
+                cur.execute("""
+                    SELECT start_secret_rotation(%s, %s, %s, %s)
+                """, (secret_id, rotation_type, x_user_id, request_id))
+                
+                rotation_id = cur.fetchone()[0]
+                
+                write_audit_m28(x_user_id, "secret_rotation_started", "secret", f"{scope}:{key_name}",
+                               {"rotation_id": rotation_id, "rotation_type": rotation_type, "forced": force_rotation}, request_id)
+                
+                # Get rotation details
+                cur.execute("""
+                    SELECT initiated_at, status
+                    FROM secrets_rotation_log
+                    WHERE id = %s
+                """, (rotation_id,))
+                
+                initiated_at, rotation_status = cur.fetchone()
+                
+                return {
+                    "rotation_id": rotation_id,
+                    "secret_scope": scope,
+                    "secret_key_name": key_name,
+                    "rotation_type": rotation_type,
+                    "status": rotation_status,
+                    "initiated_at": initiated_at.isoformat(),
+                    "initiated_by": x_user_id,
+                    "message": f"Secret rotation started for {scope}:{key_name}. Manual completion required.",
+                    "next_steps": [
+                        "1. Generate new secret value using appropriate method",
+                        "2. Update external provider configuration", 
+                        "3. Test new secret functionality",
+                        "4. Complete rotation via separate API call"
+                    ]
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m28(x_user_id, "secret_rotation_failed", "secret", f"{rotation_data.get('scope')}:{rotation_data.get('key_name')}",
+                       {"error": str(e), "rotation_type": rotation_data.get('rotation_type')}, request_id)
+        raise HTTPException(status_code=500, detail=f"Secret rotation request failed: {str(e)}")
+
+def is_rotation_due(secret_id: int) -> bool:
+    """Helper function to check if rotation is due"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT is_rotation_due(%s)", (secret_id,))
+                return cur.fetchone()[0]
+    except:
+        return False
+
+@app.get("/admin/secrets/status")
+def get_secrets_status(
+    scope: str = Query(None),
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Get secrets rotation status (Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                if scope:
+                    # Get specific scope secrets
+                    cur.execute("""
+                        SELECT scope, key_name, key_type, rotation_schedule, status,
+                               last_rotated_at, next_rotation_at, data_classification
+                        FROM secrets_config
+                        WHERE scope = %s
+                        ORDER BY key_name
+                    """, (scope,))
+                else:
+                    # Get all secrets
+                    cur.execute("""
+                        SELECT scope, key_name, key_type, rotation_schedule, status,
+                               last_rotated_at, next_rotation_at, data_classification
+                        FROM secrets_config
+                        ORDER BY scope, key_name
+                    """)
+                
+                secrets = []
+                for row in cur.fetchall():
+                    secret_info = {
+                        "scope": row[0],
+                        "key_name": row[1],
+                        "key_type": row[2],
+                        "rotation_schedule": row[3],
+                        "status": row[4],
+                        "last_rotated_at": row[5].isoformat() if row[5] else None,
+                        "next_rotation_at": row[6].isoformat() if row[6] else None,
+                        "data_classification": row[7],
+                        "rotation_due": is_rotation_due_check(row[6])
+                    }
+                    secrets.append(secret_info)
+                
+                # Get recent rotation history
+                cur.execute("""
+                    SELECT sc.scope, sc.key_name, srl.rotation_type, srl.status,
+                           srl.initiated_at, srl.completed_at
+                    FROM secrets_rotation_log srl
+                    JOIN secrets_config sc ON sc.id = srl.secret_config_id
+                    WHERE srl.initiated_at >= now() - INTERVAL '30 days'
+                    ORDER BY srl.initiated_at DESC
+                    LIMIT 20
+                """)
+                
+                recent_rotations = []
+                for row in cur.fetchall():
+                    recent_rotations.append({
+                        "scope": row[0],
+                        "key_name": row[1],
+                        "rotation_type": row[2],
+                        "status": row[3],
+                        "initiated_at": row[4].isoformat(),
+                        "completed_at": row[5].isoformat() if row[5] else None
+                    })
+                
+                return {
+                    "secrets": secrets,
+                    "recent_rotations": recent_rotations,
+                    "summary": {
+                        "total_secrets": len(secrets),
+                        "active": len([s for s in secrets if s["status"] == "active"]),
+                        "rotating": len([s for s in secrets if s["status"] == "rotating"]),
+                        "due_for_rotation": len([s for s in secrets if s["rotation_due"]])
+                    }
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m28(x_user_id, "secrets_status_access_failed", "secrets", scope or "all",
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Secrets status access failed: {str(e)}")
+
+def is_rotation_due_check(next_rotation_at):
+    """Helper to check if rotation is due"""
+    if not next_rotation_at:
+        return False
+    return next_rotation_at <= datetime.utcnow()
+
+# =============================================================================
+# M29: SRE & COST GUARDS
+# =============================================================================
+
+from functools import wraps
+import statistics
+
+# Rate limiting middleware using token bucket
+class TokenBucket:
+    def __init__(self, bucket_size, refill_rate):
+        self.bucket_size = bucket_size
+        self.refill_rate = refill_rate
+        self.tokens = bucket_size
+        self.last_refill = time.time()
+    
+    def consume(self, tokens=1):
+        now = time.time()
+        # Refill tokens based on elapsed time
+        elapsed = now - self.last_refill
+        self.tokens = min(self.bucket_size, self.tokens + elapsed * self.refill_rate)
+        self.last_refill = now
+        
+        if self.tokens >= tokens:
+            self.tokens -= tokens
+            return True
+        return False
+    
+    def retry_after(self):
+        return max(0, (1 - self.tokens) / self.refill_rate)
+
+# Global rate limiters (in-memory for demo - use Redis in production)
+rate_limiters = {}
+
+def get_rate_limiter(policy_name, scope_key):
+    """Get or create rate limiter for scope"""
+    key = f"{policy_name}:{scope_key}"
+    if key not in rate_limiters:
+        # Default configuration - in production, load from database
+        rate_limiters[key] = TokenBucket(bucket_size=100, refill_rate=10)
+    return rate_limiters[key]
+
+def check_rate_limit_middleware(policy_name, scope_key_func, tokens=1):
+    """Rate limiting decorator"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Extract request object to get headers
+            x_user_id = kwargs.get('x_user_id') or (kwargs.get('request') and kwargs['request'].headers.get('x-user-id'))
+            
+            # Generate scope key
+            if scope_key_func == 'user':
+                scope_key = x_user_id or 'anonymous'
+            elif scope_key_func == 'ip':
+                scope_key = 'global'  # Simplified for demo
+            else:
+                scope_key = 'global'
+            
+            # Check rate limit using database function
+            try:
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT check_rate_limit(%s, %s, %s)", (policy_name, scope_key, tokens))
+                        result = cur.fetchone()[0]
+                        
+                        if not result['allowed']:
+                            retry_after = result.get('retry_after_seconds', 60)
+                            raise HTTPException(
+                                status_code=429,
+                                detail="Rate limit exceeded",
+                                headers={"Retry-After": str(retry_after)}
+                            )
+            except Exception as e:
+                # Fallback to in-memory rate limiter if database check fails
+                limiter = get_rate_limiter(policy_name, scope_key)
+                if not limiter.consume(tokens):
+                    retry_after = int(limiter.retry_after())
+                    raise HTTPException(
+                        status_code=429,
+                        detail="Rate limit exceeded", 
+                        headers={"Retry-After": str(retry_after)}
+                    )
+            
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+def write_audit_m29(user_id: str, event: str, entity: str, entity_id: str, metadata: dict, request_id: str):
+    """Write M29 SRE audit entry"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO audit_log (actor, actor_role, event, entity, entity_id, meta, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, now())
+                """, (user_id, get_user_role(user_id), event, entity, entity_id, json.dumps(metadata)))
+    except Exception as e:
+        print(f"Audit write failed: {e}")
+
+@app.get("/admin/health/overview")
+def get_health_overview(
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Get SRE health overview with golden signals (Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            write_audit_m29(x_user_id, "health_overview_access_denied", "sre_health", None,
+                           {"user_role": user_role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Get latest golden signals (last 5 minutes)
+                cur.execute("""
+                    SELECT 
+                        service_name,
+                        AVG(latency_p95_ms) as avg_latency_p95,
+                        SUM(request_count) as total_requests,
+                        AVG(error_rate) as avg_error_rate,
+                        AVG(cpu_usage_percent) as avg_cpu_usage
+                    FROM sre_golden_signals 
+                    WHERE window_start >= now() - INTERVAL '5 minutes'
+                    GROUP BY service_name
+                    ORDER BY service_name
+                """)
+                
+                golden_signals = []
+                for row in cur.fetchall():
+                    golden_signals.append({
+                        "service": row[0],
+                        "latency_p95_ms": float(row[1]) if row[1] else 0,
+                        "request_count": int(row[2]) if row[2] else 0,
+                        "error_rate": float(row[3]) if row[3] else 0,
+                        "cpu_usage_percent": float(row[4]) if row[4] else 0
+                    })
+                
+                # Get circuit breaker states
+                cur.execute("""
+                    SELECT service_name, service_type, state, failure_count,
+                           last_failure_at, next_attempt_at
+                    FROM sre_circuit_breakers 
+                    WHERE is_enabled = true
+                    ORDER BY service_name, service_type
+                """)
+                
+                circuit_breakers = []
+                for row in cur.fetchall():
+                    circuit_breakers.append({
+                        "service": row[0],
+                        "service_type": row[1],
+                        "state": row[2],
+                        "failure_count": row[3],
+                        "last_failure": row[4].isoformat() if row[4] else None,
+                        "next_attempt": row[5].isoformat() if row[5] else None
+                    })
+                
+                # Get recent rate limit violations
+                cur.execute("""
+                    SELECT rl.policy_name, COUNT(*) as violation_count
+                    FROM sre_rate_limit_violations rlv
+                    JOIN sre_rate_limits rl ON rl.id = rlv.rate_limit_id
+                    WHERE rlv.violated_at >= now() - INTERVAL '1 hour'
+                    GROUP BY rl.policy_name
+                    ORDER BY violation_count DESC
+                """)
+                
+                rate_limit_violations = {row[0]: row[1] for row in cur.fetchall()}
+                
+                # Get active incidents
+                cur.execute("""
+                    SELECT COUNT(*) as total_incidents,
+                           COUNT(*) FILTER (WHERE severity = 'critical') as critical_incidents,
+                           COUNT(*) FILTER (WHERE status = 'open') as open_incidents
+                    FROM incidents 
+                    WHERE status IN ('open', 'investigating', 'identified', 'monitoring')
+                """)
+                
+                incident_counts = cur.fetchone()
+                
+                write_audit_m29(x_user_id, "health_overview_accessed", "sre_health", "overview",
+                               {"services_count": len(golden_signals)}, request_id)
+                
+                return {
+                    "golden_signals": golden_signals,
+                    "circuit_breakers": circuit_breakers,
+                    "rate_limits": {
+                        "violations_last_hour": rate_limit_violations,
+                        "total_violations": sum(rate_limit_violations.values())
+                    },
+                    "incidents": {
+                        "total": incident_counts[0],
+                        "critical": incident_counts[1], 
+                        "open": incident_counts[2]
+                    },
+                    "system_health": "healthy" if incident_counts[1] == 0 else "degraded",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m29(x_user_id, "health_overview_failed", "sre_health", "overview",
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Health overview failed: {str(e)}")
+
+@app.get("/admin/budget")
+def get_budget_overview(
+    category: str = Query(None),
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Get FinOps budget overview and usage (Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            write_audit_m29(x_user_id, "budget_access_denied", "cost_budget", None,
+                           {"user_role": user_role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Get budget status
+                where_clause = "WHERE is_active = true"
+                params = []
+                
+                if category:
+                    where_clause += " AND category = %s"
+                    params.append(category)
+                
+                cur.execute(f"""
+                    SELECT budget_name, category, budget_type,
+                           budget_amount_cents, current_usage_cents,
+                           warning_threshold_percent, critical_threshold_percent,
+                           period_start, period_end,
+                           ROUND((current_usage_cents::decimal / budget_amount_cents * 100), 2) as usage_percent
+                    FROM cost_budgets 
+                    {where_clause}
+                    ORDER BY category, budget_name
+                """, params)
+                
+                budgets = []
+                for row in cur.fetchall():
+                    usage_percent = float(row[9])
+                    status = "healthy"
+                    if usage_percent >= row[6]:  # critical_threshold_percent
+                        status = "critical"
+                    elif usage_percent >= row[5]:  # warning_threshold_percent
+                        status = "warning"
+                    
+                    budgets.append({
+                        "budget_name": row[0],
+                        "category": row[1],
+                        "budget_type": row[2],
+                        "budget_amount": row[3] / 100.0,  # Convert cents to dollars
+                        "current_usage": row[4] / 100.0,
+                        "usage_percent": usage_percent,
+                        "status": status,
+                        "period_start": row[7].isoformat(),
+                        "period_end": row[8].isoformat(),
+                        "remaining_amount": (row[3] - row[4]) / 100.0
+                    })
+                
+                # Get recent cost usage by provider
+                cur.execute("""
+                    SELECT provider, service_type,
+                           SUM(total_cost_cents) as total_cost,
+                           SUM(usage_count) as total_usage
+                    FROM cost_usage_daily 
+                    WHERE usage_date >= CURRENT_DATE - INTERVAL '7 days'
+                    GROUP BY provider, service_type
+                    ORDER BY total_cost DESC
+                """)
+                
+                usage_breakdown = []
+                for row in cur.fetchall():
+                    usage_breakdown.append({
+                        "provider": row[0],
+                        "service_type": row[1], 
+                        "cost_last_7_days": row[2] / 100.0,
+                        "usage_count": row[3]
+                    })
+                
+                # Get recent cost alerts
+                cur.execute("""
+                    SELECT ca.alert_type, cb.budget_name, ca.usage_percent,
+                           ca.alert_date, ca.status
+                    FROM cost_alerts ca
+                    JOIN cost_budgets cb ON cb.id = ca.budget_id
+                    WHERE ca.alert_date >= CURRENT_DATE - INTERVAL '7 days'
+                    ORDER BY ca.alert_date DESC
+                """)
+                
+                recent_alerts = []
+                for row in cur.fetchall():
+                    recent_alerts.append({
+                        "alert_type": row[0],
+                        "budget_name": row[1],
+                        "usage_percent": float(row[2]),
+                        "alert_date": row[3].isoformat(),
+                        "status": row[4]
+                    })
+                
+                write_audit_m29(x_user_id, "budget_accessed", "cost_budget", category or "all",
+                               {"budgets_count": len(budgets)}, request_id)
+                
+                return {
+                    "budgets": budgets,
+                    "usage_breakdown": usage_breakdown,
+                    "recent_alerts": recent_alerts,
+                    "summary": {
+                        "total_budgets": len(budgets),
+                        "budgets_at_risk": len([b for b in budgets if b["status"] in ["warning", "critical"]]),
+                        "total_spend_last_7_days": sum(u["cost_last_7_days"] for u in usage_breakdown)
+                    }
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m29(x_user_id, "budget_access_failed", "cost_budget", category or "all",
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Budget access failed: {str(e)}")
+
+@app.post("/admin/incident/declare")
+def declare_incident(
+    incident_data: dict,
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Declare new incident (Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            write_audit_m29(x_user_id, "incident_declare_access_denied", "incident", None,
+                           {"user_role": user_role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Validate required fields
+        required_fields = ['title', 'severity']
+        for field in required_fields:
+            if field not in incident_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        title = incident_data['title']
+        severity = incident_data['severity']
+        description = incident_data.get('description', '')
+        category = incident_data.get('category', 'availability')
+        affected_services = incident_data.get('affected_services', [])
+        
+        # Validate severity
+        valid_severities = ['low', 'medium', 'high', 'critical']
+        if severity not in valid_severities:
+            raise HTTPException(status_code=400, detail=f"Invalid severity. Must be one of: {valid_severities}")
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Generate incident number
+                cur.execute("""
+                    SELECT COUNT(*) + 1 FROM incidents 
+                    WHERE detected_at >= DATE_TRUNC('year', CURRENT_DATE)
+                """)
+                
+                incident_count = cur.fetchone()[0]
+                incident_number = f"INC-{datetime.now().year}-{incident_count:03d}"
+                
+                # Create incident
+                cur.execute("""
+                    INSERT INTO incidents (
+                        incident_number, title, description, severity, category,
+                        affected_services, reported_by, detected_at, status
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, now(), 'open'
+                    ) RETURNING id, detected_at
+                """, (incident_number, title, description, severity, category, 
+                     affected_services, x_user_id))
+                
+                incident_id, detected_at = cur.fetchone()
+                
+                write_audit_m29(x_user_id, "incident_declared", "incident", str(incident_id),
+                               {"incident_number": incident_number, "severity": severity, "category": category}, request_id)
+                
+                return {
+                    "incident_id": incident_id,
+                    "incident_number": incident_number,
+                    "title": title,
+                    "severity": severity,
+                    "category": category,
+                    "status": "open",
+                    "detected_at": detected_at.isoformat(),
+                    "reported_by": x_user_id,
+                    "affected_services": affected_services,
+                    "message": f"Incident {incident_number} declared successfully"
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m29(x_user_id, "incident_declare_failed", "incident", None,
+                       {"error": str(e), "severity": incident_data.get('severity')}, request_id)
+        raise HTTPException(status_code=500, detail=f"Incident declaration failed: {str(e)}")
+
+@app.post("/admin/limits/test")
+@check_rate_limit_middleware("admin_operations", "user", tokens=1)
+def test_rate_limit(
+    test_data: dict,
+    x_user_id: str = Header(...),
+    x_request_id: str = Header(None)
+):
+    """Test rate limit policy (dry-run, Admin+ only)"""
+    request_id = x_request_id or str(uuid.uuid4())
+    
+    try:
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Validate required fields
+        required_fields = ['policy_name', 'scope_key']
+        for field in required_fields:
+            if field not in test_data:
+                raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+        
+        policy_name = test_data['policy_name']
+        scope_key = test_data['scope_key']
+        tokens_requested = test_data.get('tokens_requested', 1)
+        
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Test rate limit without consuming tokens (dry-run)
+                cur.execute("""
+                    SELECT rl.policy_name, rl.bucket_size, rl.refill_rate,
+                           COALESCE(rls.current_tokens, rl.bucket_size) as current_tokens,
+                           rls.requests_count, rls.blocked_count
+                    FROM sre_rate_limits rl
+                    LEFT JOIN sre_rate_limit_state rls ON rls.rate_limit_id = rl.id AND rls.scope_key = %s
+                    WHERE rl.policy_name = %s AND rl.is_enabled = true
+                """, (scope_key, policy_name))
+                
+                result = cur.fetchone()
+                if not result:
+                    return {
+                        "policy_name": policy_name,
+                        "scope_key": scope_key,
+                        "exists": False,
+                        "would_allow": True,
+                        "reason": "no_policy_found"
+                    }
+                
+                policy_name_db, bucket_size, refill_rate, current_tokens, requests, blocks = result
+                would_allow = float(current_tokens) >= tokens_requested
+                
+                write_audit_m29(x_user_id, "rate_limit_tested", "rate_limit", policy_name,
+                               {"scope_key": scope_key, "would_allow": would_allow}, request_id)
+                
+                return {
+                    "policy_name": policy_name,
+                    "scope_key": scope_key,
+                    "exists": True,
+                    "would_allow": would_allow,
+                    "current_tokens": float(current_tokens),
+                    "tokens_requested": tokens_requested,
+                    "bucket_size": bucket_size,
+                    "refill_rate": refill_rate,
+                    "historical_requests": requests or 0,
+                    "historical_blocks": blocks or 0,
+                    "reason": "sufficient_tokens" if would_allow else "insufficient_tokens"
+                }
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m29(x_user_id, "rate_limit_test_failed", "rate_limit", test_data.get('policy_name'),
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Rate limit test failed: {str(e)}")
+
+# Background jobs for SRE operations
+def collect_golden_signals_metrics():
+    """Collect and store golden signals metrics"""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # This would typically collect from application metrics
+                # For demo, we'll create synthetic data
+                window_start = datetime.utcnow().replace(second=0, microsecond=0)
+                window_end = window_start + timedelta(minutes=5)
+                
+                services = ['api', 'payments', 'notifications', 'community']
+                for service in services:
+                    # Calculate metrics from audit_log or application metrics
+                    cur.execute("""
+                        INSERT INTO sre_golden_signals (
+                            window_start, window_end, service_name,
+                            latency_p95_ms, request_count, error_rate,
+                            cpu_usage_percent
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s
+                        ) ON CONFLICT (window_start, service_name, endpoint_pattern, method) DO NOTHING
+                    """, (
+                        window_start, window_end, service,
+                        150.0,  # Mock latency
+                        100,    # Mock request count
+                        0.01,   # Mock error rate
+                        45.0    # Mock CPU usage
+                    ))
+    except Exception as e:
+        print(f"Golden signals collection failed: {e}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
