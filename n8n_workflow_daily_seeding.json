@@ -1,0 +1,73 @@
+{
+  "meta": {
+    "instanceId": "a9d4c56b3c8a0c6b1e8d4b8e7a8c9d1e"
+  },
+  "name": "SAMIA-TAROT: Daily Horoscope Seeding by TZ Cohort",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "name": "Every Hour Check",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [220, 240],
+      "id": "1"
+    },
+    {
+      "parameters": {
+        "functionCode": "// M18A Daily Seeding - Timezone Cohort Logic\n// Check if it's midnight (00:00) in any of our TZ cohorts\n\nconst now = new Date();\nconst currentHour = now.getUTCHours();\n\n// TZ Cohort Definitions (UTC offsets)\nconst cohorts = [\n  { name: 'GMT', offset: 0, regions: ['UK', 'Portugal'] },\n  { name: 'CET', offset: -1, regions: ['France', 'Germany', 'Italy'] },\n  { name: 'EET', offset: -2, regions: ['Greece', 'Turkey', 'Egypt'] },\n  { name: 'AST', offset: -3, regions: ['Saudi', 'Kuwait', 'Iraq'] },\n  { name: 'GST', offset: -4, regions: ['UAE', 'Oman'] },\n  { name: 'PKT', offset: -5, regions: ['Pakistan'] },\n  { name: 'IST', offset: -5.5, regions: ['India'] },\n  { name: 'JST', offset: -9, regions: ['Japan'] },\n  { name: 'AET', offset: -11, regions: ['Australia East'] },\n  { name: 'PST', offset: 8, regions: ['US West'] },\n  { name: 'EST', offset: 5, regions: ['US East'] },\n  { name: 'BRT', offset: 3, regions: ['Brazil'] }\n];\n\n// Find cohorts where it's currently midnight (00:00 local)\nconst midnightCohorts = cohorts.filter(cohort => {\n  const localHour = (24 + currentHour + cohort.offset) % 24;\n  return localHour === 0;\n});\n\nif (midnightCohorts.length === 0) {\n  // No cohorts at midnight, skip this run\n  return [];\n}\n\n// For each midnight cohort, prepare seeding data\nconst zodiacSigns = [\n  'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',\n  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'\n];\n\nconst seedingJobs = [];\n\nmidnightCohorts.forEach(cohort => {\n  zodiacSigns.forEach(zodiac => {\n    seedingJobs.push({\n      cohort: cohort.name,\n      regions: cohort.regions.join(', '),\n      zodiac: zodiac,\n      ref_date: now.toISOString().split('T')[0], // YYYY-MM-DD\n      utc_hour: currentHour,\n      local_midnight: true\n    });\n  });\n});\n\nreturn seedingJobs.map(job => ({ json: job }));"
+      },
+      "name": "TZ Cohort Logic",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [440, 240],
+      "id": "2"
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{ $env.SAMIA_API_BASE }}/api/admin/horoscopes/seed-daily",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-User-Id",
+              "value": "system-n8n"
+            },
+            {
+              "name": "X-Job-Token",
+              "value": "={{ $env.SAMIA_JOB_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "zodiac",
+              "value": "={{ $json.zodiac }}"
+            },
+            {
+              "name": "ref_date",
+              "value": "={{ $json.ref_date }}"
+            },
+            {
+              "name": "cohort",
+              "value": "={{ $json.cohort }}"
+            },
+            {
+              "name": "source_ref",
+              "value": "n8n-seeding-{{ $json.cohort }}-{{ $json.ref_date }}"
+            }\n          ]\n        }\n      },\n      \"name\": \"Seed Horoscope Entry\",\n      \"type\": \"n8n-nodes-base.httpRequest\",\n      \"typeVersion\": 1,\n      \"position\": [660, 240],\n      \"id\": \"3\"\n    },\n    {\n      \"parameters\": {\n        \"functionCode\": \"// M18A - Log seeding results\\n\\nconst success = $input.all().filter(item => \\n  item.json.status >= 200 && item.json.status < 300\\n);\\nconst errors = $input.all().filter(item => \\n  item.json.status >= 400\\n);\\n\\nconst summary = {\\n  timestamp: new Date().toISOString(),\\n  total_requests: $input.all().length,\\n  successful: success.length,\\n  failed: errors.length,\\n  cohorts_processed: [...new Set($input.all().map(i => i.json.cohort))],\\n  errors: errors.map(e => ({\\n    zodiac: e.json.zodiac,\\n    cohort: e.json.cohort,\\n    status: e.json.status,\\n    error: e.json.error\\n  }))\\n};\\n\\nconsole.log('Daily Seeding Summary:', JSON.stringify(summary, null, 2));\\n\\nreturn [{ json: summary }];\"\n      },\n      \"name\": \"Log Results\",\n      \"type\": \"n8n-nodes-base.function\",\n      \"typeVersion\": 1,\n      \"position\": [880, 240],\n      \"id\": \"4\"\n    }\n  ],\n  \"connections\": {\n    \"1\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"TZ Cohort Logic\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"2\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Seed Horoscope Entry\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"3\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Log Results\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"active\": true,\n  \"settings\": {\n    \"timezone\": \"UTC\",\n    \"saveManualExecutions\": true\n  },\n  \"tags\": [\n    \"samia-tarot\",\n    \"horoscopes\",\n    \"daily-seeding\",\n    \"m18a\"\n  ]\n}

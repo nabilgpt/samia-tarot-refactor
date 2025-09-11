@@ -1,0 +1,201 @@
+{
+  "meta": {
+    "instanceId": "a9d4c56b3c8a0c6b1e8d4b8e7a8c9d1e"
+  },
+  "name": "SAMIA-TAROT: Monthly Upload Reminder (T-3)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily at 09:00 UTC",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [220, 240],
+      "id": "1"
+    },
+    {
+      "parameters": {
+        "functionCode": "// M18A - Monthly Upload Reminder Logic (T-3 days)\n// Check if we're 3 days before month end\n\nconst now = new Date();\nconst currentDate = now.getDate();\nconst currentMonth = now.getMonth() + 1; // 1-based\nconst currentYear = now.getFullYear();\n\n// Calculate last day of current month\nconst lastDayOfMonth = new Date(currentYear, now.getMonth() + 1, 0).getDate();\n\n// Are we exactly 3 days before month end?\nconst daysUntilMonthEnd = lastDayOfMonth - currentDate;\nconst isReminderDay = daysUntilMonthEnd === 3;\n\nif (!isReminderDay) {\n  console.log(`Not reminder day. Days until month end: ${daysUntilMonthEnd}`);\n  return []; // Skip this execution\n}\n\n// Calculate next month details\nconst nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;\nconst nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;\nconst nextMonthName = new Date(nextYear, nextMonth - 1, 1).toLocaleString('en', { month: 'long' });\n\nconst reminderData = {\n  current_date: now.toISOString().split('T')[0],\n  current_month: currentMonth,\n  current_year: currentYear,\n  days_until_month_end: daysUntilMonthEnd,\n  next_month: nextMonth,\n  next_year: nextYear,\n  next_month_name: nextMonthName,\n  reminder_type: 'monthly_upload_t_minus_3',\n  zodiac_signs_needed: 12,\n  upload_deadline: `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`\n};\n\nconsole.log('Monthly reminder triggered:', JSON.stringify(reminderData, null, 2));\n\nreturn [{ json: reminderData }];"
+      },
+      "name": "Check T-3 Reminder",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [440, 240],
+      "id": "2"
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "={{ $env.SAMIA_API_BASE }}/api/admin/horoscopes/upload-status?next_month={{ $json.next_month }}&next_year={{ $json.next_year }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-User-Id",
+              "value": "system-n8n"
+            },
+            {
+              "name": "X-Job-Token",
+              "value": "={{ $env.SAMIA_JOB_TOKEN }}"
+            }
+          ]
+        }
+      },
+      "name": "Check Upload Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [660, 240],
+      "id": "3"
+    },
+    {
+      "parameters": {
+        "functionCode": "// M18A - Prepare reminder notification based on upload status\n\nconst reminderData = $('Check T-3 Reminder').item.json;\nconst uploadStatus = $('Check Upload Status').item.json;\n\nconst missing_signs = uploadStatus.missing_signs || [];\nconst uploaded_count = uploadStatus.uploaded_count || 0;\nconst total_needed = 12;\n\nconst notification = {\n  type: 'monthly_upload_reminder',\n  priority: missing_signs.length > 6 ? 'high' : 'normal',\n  next_month_name: reminderData.next_month_name,\n  upload_deadline: reminderData.upload_deadline,\n  status: {\n    uploaded: uploaded_count,\n    missing: missing_signs.length,\n    total_needed: total_needed,\n    completion_percentage: Math.round((uploaded_count / total_needed) * 100)\n  },\n  missing_signs: missing_signs,\n  message: missing_signs.length === 0 \n    ? `All ${total_needed} horoscopes uploaded for ${reminderData.next_month_name}!`\n    : `${missing_signs.length} horoscope(s) still needed for ${reminderData.next_month_name}: ${missing_signs.join(', ')}`,\n  action_required: missing_signs.length > 0,\n  days_remaining: 3\n};\n\nconsole.log('Reminder notification prepared:', JSON.stringify(notification, null, 2));\n\nreturn [{ json: notification }];"
+      },
+      "name": "Prepare Notification",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [880, 240],
+      "id": "4"
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{ $env.SAMIA_API_BASE }}/api/admin/notifications/send-reminder",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-User-Id",
+              "value": "system-n8n"
+            },
+            {
+              "name": "X-Job-Token",
+              "value": "={{ $env.SAMIA_JOB_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "={{ $json.type }}"
+            },
+            {
+              "name": "priority",
+              "value": "={{ $json.priority }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "action_required",
+              "value": "={{ $json.action_required }}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        }
+      },
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1100, 240],
+      "id": "5",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "functionCode": "// M18A - Log reminder execution results\n\nconst reminderData = $('Check T-3 Reminder').item.json;\nconst notification = $('Prepare Notification').item.json;\nconst sendResult = $('Send Reminder').item.json;\n\nconst summary = {\n  timestamp: new Date().toISOString(),\n  reminder_type: 'monthly_upload_t_minus_3',\n  next_month: reminderData.next_month_name,\n  upload_deadline: reminderData.upload_deadline,\n  action_required: notification.action_required,\n  missing_count: notification.status.missing,\n  completion_percentage: notification.status.completion_percentage,\n  notification_sent: sendResult.success || false,\n  notification_error: sendResult.error || null,\n  priority: notification.priority\n};\n\nconsole.log('Monthly reminder execution summary:', JSON.stringify(summary, null, 2));\n\n// Alert if high priority reminder\nif (notification.priority === 'high') {\n  console.warn('HIGH PRIORITY: Many horoscopes missing for next month!', summary);\n}\n\nreturn [{ json: summary }];"
+      },
+      "name": "Log Reminder Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1320, 240],
+      "id": "6"
+    }
+  ],
+  "connections": {
+    "1": {
+      "main": [
+        [
+          {
+            "node": "Check T-3 Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2": {
+      "main": [
+        [
+          {
+            "node": "Check Upload Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3": {
+      "main": [
+        [
+          {
+            "node": "Prepare Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5": {
+      "main": [
+        [
+          {
+            "node": "Log Reminder Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "UTC",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    "samia-tarot",
+    "horoscopes",
+    "monthly-reminder",
+    "m18a"
+  ]
+}

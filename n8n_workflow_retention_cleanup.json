@@ -1,0 +1,171 @@
+{
+  "meta": {
+    "instanceId": "a9d4c56b3c8a0c6b1e8d4b8e7a8c9d1e"
+  },
+  "name": "SAMIA-TAROT: 60-Day Retention Cleanup",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "cronExpression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily at 02:00 UTC",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [220, 240],
+      "id": "1"
+    },
+    {
+      "parameters": {
+        "functionCode": "// M18A - 60-Day Retention Logic\n// Calculate cutoff date (60 days ago)\n\nconst now = new Date();\nconst cutoffDate = new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000));\nconst cutoffDateStr = cutoffDate.toISOString().split('T')[0]; // YYYY-MM-DD\n\nconst retentionJob = {\n  cutoff_date: cutoffDateStr,\n  retention_days: 60,\n  execution_time: now.toISOString(),\n  timezone: 'UTC',\n  job_type: 'retention_cleanup'\n};\n\nconsole.log('Retention cleanup job prepared:', JSON.stringify(retentionJob, null, 2));\n\nreturn [{ json: retentionJob }];"
+      },
+      "name": "Calculate Retention Cutoff",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [440, 240],
+      "id": "2"
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "={{ $env.SAMIA_API_BASE }}/api/admin/horoscopes/retention-audit?cutoff_date={{ $json.cutoff_date }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-User-Id",
+              "value": "system-n8n"
+            },
+            {
+              "name": "X-Job-Token",
+              "value": "={{ $env.SAMIA_JOB_TOKEN }}"
+            }
+          ]
+        }
+      },
+      "name": "Pre-Delete Audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [660, 240],
+      "id": "3"
+    },
+    {
+      "parameters": {
+        "requestMethod": "DELETE",
+        "url": "={{ $env.SAMIA_API_BASE }}/api/admin/horoscopes/retention-cleanup",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-User-Id",
+              "value": "system-n8n"
+            },
+            {
+              "name": "X-Job-Token",
+              "value": "={{ $env.SAMIA_JOB_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "cutoff_date",
+              "value": "={{ $('Calculate Retention Cutoff').item.json.cutoff_date }}"
+            },
+            {
+              "name": "retention_days",
+              "value": "60"
+            },
+            {
+              "name": "confirm_delete",
+              "value": "true"
+            }
+          ]
+        }
+      },
+      "name": "Execute Cleanup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [880, 240],
+      "id": "4"
+    },
+    {
+      "parameters": {
+        "functionCode": "// M18A - Log retention cleanup results\n\nconst auditData = $('Pre-Delete Audit').item.json;\nconst cleanupData = $('Execute Cleanup').item.json;\nconst cutoffInfo = $('Calculate Retention Cutoff').item.json;\n\nconst summary = {\n  timestamp: new Date().toISOString(),\n  cutoff_date: cutoffInfo.cutoff_date,\n  retention_days: cutoffInfo.retention_days,\n  pre_cleanup_count: auditData.items_to_delete || 0,\n  storage_objects_found: auditData.storage_objects || 0,\n  cleanup_successful: cleanupData.deleted_count >= 0,\n  deleted_horoscopes: cleanupData.deleted_count || 0,\n  deleted_storage_objects: cleanupData.storage_deleted || 0,\n  errors: cleanupData.errors || [],\n  execution_time_ms: cleanupData.execution_time_ms || 0\n};\n\nconsole.log('Retention Cleanup Summary:', JSON.stringify(summary, null, 2));\n\n// Alert if significant cleanup happened\nif (summary.deleted_horoscopes > 50 || summary.errors.length > 0) {\n  console.warn('ALERT: Large cleanup or errors detected', summary);\n}\n\nreturn [{ json: summary }];"
+      },
+      "name": "Log Cleanup Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1100, 240],
+      "id": "5"
+    }
+  ],
+  "connections": {
+    "1": {
+      "main": [
+        [
+          {
+            "node": "Calculate Retention Cutoff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2": {
+      "main": [
+        [
+          {
+            "node": "Pre-Delete Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3": {
+      "main": [
+        [
+          {
+            "node": "Execute Cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4": {
+      "main": [
+        [
+          {
+            "node": "Log Cleanup Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "UTC",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    "samia-tarot",
+    "horoscopes",
+    "retention-cleanup",
+    "m18a"
+  ]
+}

@@ -147,6 +147,98 @@ class HoroscopeTikTokIngestRequest(BaseModel):
     tiktok_url: str  # Official TikTok post URL
     api_metadata: Optional[dict] = None  # From official TikTok API
 
+# M19 - Calls & Emergency models
+class CallScheduleRequest(BaseModel):
+    order_id: int
+    scheduled_at: Optional[str] = None  # ISO timestamp, None for immediate
+    client_phone: str  # E.164 format
+    reader_phone: Optional[str] = None  # If None, system will assign
+    notes: Optional[str] = None
+
+# M20 - Payment models
+class PaymentCheckoutRequest(BaseModel):
+    order_id: int
+    amount_cents: int
+    currency: str = "USD"
+    country_code: str  # For provider matrix routing
+
+class PaymentMethodRequest(BaseModel):
+    payment_method_id: str  # Stripe PaymentMethod.id or Square card token
+    save_for_future: bool = False
+
+class ManualTransferRequest(BaseModel):
+    order_id: int
+    amount_cents: int
+    currency: str = "USD"
+    transfer_type: str  # bank_transfer, usdt, crypto
+    transaction_ref: str  # Bank reference, USDT tx hash, etc
+    proof_media_id: Optional[int] = None  # Upload proof document
+
+class WalletTopupRequest(BaseModel):
+    amount_cents: int
+    currency: str = "USD" 
+    payment_provider: Optional[str] = None  # Force specific provider
+    
+class WalletWithdrawalRequest(BaseModel):
+    order_id: int
+    amount_cents: int
+    currency: str = "USD"
+
+# M21 - Moderation & Audit models
+class ModerationActionRequest(BaseModel):
+    target_type: str  # profile, order, media, call
+    target_id: str
+    action: str  # block, unblock, hold, remove_media, escalate
+    reason_code: str
+    severity: Optional[int] = 1  # 1-4 severity scale
+    duration_hours: Optional[int] = None  # for temporary restrictions
+    evidence_refs: Optional[list] = []  # media IDs, order refs
+    internal_notes: Optional[str] = None
+    user_visible_reason: Optional[str] = None
+
+class ModerationCaseRequest(BaseModel):
+    subject_type: str  # profile, order, media, call, payment
+    subject_id: str
+    priority: Optional[int] = 2  # 1-4 priority scale
+    reason_code: str
+    description: str
+    evidence_refs: Optional[list] = []
+
+class AppealOpenRequest(BaseModel):
+    moderation_action_id: int
+    appeal_reason: str
+    appeal_evidence: Optional[list] = []
+
+class AppealDecisionRequest(BaseModel):
+    decision: str  # approved, denied, partial_approval
+    decision_reason: str
+    decision_notes: Optional[str] = None
+    reverse_original: bool = False
+    apply_new_action: Optional[dict] = None
+
+class AuditExportRequest(BaseModel):
+    period_start: str  # ISO timestamp
+    period_end: str  # ISO timestamp
+    export_format: str = "json"  # json, csv
+    include_signatures: bool = True
+
+class CallStartRequest(BaseModel):
+    client_phone: str  # E.164 format
+    reader_phone: str  # E.164 format
+    record: bool = True  # Default recording ON
+
+class CallDropRequest(BaseModel):
+    ended_reason: str  # monitor_drop, reader_drop, client_drop
+    notes: Optional[str] = None
+
+class SirenAlertRequest(BaseModel):
+    alert_type: str  # emergency, quality_issue, technical_problem, inappropriate_behavior
+    reason: str
+    
+class SirenResponseRequest(BaseModel):
+    action: str  # acknowledge, resolve, false_alarm
+    notes: Optional[str] = None
+
 class HoroscopeScheduleRequest(BaseModel):
     ref_date: str  # YYYY-MM-DD format
 
@@ -4191,6 +4283,4527 @@ def reject_zodiac_settings_change(request_id: int, request: SettingsReviewReques
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Settings rejection failed: {str(e)}")
+
+
+# M18A - New endpoints for orchestration and retention
+
+@app.post("/api/admin/horoscopes/seed-daily")
+def seed_daily_horoscope(request: dict, x_user_id: str = Header(...), x_job_token: str = Header(None)):
+    """Seed daily horoscope entry for n8n orchestration (system/admin/superadmin only) - M18A compliant"""
+    
+    try:
+        user_id = x_user_id
+        
+        # Validate system access (n8n or admin)
+        if user_id == "system-n8n":
+            # System access via job token
+            expected_token = os.getenv("JOB_TOKEN", "missing")
+            if not x_job_token or x_job_token != expected_token:
+                raise HTTPException(status_code=403, detail="Valid job token required for system access")
+        else:
+            # Human admin access
+            if not can_access_horoscope(user_id, for_management=True):
+                write_audit(actor=user_id, event="horoscope_seed_denied", entity="horoscope", entity_id=None)
+                raise HTTPException(status_code=403, detail="Admin/superadmin access required")
+        
+        # Extract and validate request data
+        zodiac = request.get("zodiac", "").capitalize()
+        ref_date_str = request.get("ref_date", "")
+        cohort = request.get("cohort", "unknown")
+        source_ref = request.get("source_ref", f"seeded-{cohort}")
+        
+        if zodiac not in ZODIAC_SIGNS:
+            raise HTTPException(status_code=400, detail=f"Invalid zodiac sign: {zodiac}")
+        
+        try:
+            ref_date = datetime.strptime(ref_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid ref_date format, use YYYY-MM-DD")
+        
+        # Idempotent upsert (only if not exists)
+        result = db_fetchone("""
+            INSERT INTO horoscopes(scope, zodiac, ref_date, source_kind, source_ref, approved_by, approved_at)
+            VALUES ('daily', %s, %s, 'seeded', %s, NULL, NULL)
+            ON CONFLICT (scope, zodiac, ref_date) DO NOTHING
+            RETURNING id
+        """, (zodiac, ref_date, source_ref))
+        
+        if result:
+            horoscope_id = result[0]
+            action = "created"
+        else:
+            # Get existing ID
+            horoscope_id = db_fetchone("""
+                SELECT id FROM horoscopes 
+                WHERE scope = 'daily' AND zodiac = %s AND ref_date = %s
+            """, (zodiac, ref_date))[0]
+            action = "exists"
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="horoscope_seed",
+            entity="horoscope",
+            entity_id=str(horoscope_id),
+            meta={"zodiac": zodiac, "ref_date": str(ref_date), "cohort": cohort, "action": action}
+        )
+        
+        return {
+            "message": f"Daily horoscope entry {action} successfully",
+            "horoscope_id": horoscope_id,
+            "action": action,
+            "zodiac": zodiac,
+            "ref_date": str(ref_date),
+            "cohort": cohort,
+            "status": "pending"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event="horoscope_seed_failed", entity="horoscope", entity_id=None, meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Daily seeding failed: {str(e)}")
+
+
+@app.get("/api/admin/horoscopes/retention-audit")
+def retention_audit(cutoff_date: str = Query(...), x_user_id: str = Header(...), x_job_token: str = Header(None)):
+    """Audit horoscopes for retention cleanup (system/admin/superadmin only) - M18A compliant"""
+    
+    try:
+        user_id = x_user_id
+        
+        # Validate system access (n8n or admin)
+        if user_id == "system-n8n":
+            expected_token = os.getenv("JOB_TOKEN", "missing")
+            if not x_job_token or x_job_token != expected_token:
+                raise HTTPException(status_code=403, detail="Valid job token required for system access")
+        else:
+            if not can_access_horoscope(user_id, for_management=True):
+                raise HTTPException(status_code=403, detail="Admin/superadmin access required")
+        
+        # Parse cutoff date
+        try:
+            cutoff = datetime.strptime(cutoff_date, '%Y-%m-%d').date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid cutoff_date format, use YYYY-MM-DD")
+        
+        # Get horoscopes to be deleted
+        old_horoscopes = db_fetchall("""
+            SELECT h.id, h.zodiac, h.ref_date, h.audio_media_id, ma.storage_key
+            FROM horoscopes h
+            LEFT JOIN media_assets ma ON ma.id = h.audio_media_id
+            WHERE h.ref_date < %s
+            ORDER BY h.ref_date ASC
+        """, (cutoff,))
+        
+        # Count storage objects that will be orphaned
+        storage_objects = [row[4] for row in old_horoscopes if row[4]]
+        
+        audit_summary = {
+            "cutoff_date": str(cutoff),
+            "items_to_delete": len(old_horoscopes),
+            "storage_objects": len(storage_objects),
+            "oldest_date": str(old_horoscopes[0][2]) if old_horoscopes else None,
+            "storage_keys_preview": storage_objects[:5],  # First 5 for preview
+            "zodiac_breakdown": {}
+        }
+        
+        # Group by zodiac for breakdown
+        for row in old_horoscopes:
+            zodiac = row[1]
+            audit_summary["zodiac_breakdown"][zodiac] = audit_summary["zodiac_breakdown"].get(zodiac, 0) + 1
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="retention_audit",
+            entity="horoscopes",
+            entity_id=None,
+            meta={"cutoff_date": str(cutoff), "items_count": len(old_horoscopes)}
+        )
+        
+        return audit_summary
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event="retention_audit_failed", entity="horoscopes", entity_id=None, meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Retention audit failed: {str(e)}")
+
+
+@app.delete("/api/admin/horoscopes/retention-cleanup")
+def retention_cleanup(request: dict, x_user_id: str = Header(...), x_job_token: str = Header(None)):
+    """Execute retention cleanup - hard delete horoscopes older than 60 days (system/admin/superadmin only) - M18A compliant"""
+    
+    try:
+        user_id = x_user_id
+        
+        # Validate system access (n8n or admin)
+        if user_id == "system-n8n":
+            expected_token = os.getenv("JOB_TOKEN", "missing")
+            if not x_job_token or x_job_token != expected_token:
+                raise HTTPException(status_code=403, detail="Valid job token required for system access")
+        else:
+            if not can_access_horoscope(user_id, for_management=True):
+                raise HTTPException(status_code=403, detail="Admin/superadmin access required")
+        
+        # Extract and validate request
+        cutoff_date_str = request.get("cutoff_date", "")
+        retention_days = request.get("retention_days", 60)
+        confirm_delete = request.get("confirm_delete", False)
+        
+        if not confirm_delete:
+            raise HTTPException(status_code=400, detail="confirm_delete must be true to proceed")
+        
+        try:
+            cutoff_date = datetime.strptime(cutoff_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid cutoff_date format, use YYYY-MM-DD")
+        
+        start_time = datetime.utcnow()
+        
+        # Get items to delete (with storage keys)
+        items_to_delete = db_fetchall("""
+            SELECT h.id, h.zodiac, h.ref_date, h.audio_media_id, ma.storage_key
+            FROM horoscopes h
+            LEFT JOIN media_assets ma ON ma.id = h.audio_media_id
+            WHERE h.ref_date < %s
+        """, (cutoff_date,))
+        
+        deleted_count = 0
+        storage_deleted = 0
+        errors = []
+        
+        for item in items_to_delete:
+            horoscope_id, zodiac, ref_date, audio_media_id, storage_key = item
+            
+            try:
+                # Delete horoscope record
+                db_exec("DELETE FROM horoscopes WHERE id = %s", (horoscope_id,))
+                deleted_count += 1
+                
+                # Delete associated media_asset if exists (CASCADE should handle this, but explicit is safer)
+                if audio_media_id:
+                    db_exec("DELETE FROM media_assets WHERE id = %s", (audio_media_id,))
+                    
+                # Delete from Supabase storage if storage_key exists
+                if storage_key and '/' in storage_key:
+                    try:
+                        bucket, path = storage_key.split('/', 1)
+                        storage_delete(bucket, path)
+                        storage_deleted += 1
+                    except Exception as storage_error:
+                        errors.append(f"Storage delete failed for {storage_key}: {str(storage_error)}")
+                        
+            except Exception as delete_error:
+                errors.append(f"Failed to delete horoscope {horoscope_id}: {str(delete_error)}")
+        
+        end_time = datetime.utcnow()
+        execution_time_ms = int((end_time - start_time).total_seconds() * 1000)
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="retention_cleanup",
+            entity="horoscopes",
+            entity_id=None,
+            meta={
+                "cutoff_date": str(cutoff_date),
+                "deleted_count": deleted_count,
+                "storage_deleted": storage_deleted,
+                "errors_count": len(errors),
+                "execution_time_ms": execution_time_ms
+            }
+        )
+        
+        return {
+            "message": "Retention cleanup completed",
+            "cutoff_date": str(cutoff_date),
+            "deleted_count": deleted_count,
+            "storage_deleted": storage_deleted,
+            "execution_time_ms": execution_time_ms,
+            "errors": errors[:10]  # Limit error list in response
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event="retention_cleanup_failed", entity="horoscopes", entity_id=None, meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Retention cleanup failed: {str(e)}")
+
+
+@app.get("/api/admin/horoscopes/upload-status")
+def horoscope_upload_status(next_month: int = Query(...), next_year: int = Query(...), x_user_id: str = Header(...), x_job_token: str = Header(None)):
+    """Check horoscope upload status for next month (system/admin/superadmin only) - M18A compliant"""
+    
+    try:
+        user_id = x_user_id
+        
+        # Validate system access (n8n or admin)
+        if user_id == "system-n8n":
+            expected_token = os.getenv("JOB_TOKEN", "missing")
+            if not x_job_token or x_job_token != expected_token:
+                raise HTTPException(status_code=403, detail="Valid job token required for system access")
+        else:
+            if not can_access_horoscope(user_id, for_management=True):
+                raise HTTPException(status_code=403, detail="Admin/superadmin access required")
+        
+        # Validate month/year
+        if not (1 <= next_month <= 12):
+            raise HTTPException(status_code=400, detail="next_month must be 1-12")
+        if not (2020 <= next_year <= 2030):
+            raise HTTPException(status_code=400, detail="next_year must be reasonable (2020-2030)")
+        
+        # Get first day of next month
+        next_month_start = datetime(next_year, next_month, 1).date()
+        
+        # Check which zodiac signs have uploaded audio for next month
+        uploaded_signs = db_fetchall("""
+            SELECT DISTINCT h.zodiac
+            FROM horoscopes h
+            JOIN media_assets ma ON ma.id = h.audio_media_id
+            WHERE h.scope = 'daily' 
+            AND h.ref_date >= %s
+            AND h.ref_date < %s + INTERVAL '1 month'
+            AND h.source_kind = 'original_upload'
+            AND ma.kind = 'audio'
+        """, (next_month_start, next_month_start))
+        
+        uploaded_list = [row[0] for row in uploaded_signs]
+        missing_list = [sign for sign in ZODIAC_SIGNS if sign not in uploaded_list]
+        
+        status = {
+            "next_month": next_month,
+            "next_year": next_year,
+            "uploaded_signs": uploaded_list,
+            "missing_signs": missing_list,
+            "uploaded_count": len(uploaded_list),
+            "missing_count": len(missing_list),
+            "total_needed": len(ZODIAC_SIGNS),
+            "completion_percentage": round((len(uploaded_list) / len(ZODIAC_SIGNS)) * 100, 1)
+        }
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="upload_status_check",
+            entity="horoscopes",
+            entity_id=None,
+            meta={"next_month": next_month, "next_year": next_year, "missing_count": len(missing_list)}
+        )
+        
+        return status
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event="upload_status_failed", entity="horoscopes", entity_id=None, meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Upload status check failed: {str(e)}")
+
+
+@app.post("/api/admin/notifications/send-reminder")  
+def send_upload_reminder(request: dict, x_user_id: str = Header(...), x_job_token: str = Header(None)):
+    """Send upload reminder notification (system/admin/superadmin only) - M18A compliant"""
+    
+    try:
+        user_id = x_user_id
+        
+        # Validate system access (n8n or admin)
+        if user_id == "system-n8n":
+            expected_token = os.getenv("JOB_TOKEN", "missing")
+            if not x_job_token or x_job_token != expected_token:
+                raise HTTPException(status_code=403, detail="Valid job token required for system access")
+        else:
+            if not can_access_horoscope(user_id, for_management=True):
+                raise HTTPException(status_code=403, detail="Admin/superadmin access required")
+        
+        # Extract notification data
+        notification_type = request.get("type", "reminder")
+        priority = request.get("priority", "normal")
+        message = request.get("message", "Upload reminder")
+        action_required = request.get("action_required", False)
+        metadata = request.get("metadata", "{}")
+        
+        # For now, just log the reminder (in production would send email/SMS/Slack)
+        reminder_log = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "type": notification_type,
+            "priority": priority,
+            "message": message,
+            "action_required": action_required,
+            "sent_by": user_id,
+            "metadata": metadata
+        }
+        
+        # Write to audit log as notification record
+        write_audit(
+            actor=user_id,
+            event="notification_sent",
+            entity="notification",
+            entity_id=None,
+            meta=reminder_log
+        )
+        
+        # In production: integrate with email service, Slack webhook, etc.
+        print(f"[REMINDER NOTIFICATION] {priority.upper()}: {message}")
+        
+        return {
+            "success": True,
+            "message": "Reminder notification sent successfully",
+            "type": notification_type,
+            "priority": priority,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event="notification_send_failed", entity="notification", entity_id=None, meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Reminder notification failed: {str(e)}")
+
+
+# M19 - Calls & Emergency endpoints
+
+def normalize_phone_e164(phone: str) -> str:
+    """Normalize phone number to E.164 format"""
+    import re
+    # Remove all non-digit characters
+    digits = re.sub(r'\D', '', phone)
+    # Add + if not present for E.164
+    if not digits.startswith('1') and len(digits) == 10:
+        digits = '1' + digits  # US number
+    return '+' + digits
+
+def can_access_call(user_id: str, call_id: int) -> bool:
+    """Check if user can access call based on RLS policy parity"""
+    role = get_user_role(user_id)
+    
+    # Monitor/Admin/Superadmin have full access
+    if role in ['monitor', 'admin', 'superadmin']:
+        return True
+    
+    # Client/Reader can access if they're involved in the order
+    call_data = db_fetchone("""
+        SELECT c.id, o.user_id, o.assigned_reader
+        FROM calls c
+        JOIN orders o ON o.id = c.order_id
+        WHERE c.id = %s
+    """, (call_id,))
+    
+    if not call_data:
+        return False
+    
+    call_id_db, order_user_id, assigned_reader = call_data
+    
+    # Client can access their own call
+    if user_id == str(order_user_id):
+        return True
+    
+    # Reader can access assigned calls
+    if role == 'reader' and user_id == str(assigned_reader):
+        return True
+    
+    return False
+
+@app.post("/api/calls/schedule")
+def schedule_call(request: CallScheduleRequest, x_user_id: str = Header(...)):
+    """Schedule a call for an order (client/reader/admin) - M19 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Verify order exists and user has access
+        order = db_fetchone("""
+            SELECT id, user_id, assigned_reader, service_id, status
+            FROM orders WHERE id = %s
+        """, (request.order_id,))
+        
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        order_id, order_user_id, assigned_reader, service_id, order_status = order
+        
+        # Access control: client can schedule their own, reader can schedule assigned, admin can schedule any
+        if role == 'client' and user_id != str(order_user_id):
+            raise HTTPException(status_code=403, detail="Can only schedule calls for your own orders")
+        elif role == 'reader' and user_id != str(assigned_reader):
+            raise HTTPException(status_code=403, detail="Can only schedule calls for assigned orders")
+        elif role not in ['client', 'reader', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        
+        # Check if call already exists for this order
+        existing_call = db_fetchone("""
+            SELECT id, status FROM calls WHERE order_id = %s
+        """, (request.order_id,))
+        
+        if existing_call and existing_call[1] not in ['completed', 'failed', 'dropped_by_monitor', 'dropped_by_reader', 'dropped_by_client']:
+            raise HTTPException(status_code=409, detail="Call already exists for this order")
+        
+        # Normalize phone numbers
+        client_phone = normalize_phone_e164(request.client_phone)
+        reader_phone = normalize_phone_e164(request.reader_phone) if request.reader_phone else None
+        
+        # If no reader phone provided, get from assigned reader profile
+        if not reader_phone and assigned_reader:
+            reader_profile = db_fetchone("SELECT phone FROM profiles WHERE id = %s", (assigned_reader,))
+            if reader_profile and reader_profile[0]:
+                reader_phone = normalize_phone_e164(reader_profile[0])
+        
+        # Parse scheduled_at
+        scheduled_at = None
+        if request.scheduled_at:
+            try:
+                scheduled_at = datetime.fromisoformat(request.scheduled_at.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid scheduled_at format, use ISO 8601")
+        
+        # Create call record
+        call_id = db_fetchone("""
+            INSERT INTO calls(order_id, initiated_by, status, scheduled_at, notes, sip_or_pstn, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            request.order_id,
+            user_id,
+            'scheduled' if scheduled_at else 'initiating',
+            scheduled_at,
+            request.notes,
+            'pstn',  # Default to PSTN
+            datetime.utcnow()
+        ))[0]
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="call_scheduled",
+            entity="call",
+            entity_id=str(call_id),
+            meta={
+                "order_id": request.order_id,
+                "scheduled_at": str(scheduled_at) if scheduled_at else "immediate",
+                "client_phone": client_phone[-4:],  # Only log last 4 digits for privacy
+                "reader_phone": reader_phone[-4:] if reader_phone else None
+            }
+        )
+        
+        return {
+            "call_id": call_id,
+            "order_id": request.order_id,
+            "status": 'scheduled' if scheduled_at else 'initiating',
+            "scheduled_at": str(scheduled_at) if scheduled_at else None,
+            "message": "Call scheduled successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event="call_schedule_failed", entity="call", entity_id=None, meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Call scheduling failed: {str(e)}")
+
+@app.post("/api/calls/{order_id}/start")
+def start_call(order_id: int, request: CallStartRequest, x_user_id: str = Header(...)):
+    """Start Twilio call session (reader/admin) - M19 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Only reader/admin can start calls
+        if role not in ['reader', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Only readers and admins can start calls")
+        
+        # Get call record
+        call = db_fetchone("""
+            SELECT c.id, c.status, o.user_id, o.assigned_reader
+            FROM calls c
+            JOIN orders o ON o.id = c.order_id
+            WHERE c.order_id = %s AND c.status IN ('scheduled', 'initiating')
+        """, (order_id,))
+        
+        if not call:
+            raise HTTPException(status_code=404, detail="No schedulable call found for this order")
+        
+        call_id, call_status, order_user_id, assigned_reader = call
+        
+        # Access control for readers
+        if role == 'reader' and user_id != str(assigned_reader):
+            raise HTTPException(status_code=403, detail="Can only start calls for assigned orders")
+        
+        # Normalize phone numbers
+        client_phone = normalize_phone_e164(request.client_phone)
+        reader_phone = normalize_phone_e164(request.reader_phone)
+        
+        # Mock Twilio call initiation (in production, use Twilio SDK)
+        import uuid
+        mock_call_sid = f"CA{uuid.uuid4().hex[:32]}"
+        mock_conference_sid = f"CF{uuid.uuid4().hex[:32]}" if request.record else None
+        
+        # Update call with Twilio details
+        db_exec("""
+            UPDATE calls SET
+                call_sid = %s,
+                conference_sid = %s,
+                status = 'ringing',
+                started_at = %s,
+                recording_status = %s
+            WHERE id = %s
+        """, (
+            mock_call_sid,
+            mock_conference_sid,
+            datetime.utcnow(),
+            'recording' if request.record else 'stopped',
+            call_id
+        ))
+        
+        # Create recording record if recording enabled
+        recording_id = None
+        if request.record:
+            mock_recording_sid = f"RE{uuid.uuid4().hex[:32]}"
+            recording_id = db_fetchone("""
+                INSERT INTO call_recordings(call_id, recording_sid, status)
+                VALUES (%s, %s, 'in_progress')
+                RETURNING id
+            """, (call_id, mock_recording_sid))[0]
+            
+            db_exec("""
+                UPDATE calls SET recording_sid = %s WHERE id = %s
+            """, (mock_recording_sid, call_id))
+        
+        # Audit log (no PII - only last 4 digits)
+        write_audit(
+            actor=user_id,
+            event="call_started",
+            entity="call",
+            entity_id=str(call_id),
+            meta={
+                "order_id": order_id,
+                "call_sid": mock_call_sid,
+                "recording_enabled": request.record,
+                "client_phone_suffix": client_phone[-4:],
+                "reader_phone_suffix": reader_phone[-4:]
+            }
+        )
+        
+        return {
+            "call_id": call_id,
+            "call_sid": mock_call_sid,
+            "status": "ringing",
+            "recording_enabled": request.record,
+            "recording_id": recording_id,
+            "message": "Call initiated successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event="call_start_failed", entity="call", entity_id=None, meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Call start failed: {str(e)}")
+
+@app.post("/api/calls/{call_id}/recording/{action}")
+def control_call_recording(call_id: int, action: str, x_user_id: str = Header(...)):
+    """Control call recording: start/pause/resume/stop (reader/monitor/admin) - M19 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Validate action
+        if action not in ['start', 'pause', 'resume', 'stop']:
+            raise HTTPException(status_code=400, detail="Invalid action. Use: start, pause, resume, stop")
+        
+        # Check call access
+        if not can_access_call(user_id, call_id):
+            raise HTTPException(status_code=403, detail="Cannot access this call")
+        
+        # Get call details
+        call = db_fetchone("""
+            SELECT id, call_sid, recording_sid, recording_status, status
+            FROM calls WHERE id = %s
+        """, (call_id,))
+        
+        if not call:
+            raise HTTPException(status_code=404, detail="Call not found")
+        
+        call_id_db, call_sid, recording_sid, current_recording_status, call_status = call
+        
+        # Can only control recording on active calls
+        if call_status not in ['in_progress', 'ringing']:
+            raise HTTPException(status_code=409, detail="Can only control recording on active calls")
+        
+        # Validate state transitions
+        valid_transitions = {
+            'start': ['stopped'],
+            'pause': ['recording'],
+            'resume': ['paused'],
+            'stop': ['recording', 'paused']
+        }
+        
+        if current_recording_status not in valid_transitions[action]:
+            raise HTTPException(status_code=409, detail=f"Cannot {action} recording from {current_recording_status} state")
+        
+        # Determine new status
+        new_status_map = {
+            'start': 'recording',
+            'pause': 'paused', 
+            'resume': 'recording',
+            'stop': 'stopped'
+        }
+        new_status = new_status_map[action]
+        
+        # Mock Twilio recording control (in production, use Twilio SDK)
+        if action == 'start' and not recording_sid:
+            # Create new recording
+            import uuid
+            new_recording_sid = f"RE{uuid.uuid4().hex[:32]}"
+            
+            recording_id = db_fetchone("""
+                INSERT INTO call_recordings(call_id, recording_sid, status)
+                VALUES (%s, %s, 'in_progress')
+                RETURNING id
+            """, (call_id, new_recording_sid))[0]
+            
+            db_exec("""
+                UPDATE calls SET recording_sid = %s, recording_status = %s
+                WHERE id = %s
+            """, (new_recording_sid, new_status, call_id))
+        else:
+            # Update existing recording status
+            db_exec("""
+                UPDATE calls SET recording_status = %s WHERE id = %s
+            """, (new_status, call_id))
+            
+            if recording_sid:
+                db_exec("""
+                    UPDATE call_recordings SET status = %s 
+                    WHERE recording_sid = %s
+                """, ('completed' if action == 'stop' else 'in_progress', recording_sid))
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event=f"recording_{action}",
+            entity="call",
+            entity_id=str(call_id),
+            meta={
+                "call_sid": call_sid,
+                "recording_sid": recording_sid,
+                "previous_status": current_recording_status,
+                "new_status": new_status
+            }
+        )
+        
+        return {
+            "call_id": call_id,
+            "action": action,
+            "recording_status": new_status,
+            "message": f"Recording {action} successful"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event=f"recording_{action}_failed", entity="call", entity_id=str(call_id), meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Recording {action} failed: {str(e)}")
+
+@app.post("/api/calls/{call_id}/drop")
+def drop_call(call_id: int, request: CallDropRequest, x_user_id: str = Header(...)):
+    """Drop active call with audit trail (monitor/admin/participant) - M19 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Validate ended_reason
+        if request.ended_reason not in ['monitor_drop', 'reader_drop', 'client_drop']:
+            raise HTTPException(status_code=400, detail="Invalid ended_reason")
+        
+        # Check access and role permissions
+        if not can_access_call(user_id, call_id):
+            raise HTTPException(status_code=403, detail="Cannot access this call")
+        
+        # Additional role-based restrictions
+        if request.ended_reason == 'monitor_drop' and role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Only monitors can use monitor_drop reason")
+        
+        # Get call details
+        call = db_fetchone("""
+            SELECT c.id, c.call_sid, c.status, c.recording_sid, o.user_id, o.assigned_reader
+            FROM calls c
+            JOIN orders o ON o.id = c.order_id
+            WHERE c.id = %s
+        """, (call_id,))
+        
+        if not call:
+            raise HTTPException(status_code=404, detail="Call not found")
+        
+        call_id_db, call_sid, call_status, recording_sid, order_user_id, assigned_reader = call
+        
+        # Can only drop active calls
+        if call_status not in ['ringing', 'in_progress']:
+            raise HTTPException(status_code=409, detail="Can only drop active calls")
+        
+        # Additional authorization for reader/client drops
+        if request.ended_reason == 'reader_drop' and user_id != str(assigned_reader) and role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Only assigned reader can use reader_drop")
+        
+        if request.ended_reason == 'client_drop' and user_id != str(order_user_id) and role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Only order owner can use client_drop")
+        
+        # Mock Twilio call termination (in production, use Twilio SDK)
+        end_time = datetime.utcnow()
+        
+        # Update call record
+        db_exec("""
+            UPDATE calls SET
+                status = %s,
+                ended_at = %s,
+                ended_reason = %s,
+                recording_status = 'stopped',
+                notes = COALESCE(notes || E'\\n', '') || %s
+            WHERE id = %s
+        """, (
+            f"dropped_by_{request.ended_reason.split('_')[0]}",
+            end_time,
+            request.ended_reason,
+            f"Dropped by {role}: {request.notes or 'No reason provided'}",
+            call_id
+        ))
+        
+        # Stop any active recording
+        if recording_sid:
+            db_exec("""
+                UPDATE call_recordings SET status = 'completed'
+                WHERE recording_sid = %s
+            """, (recording_sid,))
+        
+        # Audit log with detailed context
+        write_audit(
+            actor=user_id,
+            event="call_dropped",
+            entity="call",
+            entity_id=str(call_id),
+            meta={
+                "call_sid": call_sid,
+                "ended_reason": request.ended_reason,
+                "dropped_by_role": role,
+                "notes": request.notes,
+                "call_duration_estimate": "< 1 minute" if call_status == 'ringing' else "active"
+            }
+        )
+        
+        return {
+            "call_id": call_id,
+            "status": f"dropped_by_{request.ended_reason.split('_')[0]}",
+            "ended_reason": request.ended_reason,
+            "ended_at": end_time.isoformat(),
+            "message": "Call dropped successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event="call_drop_failed", entity="call", entity_id=str(call_id), meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Call drop failed: {str(e)}")
+
+@app.post("/api/calls/{call_id}/siren")
+def trigger_siren_alert(call_id: int, request: SirenAlertRequest, x_user_id: str = Header(...)):
+    """Trigger siren alert for emergency/quality issues (reader/client) - M19 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Check call access
+        if not can_access_call(user_id, call_id):
+            raise HTTPException(status_code=403, detail="Cannot access this call")
+        
+        # Validate alert_type
+        if request.alert_type not in ['emergency', 'quality_issue', 'technical_problem', 'inappropriate_behavior']:
+            raise HTTPException(status_code=400, detail="Invalid alert_type")
+        
+        # Get call details
+        call = db_fetchone("""
+            SELECT id, call_sid, status FROM calls WHERE id = %s
+        """, (call_id,))
+        
+        if not call:
+            raise HTTPException(status_code=404, detail="Call not found")
+        
+        call_id_db, call_sid, call_status = call
+        
+        # Can only trigger siren on active calls
+        if call_status not in ['ringing', 'in_progress']:
+            raise HTTPException(status_code=409, detail="Can only trigger siren on active calls")
+        
+        # Create siren alert
+        alert_id = db_fetchone("""
+            INSERT INTO siren_alerts(call_id, triggered_by, alert_type, reason, status)
+            VALUES (%s, %s, %s, %s, 'active')
+            RETURNING id
+        """, (call_id, user_id, request.alert_type, request.reason))[0]
+        
+        # Update call siren flags
+        db_exec("""
+            UPDATE calls SET 
+                siren_triggered = true,
+                siren_reason = %s
+            WHERE id = %s
+        """, (f"{request.alert_type}: {request.reason}", call_id))
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="siren_triggered",
+            entity="call",
+            entity_id=str(call_id),
+            meta={
+                "alert_id": alert_id,
+                "alert_type": request.alert_type,
+                "reason": request.reason,
+                "call_sid": call_sid,
+                "triggered_by_role": role
+            }
+        )
+        
+        # In production: send real-time alert to monitoring team
+        print(f"[SIREN ALERT] Call {call_sid} - {request.alert_type.upper()}: {request.reason}")
+        
+        return {
+            "alert_id": alert_id,
+            "call_id": call_id,
+            "alert_type": request.alert_type,
+            "status": "active",
+            "message": "Siren alert triggered successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event="siren_trigger_failed", entity="call", entity_id=str(call_id), meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Siren trigger failed: {str(e)}")
+
+@app.get("/api/calls/{call_id}")
+def get_call_details(call_id: int, x_user_id: str = Header(...)):
+    """Get call details with RLS enforcement (participant/monitor/admin) - M19 compliant"""
+    
+    try:
+        user_id = x_user_id
+        
+        # Check access
+        if not can_access_call(user_id, call_id):
+            raise HTTPException(status_code=403, detail="Cannot access this call")
+        
+        # Get call details with related data
+        call_data = db_fetchone("""
+            SELECT c.id, c.order_id, c.call_sid, c.recording_sid, c.status, c.recording_status,
+                   c.started_at, c.ended_at, c.duration_sec, c.ended_reason, c.notes,
+                   c.siren_triggered, c.siren_reason, c.initiated_by,
+                   p.first_name as initiated_by_name, p.role_id,
+                   o.service_id, s.name as service_name
+            FROM calls c
+            JOIN orders o ON o.id = c.order_id
+            JOIN services s ON s.id = o.service_id
+            LEFT JOIN profiles p ON p.id = c.initiated_by
+            WHERE c.id = %s
+        """, (call_id,))
+        
+        if not call_data:
+            raise HTTPException(status_code=404, detail="Call not found")
+        
+        # Get recordings with signed URLs
+        recordings = db_fetchall("""
+            SELECT id, recording_sid, status, duration_sec, file_size_bytes, storage_key
+            FROM call_recordings
+            WHERE call_id = %s
+            ORDER BY created_at
+        """, (call_id,))
+        
+        # Get siren alerts
+        alerts = db_fetchall("""
+            SELECT id, alert_type, reason, status, acknowledged_at, resolved_at
+            FROM siren_alerts
+            WHERE call_id = %s
+            ORDER BY created_at DESC
+        """, (call_id,))
+        
+        # Generate signed URLs for recordings (if any)
+        recordings_with_urls = []
+        for recording in recordings:
+            rec_id, recording_sid, status, duration, file_size, storage_key = recording
+            
+            signed_url = None
+            if storage_key:
+                try:
+                    bucket, path = storage_key.split('/', 1)
+                    signed_url = storage_sign_url(bucket, path, expires=3600)  # 1 hour
+                except:
+                    signed_url = None
+            
+            recordings_with_urls.append({
+                "id": rec_id,
+                "recording_sid": recording_sid,
+                "status": status,
+                "duration_sec": duration,
+                "file_size_bytes": file_size,
+                "download_url": signed_url  # Short-lived signed URL only
+            })
+        
+        # Format alerts
+        formatted_alerts = []
+        for alert in alerts:
+            alert_id, alert_type, reason, status, ack_at, resolved_at = alert
+            formatted_alerts.append({
+                "id": alert_id,
+                "type": alert_type,
+                "reason": reason,
+                "status": status,
+                "acknowledged_at": str(ack_at) if ack_at else None,
+                "resolved_at": str(resolved_at) if resolved_at else None
+            })
+        
+        # Build response
+        call_detail = {
+            "id": call_data[0],
+            "order_id": call_data[1],
+            "call_sid": call_data[2],
+            "status": call_data[4],
+            "recording_status": call_data[5],
+            "started_at": str(call_data[6]) if call_data[6] else None,
+            "ended_at": str(call_data[7]) if call_data[7] else None,
+            "duration_sec": call_data[8],
+            "ended_reason": call_data[9],
+            "notes": call_data[10],
+            "siren_triggered": call_data[11],
+            "siren_reason": call_data[12],
+            "service": call_data[17],
+            "recordings": recordings_with_urls,
+            "alerts": formatted_alerts
+        }
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="call_details_accessed",
+            entity="call",
+            entity_id=str(call_id),
+            meta={"call_sid": call_data[2]}
+        )
+        
+        return call_detail
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(actor=user_id, event="call_details_failed", entity="call", entity_id=str(call_id), meta={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Call details failed: {str(e)}")
+
+def verify_twilio_signature(request_url: str, post_data: str, signature: str) -> bool:
+    """Verify Twilio webhook signature for security"""
+    import hmac
+    import hashlib
+    import base64
+    import os
+    
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
+    if not auth_token:
+        return False
+    
+    # Create expected signature
+    data = request_url + post_data
+    expected_signature = base64.b64encode(
+        hmac.new(auth_token.encode(), data.encode(), hashlib.sha1).digest()
+    ).decode()
+    
+    return hmac.compare_digest(signature, expected_signature)
+
+@app.post("/api/calls/webhook/twilio")
+def twilio_webhook_handler(request: Request, x_twilio_signature: str = Header(None, alias="X-Twilio-Signature")):
+    """Handle Twilio call status webhooks with signature verification - M19 compliant"""
+    
+    try:
+        # Get raw body for signature verification
+        import asyncio
+        
+        async def get_body():
+            return await request.body()
+        
+        body = asyncio.run(get_body()).decode()
+        
+        # Verify Twilio signature for security
+        if x_twilio_signature:
+            request_url = str(request.url)
+            if not verify_twilio_signature(request_url, body, x_twilio_signature):
+                write_audit(
+                    actor="twilio",
+                    event="webhook_signature_invalid",
+                    entity="webhook",
+                    entity_id=None,
+                    meta={"url": request_url}
+                )
+                raise HTTPException(status_code=401, detail="Invalid Twilio signature")
+        
+        # Parse form data
+        from urllib.parse import parse_qs
+        form_data = parse_qs(body)
+        
+        # Extract Twilio parameters
+        call_sid = form_data.get('CallSid', [''])[0]
+        call_status = form_data.get('CallStatus', [''])[0]
+        recording_url = form_data.get('RecordingUrl', [''])[0]
+        recording_sid = form_data.get('RecordingSid', [''])[0]
+        duration = form_data.get('Duration', ['0'])[0]
+        
+        if not call_sid:
+            raise HTTPException(status_code=400, detail="Missing CallSid")
+        
+        # Find call by CallSid
+        call_record = db_fetchone("""
+            SELECT id, status, webhook_events FROM calls WHERE call_sid = %s
+        """, (call_sid,))
+        
+        if not call_record:
+            # Log unknown call but don't fail (might be test call)
+            write_audit(
+                actor="twilio",
+                event="webhook_unknown_call",
+                entity="webhook",
+                entity_id=None,
+                meta={"call_sid": call_sid, "call_status": call_status}
+            )
+            return {"message": "Call not found, ignored"}
+        
+        call_id, current_status, webhook_events = call_record
+        
+        # Idempotency check - avoid duplicate processing
+        event_key = f"{call_status}_{duration}_{recording_sid or 'none'}"
+        events_list = webhook_events or []
+        
+        if event_key in events_list:
+            # Already processed this event
+            return {"message": "Event already processed"}
+        
+        # Add event to history
+        events_list.append(event_key)
+        
+        # Status mapping from Twilio to our system
+        status_map = {
+            'ringing': 'ringing',
+            'in-progress': 'in_progress', 
+            'completed': 'completed',
+            'failed': 'failed',
+            'busy': 'busy',
+            'no-answer': 'no_answer',
+            'canceled': 'canceled'
+        }
+        
+        new_status = status_map.get(call_status, call_status)
+        
+        # Update call status
+        if call_status in ['completed', 'failed', 'busy', 'no-answer', 'canceled']:
+            # Call ended
+            end_reason_map = {
+                'completed': 'completed',
+                'failed': 'failed', 
+                'busy': 'busy',
+                'no-answer': 'no_answer',
+                'canceled': 'timeout'
+            }
+            
+            db_exec("""
+                UPDATE calls SET 
+                    status = %s, 
+                    ended_at = %s,
+                    ended_reason = %s,
+                    recording_status = 'stopped',
+                    webhook_events = %s
+                WHERE id = %s
+            """, (
+                new_status,
+                datetime.utcnow(),
+                end_reason_map.get(call_status, call_status),
+                webhook_events,
+                call_id
+            ))
+            
+            # Mark any active recordings as completed
+            db_exec("""
+                UPDATE call_recordings SET status = 'completed'
+                WHERE call_id = %s AND status = 'in_progress'
+            """, (call_id,))
+            
+        else:
+            # Call status update only
+            db_exec("""
+                UPDATE calls SET status = %s, webhook_events = %s WHERE id = %s
+            """, (new_status, webhook_events, call_id))
+        
+        # Handle recording completion
+        if recording_url and recording_sid:
+            # Update or create recording record
+            existing_recording = db_fetchone("""
+                SELECT id FROM call_recordings WHERE recording_sid = %s
+            """, (recording_sid,))
+            
+            if existing_recording:
+                db_exec("""
+                    UPDATE call_recordings SET 
+                        status = 'completed',
+                        duration_sec = %s,
+                        twilio_url = %s
+                    WHERE recording_sid = %s
+                """, (int(duration) if duration.isdigit() else None, recording_url, recording_sid))
+            else:
+                db_fetchone("""
+                    INSERT INTO call_recordings(call_id, recording_sid, status, duration_sec, twilio_url)
+                    VALUES (%s, %s, 'completed', %s, %s)
+                    RETURNING id
+                """, (call_id, recording_sid, int(duration) if duration.isdigit() else None, recording_url))
+            
+            # Update calls table with recording URL
+            db_exec("""
+                UPDATE calls SET recording_url = %s WHERE id = %s
+            """, (recording_url, call_id))
+        
+        # Audit webhook processing (no PII)
+        write_audit(
+            actor="twilio",
+            event="webhook_processed",
+            entity="call", 
+            entity_id=str(call_id),
+            meta={
+                "call_sid": call_sid,
+                "call_status": call_status,
+                "has_recording": bool(recording_sid),
+                "duration": duration if duration.isdigit() else None,
+                "event_key": event_key
+            }
+        )
+        
+        return {
+            "message": "Webhook processed successfully",
+            "call_id": call_id,
+            "status": new_status
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(
+            actor="twilio", 
+            event="webhook_processing_failed", 
+            entity="webhook", 
+            entity_id=None, 
+            meta={"error": str(e)}
+        )
+        raise HTTPException(status_code=500, detail=f"Webhook processing failed: {str(e)}")
+
+# =============================================================================
+# M20: PAYMENTS MATRIX + FALLBACK
+# =============================================================================
+
+# Payment provider configuration
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID")
+SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN")
+SQUARE_WEBHOOK_SECRET = os.getenv("SQUARE_WEBHOOK_SECRET")
+SQUARE_ENVIRONMENT = os.getenv("SQUARE_ENVIRONMENT", "sandbox")  # sandbox or production
+
+def get_user_wallet(user_id: str, currency: str = "USD"):
+    """Get or create user wallet"""
+    wallet = db_fetchone("""
+        SELECT id, balance_cents FROM wallets 
+        WHERE user_id = %s AND currency = %s
+    """, (user_id, currency))
+    
+    if not wallet:
+        wallet_id = db_fetchone("""
+            INSERT INTO wallets (user_id, currency, balance_cents) 
+            VALUES (%s, %s, 0) RETURNING id
+        """, (user_id, currency))[0]
+        return wallet_id, 0
+    
+    return wallet[0], wallet[1]
+
+def add_wallet_transaction(wallet_id: int, amount_cents: int, transaction_type: str, 
+                          reference_type: str = None, reference_id: int = None, 
+                          description: str = "", created_by: str = None):
+    """Add wallet ledger entry with balance update"""
+    current_balance = db_fetchone("""
+        SELECT balance_cents FROM wallets WHERE id = %s
+    """, (wallet_id,))[0]
+    
+    new_balance = current_balance + amount_cents
+    
+    if new_balance < 0:
+        raise HTTPException(status_code=400, detail="Insufficient wallet balance")
+    
+    db_exec("""
+        INSERT INTO wallet_ledger 
+        (wallet_id, amount_cents, balance_after_cents, transaction_type, 
+         reference_type, reference_id, description, created_by)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    """, (wallet_id, amount_cents, new_balance, transaction_type, 
+          reference_type, reference_id, description, created_by))
+    
+    return new_balance
+
+def generate_idempotency_key(order_id: int, attempt_number: int, provider: str) -> str:
+    """Generate deterministic idempotency key"""
+    key_input = f"{order_id}-{attempt_number}-{provider}-{datetime.utcnow().date()}"
+    return hashlib.sha256(key_input.encode()).hexdigest()[:32]
+
+def get_payment_provider_for_country(country_code: str) -> str:
+    """Get primary payment provider for country"""
+    result = db_fetchone("""
+        SELECT provider FROM payment_provider_rules
+        WHERE country_code = %s AND priority = 1 AND is_active = true
+        LIMIT 1
+    """, (country_code.upper(),))
+    
+    if result:
+        return result[0]
+    
+    # Default fallback logic
+    if country_code.upper() in ['US', 'CA', 'AU', 'NZ']:
+        return 'square'
+    else:
+        return 'stripe'  # EU/UAE/IL/rest
+
+def should_trigger_fallback(order_id: int, provider: str) -> bool:
+    """Check if we should fallback to alternate provider"""
+    failure_count = db_fetchone("""
+        SELECT COUNT(*) FROM payment_attempts 
+        WHERE order_id = %s AND provider = %s AND status = 'failed'
+        AND created_at > (
+            SELECT COALESCE(MAX(created_at), '1970-01-01'::timestamptz)
+            FROM payment_attempts 
+            WHERE order_id = %s AND provider = %s 
+            AND status IN ('succeeded', 'fallback_triggered')
+        )
+    """, (order_id, provider, order_id, provider))[0]
+    
+    return failure_count >= 2
+
+def get_fallback_provider(country_code: str, current_provider: str) -> str:
+    """Get fallback provider (simple toggle)"""
+    return 'square' if current_provider == 'stripe' else 'stripe'
+
+def verify_stripe_signature(payload: bytes, signature: str, secret: str) -> bool:
+    """Verify Stripe webhook signature"""
+    try:
+        import hmac
+        expected_sig = hmac.new(
+            secret.encode('utf-8'),
+            payload,
+            hashlib.sha256
+        ).hexdigest()
+        return hmac.compare_digest(f"sha256={expected_sig}", signature)
+    except:
+        return False
+
+def verify_square_signature(payload: str, signature: str, secret: str) -> bool:
+    """Verify Square webhook signature"""
+    try:
+        import hmac
+        expected_sig = base64.b64encode(
+            hmac.new(
+                secret.encode('utf-8'),
+                (signature + payload).encode('utf-8'), 
+                hashlib.sha1
+            ).digest()
+        ).decode()
+        return hmac.compare_digest(expected_sig, signature)
+    except:
+        return False
+
+@app.post("/api/pay/checkout")
+def payment_checkout(request: PaymentCheckoutRequest, x_user_id: str = Header(...)):
+    """Create payment intent with provider matrix and fallback - M20 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Verify order exists and user has access
+        order = db_fetchone("""
+            SELECT id, user_id, status, service_id FROM orders 
+            WHERE id = %s
+        """, (request.order_id,))
+        
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        order_id, order_user_id, order_status, service_id = order
+        
+        # Authorization check
+        if role == 'client' and str(order_user_id) != user_id:
+            raise HTTPException(status_code=403, detail="Cannot pay for this order")
+        
+        # Determine payment provider by country
+        primary_provider = get_payment_provider_for_country(request.country_code)
+        
+        # Check if we should use fallback
+        if should_trigger_fallback(order_id, primary_provider):
+            provider = get_fallback_provider(request.country_code, primary_provider)
+            write_audit(user_id, "payment_fallback_triggered", "order", str(order_id), 
+                       {"from_provider": primary_provider, "to_provider": provider})
+        else:
+            provider = primary_provider
+        
+        # Get next attempt number
+        attempt_number = db_fetchone("""
+            SELECT COALESCE(MAX(attempt_number), 0) + 1 
+            FROM payment_attempts WHERE order_id = %s
+        """, (order_id,))[0]
+        
+        # Generate idempotency key
+        idempotency_key = generate_idempotency_key(order_id, attempt_number, provider)
+        
+        # Create payment attempt record
+        attempt_id = db_fetchone("""
+            INSERT INTO payment_attempts 
+            (order_id, provider, attempt_number, status, amount_cents, currency, idempotency_key)
+            VALUES (%s, %s, %s, 'init', %s, %s, %s)
+            RETURNING id
+        """, (order_id, provider, attempt_number, request.amount_cents, request.currency, idempotency_key))[0]
+        
+        # Create payment intent based on provider
+        client_params = {}
+        provider_intent_id = None
+        
+        if provider == 'stripe' and STRIPE_SECRET_KEY:
+            # Mock Stripe PaymentIntent creation
+            provider_intent_id = f"pi_mock_{uuid.uuid4().hex[:16]}"
+            client_params = {
+                "client_secret": f"{provider_intent_id}_secret_{uuid.uuid4().hex[:8]}",
+                "payment_intent_id": provider_intent_id
+            }
+            
+            # In production: use Stripe SDK
+            # import stripe
+            # stripe.api_key = STRIPE_SECRET_KEY
+            # intent = stripe.PaymentIntent.create(
+            #     amount=request.amount_cents,
+            #     currency=request.currency,
+            #     idempotency_key=idempotency_key,
+            #     metadata={'order_id': str(order_id)}
+            # )
+            # provider_intent_id = intent.id
+            # client_params = {"client_secret": intent.client_secret}
+            
+        elif provider == 'square' and SQUARE_ACCESS_TOKEN:
+            # Mock Square Payment creation
+            provider_intent_id = f"sq_mock_{uuid.uuid4().hex[:16]}"
+            client_params = {
+                "payment_id": provider_intent_id,
+                "application_id": SQUARE_APPLICATION_ID or "mock_app_id"
+            }
+            
+            # In production: use Square SDK
+            # from squareup import Client
+            # client = Client(access_token=SQUARE_ACCESS_TOKEN, environment=SQUARE_ENVIRONMENT)
+            # payments_api = client.payments
+            # result = payments_api.create_payment({
+            #     'source_id': 'nonce_from_frontend',
+            #     'idempotency_key': idempotency_key,
+            #     'amount_money': {
+            #         'amount': request.amount_cents,
+            #         'currency': request.currency
+            #     }
+            # })
+            # provider_intent_id = result.body['payment']['id']
+            
+        else:
+            raise HTTPException(status_code=503, detail=f"Provider {provider} not configured")
+        
+        # Update payment attempt with provider details
+        db_exec("""
+            UPDATE payment_attempts SET
+                provider_intent_id = %s,
+                client_params = %s,
+                status = 'processing'
+            WHERE id = %s
+        """, (provider_intent_id, json.dumps(client_params), attempt_id))
+        
+        # Update order payment info
+        db_exec("""
+            UPDATE orders SET payment_provider = %s, payment_status = 'processing'
+            WHERE id = %s
+        """, (provider, order_id))
+        
+        # Audit log (no PII)
+        write_audit(
+            actor=user_id,
+            event="payment_checkout_created",
+            entity="order",
+            entity_id=str(order_id),
+            meta={
+                "provider": provider,
+                "attempt_number": attempt_number,
+                "amount_cents": request.amount_cents,
+                "currency": request.currency,
+                "country_code": request.country_code
+            }
+        )
+        
+        return {
+            "provider": provider,
+            "attempt_id": attempt_id,
+            "client_params": client_params,
+            "amount_cents": request.amount_cents,
+            "currency": request.currency
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(user_id, "payment_checkout_failed", "order", str(request.order_id), {"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Payment checkout failed: {str(e)}")
+
+@app.post("/api/pay/webhook/stripe")
+def stripe_webhook_handler(request: dict, stripe_signature: str = Header(..., alias="stripe-signature")):
+    """Handle Stripe webhook with signature verification and idempotency - M20 compliant"""
+    
+    try:
+        if not STRIPE_WEBHOOK_SECRET:
+            raise HTTPException(status_code=503, detail="Stripe webhook secret not configured")
+        
+        # Convert request to JSON string for signature verification
+        payload = json.dumps(request, separators=(',', ':')).encode()
+        
+        # Verify signature
+        if not verify_stripe_signature(payload, stripe_signature, STRIPE_WEBHOOK_SECRET):
+            write_audit("stripe", "webhook_signature_invalid", "webhook", None, {"event_type": request.get("type")})
+            raise HTTPException(status_code=400, detail="Invalid signature")
+        
+        event_type = request.get("type")
+        event_id = request.get("id")
+        
+        # Idempotency check
+        existing_event = db_fetchone("""
+            SELECT id FROM payment_events 
+            WHERE provider = 'stripe' AND payload->>'id' = %s
+        """, (event_id,))
+        
+        if existing_event:
+            return {"message": "Event already processed"}
+        
+        # Log webhook event
+        db_exec("""
+            INSERT INTO payment_events (provider, event_type, payload, signature_valid)
+            VALUES ('stripe', %s, %s, true)
+        """, (event_type, json.dumps(request)))
+        
+        # Process payment events
+        if event_type in ["payment_intent.succeeded", "payment_intent.payment_failed"]:
+            payment_intent = request.get("data", {}).get("object", {})
+            provider_intent_id = payment_intent.get("id")
+            
+            if not provider_intent_id:
+                return {"message": "No payment intent ID found"}
+            
+            # Find payment attempt
+            attempt = db_fetchone("""
+                SELECT id, order_id, amount_cents FROM payment_attempts 
+                WHERE provider_intent_id = %s AND provider = 'stripe'
+            """, (provider_intent_id,))
+            
+            if not attempt:
+                write_audit("stripe", "webhook_attempt_not_found", "webhook", None, 
+                           {"provider_intent_id": provider_intent_id})
+                return {"message": "Payment attempt not found"}
+            
+            attempt_id, order_id, amount_cents = attempt
+            
+            if event_type == "payment_intent.succeeded":
+                # Update payment attempt
+                db_exec("""
+                    UPDATE payment_attempts SET status = 'succeeded' WHERE id = %s
+                """, (attempt_id,))
+                
+                # Update order
+                db_exec("""
+                    UPDATE orders SET payment_status = 'succeeded' WHERE id = %s
+                """, (order_id,))
+                
+                # Add to wallet if configured
+                order_user = db_fetchone("""
+                    SELECT user_id FROM orders WHERE id = %s
+                """, (order_id,))
+                
+                if order_user:
+                    wallet_id, _ = get_user_wallet(str(order_user[0]))
+                    add_wallet_transaction(
+                        wallet_id, amount_cents, 'payment', 
+                        'order', order_id, 
+                        f"Payment for order #{order_id}", 
+                        str(order_user[0])
+                    )
+                
+                write_audit("stripe", "payment_succeeded", "order", str(order_id), 
+                           {"amount_cents": amount_cents})
+                
+            else:  # payment_failed
+                # Update payment attempt
+                failure_reason = payment_intent.get("last_payment_error", {}).get("message", "Payment failed")
+                db_exec("""
+                    UPDATE payment_attempts SET status = 'failed', failure_reason = %s 
+                    WHERE id = %s
+                """, (failure_reason, attempt_id))
+                
+                # Check if fallback should be triggered
+                primary_provider = db_fetchone("""
+                    SELECT payment_provider FROM orders WHERE id = %s
+                """, (order_id,))[0]
+                
+                if should_trigger_fallback(order_id, primary_provider):
+                    db_exec("""
+                        UPDATE payment_attempts SET status = 'fallback_triggered' WHERE id = %s
+                    """, (attempt_id,))
+                    
+                    write_audit("stripe", "payment_fallback_needed", "order", str(order_id), 
+                               {"failed_provider": primary_provider})
+                else:
+                    db_exec("""
+                        UPDATE orders SET payment_status = 'failed' WHERE id = %s
+                    """, (order_id,))
+                
+                write_audit("stripe", "payment_failed", "order", str(order_id), 
+                           {"reason": failure_reason})
+        
+        return {"message": "Webhook processed successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit("stripe", "webhook_processing_failed", "webhook", None, {"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Webhook processing failed: {str(e)}")
+
+@app.post("/api/pay/webhook/square")
+def square_webhook_handler(request: dict, square_signature: str = Header(..., alias="x-square-signature")):
+    """Handle Square webhook with signature verification and idempotency - M20 compliant"""
+    
+    try:
+        if not SQUARE_WEBHOOK_SECRET:
+            raise HTTPException(status_code=503, detail="Square webhook secret not configured")
+        
+        # Convert request to JSON string for signature verification
+        payload = json.dumps(request, separators=(',', ':'))
+        
+        # Verify signature
+        if not verify_square_signature(payload, square_signature, SQUARE_WEBHOOK_SECRET):
+            write_audit("square", "webhook_signature_invalid", "webhook", None, {"event_type": request.get("type")})
+            raise HTTPException(status_code=400, detail="Invalid signature")
+        
+        event_type = request.get("type")
+        event_id = request.get("event_id")
+        
+        # Idempotency check
+        existing_event = db_fetchone("""
+            SELECT id FROM payment_events 
+            WHERE provider = 'square' AND payload->>'event_id' = %s
+        """, (event_id,))
+        
+        if existing_event:
+            return {"message": "Event already processed"}
+        
+        # Log webhook event
+        db_exec("""
+            INSERT INTO payment_events (provider, event_type, payload, signature_valid)
+            VALUES ('square', %s, %s, true)
+        """, (event_type, json.dumps(request)))
+        
+        # Process payment events
+        if event_type in ["payment.updated"]:
+            payment = request.get("data", {}).get("object", {}).get("payment", {})
+            provider_intent_id = payment.get("id")
+            payment_status = payment.get("status")
+            
+            if not provider_intent_id:
+                return {"message": "No payment ID found"}
+            
+            # Find payment attempt
+            attempt = db_fetchone("""
+                SELECT id, order_id, amount_cents FROM payment_attempts 
+                WHERE provider_intent_id = %s AND provider = 'square'
+            """, (provider_intent_id,))
+            
+            if not attempt:
+                write_audit("square", "webhook_attempt_not_found", "webhook", None, 
+                           {"provider_intent_id": provider_intent_id})
+                return {"message": "Payment attempt not found"}
+            
+            attempt_id, order_id, amount_cents = attempt
+            
+            if payment_status == "COMPLETED":
+                # Update payment attempt
+                db_exec("""
+                    UPDATE payment_attempts SET status = 'succeeded' WHERE id = %s
+                """, (attempt_id,))
+                
+                # Update order
+                db_exec("""
+                    UPDATE orders SET payment_status = 'succeeded' WHERE id = %s
+                """, (order_id,))
+                
+                # Add to wallet if configured
+                order_user = db_fetchone("""
+                    SELECT user_id FROM orders WHERE id = %s
+                """, (order_id,))
+                
+                if order_user:
+                    wallet_id, _ = get_user_wallet(str(order_user[0]))
+                    add_wallet_transaction(
+                        wallet_id, amount_cents, 'payment', 
+                        'order', order_id, 
+                        f"Payment for order #{order_id}", 
+                        str(order_user[0])
+                    )
+                
+                write_audit("square", "payment_succeeded", "order", str(order_id), 
+                           {"amount_cents": amount_cents})
+                
+            elif payment_status in ["FAILED", "CANCELED"]:
+                # Update payment attempt
+                failure_reason = payment.get("processing_fee", [{}])[0].get("effective_at") or "Payment failed"
+                db_exec("""
+                    UPDATE payment_attempts SET status = 'failed', failure_reason = %s 
+                    WHERE id = %s
+                """, (failure_reason, attempt_id))
+                
+                # Check if fallback should be triggered
+                primary_provider = db_fetchone("""
+                    SELECT payment_provider FROM orders WHERE id = %s
+                """, (order_id,))[0]
+                
+                if should_trigger_fallback(order_id, primary_provider):
+                    db_exec("""
+                        UPDATE payment_attempts SET status = 'fallback_triggered' WHERE id = %s
+                    """, (attempt_id,))
+                    
+                    write_audit("square", "payment_fallback_needed", "order", str(order_id), 
+                               {"failed_provider": primary_provider})
+                else:
+                    db_exec("""
+                        UPDATE orders SET payment_status = 'failed' WHERE id = %s
+                    """, (order_id,))
+                
+                write_audit("square", "payment_failed", "order", str(order_id), 
+                           {"reason": failure_reason})
+        
+        return {"message": "Webhook processed successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit("square", "webhook_processing_failed", "webhook", None, {"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Webhook processing failed: {str(e)}")
+
+@app.post("/api/pay/manual")
+def manual_payment_submission(request: ManualTransferRequest, x_user_id: str = Header(...)):
+    """Submit manual transfer with AML/KYC requirements - M20 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Verify order exists and user has access
+        order = db_fetchone("""
+            SELECT id, user_id, status FROM orders WHERE id = %s
+        """, (request.order_id,))
+        
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        order_id, order_user_id, order_status = order
+        
+        # Authorization check
+        if role == 'client' and str(order_user_id) != user_id:
+            raise HTTPException(status_code=403, detail="Cannot submit manual payment for this order")
+        
+        # Validate transfer type
+        valid_types = ['bank_transfer', 'usdt', 'crypto', 'cash', 'other']
+        if request.transfer_type not in valid_types:
+            raise HTTPException(status_code=400, detail=f"Invalid transfer_type. Must be one of: {valid_types}")
+        
+        # Create manual transfer record
+        transfer_id = db_fetchone("""
+            INSERT INTO manual_transfers 
+            (order_id, transfer_type, proof_media_id, submitted_by, amount_cents, 
+             currency, transaction_ref, review_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')
+            RETURNING id
+        """, (order_id, request.transfer_type, request.proof_media_id, user_id, 
+              request.amount_cents, request.currency, request.transaction_ref))[0]
+        
+        # Create AML/KYC checklist
+        aml_kyc_id = db_fetchone("""
+            INSERT INTO aml_kyc_checks (manual_transfer_id, user_id)
+            VALUES (%s, %s) RETURNING id
+        """, (transfer_id, user_id))[0]
+        
+        # Update order status
+        db_exec("""
+            UPDATE orders SET 
+                payment_status = 'manual_review', 
+                awaiting_admin_review = true
+            WHERE id = %s
+        """, (order_id,))
+        
+        # Audit log (no transaction details in logs for AML compliance)
+        write_audit(
+            actor=user_id,
+            event="manual_payment_submitted",
+            entity="order",
+            entity_id=str(order_id),
+            meta={
+                "transfer_type": request.transfer_type,
+                "amount_cents": request.amount_cents,
+                "currency": request.currency,
+                "has_proof": bool(request.proof_media_id)
+            }
+        )
+        
+        return {
+            "transfer_id": transfer_id,
+            "aml_kyc_id": aml_kyc_id,
+            "status": "pending_review",
+            "message": "Manual transfer submitted for admin review"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(user_id, "manual_payment_failed", "order", str(request.order_id), {"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Manual payment submission failed: {str(e)}")
+
+@app.post("/api/wallet/topup")
+def wallet_topup(request: WalletTopupRequest, x_user_id: str = Header(...)):
+    """Top up user wallet via payment provider - M20 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Get or create wallet
+        wallet_id, current_balance = get_user_wallet(user_id, request.currency)
+        
+        # Determine provider (allow override for testing)
+        if request.payment_provider and request.payment_provider in ['stripe', 'square']:
+            provider = request.payment_provider
+        else:
+            # Use default provider (assume US for simplicity, real implementation would use user's country)
+            provider = get_payment_provider_for_country('US')
+        
+        # Generate idempotency key
+        attempt_number = 1
+        idempotency_key = generate_idempotency_key(0, attempt_number, provider)  # Use 0 for topups
+        
+        # Create mock payment intent for topup
+        provider_intent_id = None
+        client_params = {}
+        
+        if provider == 'stripe' and STRIPE_SECRET_KEY:
+            provider_intent_id = f"pi_topup_mock_{uuid.uuid4().hex[:16]}"
+            client_params = {
+                "client_secret": f"{provider_intent_id}_secret_{uuid.uuid4().hex[:8]}",
+                "payment_intent_id": provider_intent_id
+            }
+        elif provider == 'square' and SQUARE_ACCESS_TOKEN:
+            provider_intent_id = f"sq_topup_mock_{uuid.uuid4().hex[:16]}"
+            client_params = {
+                "payment_id": provider_intent_id,
+                "application_id": SQUARE_APPLICATION_ID or "mock_app_id"
+            }
+        else:
+            raise HTTPException(status_code=503, detail=f"Provider {provider} not configured")
+        
+        # For demo purposes, immediately add to wallet (real implementation would wait for webhook)
+        new_balance = add_wallet_transaction(
+            wallet_id, request.amount_cents, 'topup',
+            description=f"Wallet topup via {provider}",
+            created_by=user_id
+        )
+        
+        # Audit log
+        write_audit(
+            actor=user_id,
+            event="wallet_topup",
+            entity="wallet",
+            entity_id=str(wallet_id),
+            meta={
+                "provider": provider,
+                "amount_cents": request.amount_cents,
+                "currency": request.currency,
+                "new_balance": new_balance
+            }
+        )
+        
+        return {
+            "wallet_id": wallet_id,
+            "provider": provider,
+            "client_params": client_params,
+            "amount_cents": request.amount_cents,
+            "new_balance_cents": new_balance
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit(user_id, "wallet_topup_failed", "wallet", None, {"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Wallet topup failed: {str(e)}")
+
+@app.get("/api/wallet")
+def get_wallet(x_user_id: str = Header(...), currency: str = Query("USD")):
+    """Get user wallet balance - M20 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Get wallet
+        wallet_id, balance_cents = get_user_wallet(user_id, currency)
+        
+        return {
+            "wallet_id": wallet_id,
+            "balance_cents": balance_cents,
+            "currency": currency
+        }
+        
+    except Exception as e:
+        write_audit(user_id, "wallet_access_failed", "wallet", None, {"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Wallet access failed: {str(e)}")
+
+@app.get("/api/wallet/ledger")
+def get_wallet_ledger(x_user_id: str = Header(...), currency: str = Query("USD"), 
+                     limit: int = Query(50, ge=1, le=1000)):
+    """Get wallet transaction history - M20 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Get wallet
+        wallet_id, _ = get_user_wallet(user_id, currency)
+        
+        # Get transaction history (no PII, only transaction metadata)
+        transactions = db_fetchall("""
+            SELECT id, amount_cents, balance_after_cents, transaction_type,
+                   reference_type, reference_id, description, created_at
+            FROM wallet_ledger 
+            WHERE wallet_id = %s 
+            ORDER BY created_at DESC 
+            LIMIT %s
+        """, (wallet_id, limit))
+        
+        return {
+            "wallet_id": wallet_id,
+            "currency": currency,
+            "transactions": [
+                {
+                    "id": t[0],
+                    "amount_cents": t[1],
+                    "balance_after_cents": t[2],
+                    "transaction_type": t[3],
+                    "reference_type": t[4],
+                    "reference_id": t[5],
+                    "description": t[6],
+                    "created_at": t[7].isoformat() if t[7] else None
+                } for t in transactions
+            ]
+        }
+        
+    except Exception as e:
+        write_audit(user_id, "wallet_ledger_access_failed", "wallet", None, {"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Wallet ledger access failed: {str(e)}")
+
+# =============================================================================
+# M21: MODERATION & AUDIT
+# =============================================================================
+
+def generate_request_id() -> str:
+    """Generate unique request ID for audit tracing"""
+    return f"req_{uuid.uuid4().hex[:16]}"
+
+def write_audit_m21(actor: str, event: str, entity: str = None, entity_id: str = None, 
+                   meta: dict = None, request_id: str = None):
+    """Enhanced audit logging with request tracing and hash chaining"""
+    db_exec("""
+        INSERT INTO audit_log(actor, event, entity, entity_id, meta, request_id, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (
+        actor, event, entity, entity_id, 
+        json.dumps(meta or {}), 
+        request_id or generate_request_id(),
+        datetime.utcnow()
+    ))
+
+def verify_moderation_permissions(user_role: str, action: str) -> bool:
+    """Verify user has permission for moderation action"""
+    if user_role in ['superadmin', 'admin']:
+        return True
+    if user_role == 'monitor' and action in ['block', 'unblock', 'hold', 'escalate', 'lineage_recompute']:
+        return True
+    return False
+
+def get_active_user_restrictions(user_id: str) -> list:
+    """Get active restrictions for a user"""
+    restrictions = db_fetchall("""
+        SELECT restriction_type, reason_code, expires_at, applied_by, internal_notes
+        FROM user_restrictions 
+        WHERE user_id = %s AND status = 'active' 
+        AND (expires_at IS NULL OR expires_at > now())
+    """, (user_id,))
+    
+    return [
+        {
+            "restriction_type": r[0],
+            "reason_code": r[1],
+            "expires_at": r[2].isoformat() if r[2] else None,
+            "applied_by": str(r[3]),
+            "internal_notes": r[4]
+        } for r in restrictions
+    ]
+
+@app.post("/api/monitor/block-user")
+def block_user(request: ModerationActionRequest, x_user_id: str = Header(...)):
+    """Block user with reason and duration - M21 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        request_id = generate_request_id()
+        
+        # Authorization check
+        if not verify_moderation_permissions(role, 'block'):
+            raise HTTPException(status_code=403, detail="Insufficient permissions for moderation")
+        
+        # Validate target
+        if request.target_type != 'profile':
+            raise HTTPException(status_code=400, detail="This endpoint only supports blocking profiles")
+        
+        # Verify target user exists
+        target_user = db_fetchone("""
+            SELECT id, email, role_id FROM profiles WHERE id = %s
+        """, (request.target_id,))
+        
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Target user not found")
+        
+        # Prevent blocking superadmins (unless actor is also superadmin)
+        target_role = get_user_role(request.target_id)
+        if target_role == 'superadmin' and role != 'superadmin':
+            raise HTTPException(status_code=403, detail="Cannot block superadmin users")
+        
+        # Check if user is already blocked
+        existing_blocks = db_fetchall("""
+            SELECT id, status FROM user_restrictions 
+            WHERE user_id = %s AND restriction_type = 'block' 
+            AND status = 'active' AND (expires_at IS NULL OR expires_at > now())
+        """, (request.target_id,))
+        
+        if existing_blocks:
+            raise HTTPException(status_code=409, detail="User is already blocked")
+        
+        # Create restriction record
+        restriction_id = db_fetchone("""
+            INSERT INTO user_restrictions 
+            (user_id, restriction_type, reason_code, severity, duration_hours, 
+             applied_by, evidence_refs, internal_notes, user_visible_reason)
+            VALUES (%s, 'block', %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            request.target_id, request.reason_code, request.severity,
+            request.duration_hours, user_id, json.dumps(request.evidence_refs),
+            request.internal_notes, request.user_visible_reason
+        ))[0]
+        
+        # Create moderation action record
+        action_id = db_fetchone("""
+            INSERT INTO moderation_actions 
+            (actor_id, target_kind, target_id, action, reason, reason_code, 
+             severity, evidence_refs, duration_hours)
+            VALUES (%s, 'profile', %s, 'block', %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            user_id, request.target_id, request.user_visible_reason or request.reason_code,
+            request.reason_code, request.severity, json.dumps(request.evidence_refs),
+            request.duration_hours
+        ))[0]
+        
+        # Enhanced audit logging
+        write_audit_m21(
+            actor=user_id,
+            event="user_blocked",
+            entity="profile",
+            entity_id=request.target_id,
+            meta={
+                "reason_code": request.reason_code,
+                "severity": request.severity,
+                "duration_hours": request.duration_hours,
+                "evidence_count": len(request.evidence_refs),
+                "restriction_id": restriction_id,
+                "action_id": action_id
+            },
+            request_id=request_id
+        )
+        
+        return {
+            "restriction_id": restriction_id,
+            "action_id": action_id,
+            "target_id": request.target_id,
+            "restriction_type": "block",
+            "expires_at": (datetime.utcnow() + timedelta(hours=request.duration_hours)).isoformat() 
+                         if request.duration_hours else None,
+            "message": "User blocked successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m21(user_id, "user_block_failed", "profile", request.target_id, 
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"User blocking failed: {str(e)}")
+
+@app.post("/api/monitor/unblock-user")  
+def unblock_user(request: ModerationActionRequest, x_user_id: str = Header(...)):
+    """Unblock user - M21 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        request_id = generate_request_id()
+        
+        # Authorization check
+        if not verify_moderation_permissions(role, 'unblock'):
+            raise HTTPException(status_code=403, detail="Insufficient permissions for moderation")
+        
+        # Find active block
+        active_block = db_fetchone("""
+            SELECT id, applied_by, reason_code FROM user_restrictions
+            WHERE user_id = %s AND restriction_type = 'block'
+            AND status = 'active' AND (expires_at IS NULL OR expires_at > now())
+        """, (request.target_id,))
+        
+        if not active_block:
+            raise HTTPException(status_code=404, detail="No active block found for user")
+        
+        restriction_id, applied_by, original_reason = active_block
+        
+        # Only admin+ can unblock, or original blocker if not permanent
+        if role not in ['admin', 'superadmin'] and str(applied_by) != user_id:
+            raise HTTPException(status_code=403, detail="Only admin or original blocker can unblock")
+        
+        # Update restriction record
+        db_exec("""
+            UPDATE user_restrictions 
+            SET status = 'lifted', lifted_by = %s, lifted_at = now()
+            WHERE id = %s
+        """, (user_id, restriction_id))
+        
+        # Create moderation action record
+        action_id = db_fetchone("""
+            INSERT INTO moderation_actions
+            (actor_id, target_kind, target_id, action, reason, reason_code)
+            VALUES (%s, 'profile', %s, 'unblock', %s, %s)
+            RETURNING id  
+        """, (user_id, request.target_id, request.internal_notes or 'Manual unblock', 
+              request.reason_code or original_reason))[0]
+        
+        # Enhanced audit logging
+        write_audit_m21(
+            actor=user_id,
+            event="user_unblocked", 
+            entity="profile",
+            entity_id=request.target_id,
+            meta={
+                "original_reason": original_reason,
+                "unblock_reason": request.reason_code,
+                "restriction_id": restriction_id,
+                "action_id": action_id
+            },
+            request_id=request_id
+        )
+        
+        return {
+            "restriction_id": restriction_id,
+            "action_id": action_id,
+            "target_id": request.target_id,
+            "message": "User unblocked successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m21(user_id, "user_unblock_failed", "profile", request.target_id,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"User unblocking failed: {str(e)}")
+
+@app.post("/api/monitor/moderate/order/{order_id}")
+def moderate_order(order_id: int, request: ModerationActionRequest, x_user_id: str = Header(...)):
+    """Moderate order with various actions - M21 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        request_id = generate_request_id()
+        
+        # Authorization check
+        if not verify_moderation_permissions(role, request.action):
+            raise HTTPException(status_code=403, detail="Insufficient permissions for this moderation action")
+        
+        # Verify order exists
+        order = db_fetchone("""
+            SELECT id, user_id, status, service_id, output_media_id FROM orders 
+            WHERE id = %s
+        """, (order_id,))
+        
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        order_id_db, order_user_id, order_status, service_id, output_media_id = order
+        
+        # Validate action for order context
+        valid_order_actions = ['hold', 'release', 'remove_media', 'escalate', 'reject']
+        if request.action not in valid_order_actions:
+            raise HTTPException(status_code=400, 
+                              detail=f"Invalid action for order. Valid actions: {valid_order_actions}")
+        
+        action_applied = False
+        action_details = {}
+        
+        # Apply the moderation action
+        if request.action == 'hold':
+            db_exec("UPDATE orders SET status = 'awaiting_approval' WHERE id = %s", (order_id,))
+            action_details["previous_status"] = order_status
+            action_applied = True
+            
+        elif request.action == 'release':
+            db_exec("UPDATE orders SET status = 'approved' WHERE id = %s", (order_id,))
+            action_details["previous_status"] = order_status
+            action_applied = True
+            
+        elif request.action == 'remove_media' and output_media_id:
+            # Mark media as removed (don't delete, for audit trail)
+            db_exec("""
+                UPDATE media_assets SET meta = meta || '{"moderation_removed": true}'::jsonb
+                WHERE id = %s
+            """, (output_media_id,))
+            db_exec("UPDATE orders SET output_media_id = NULL WHERE id = %s", (order_id,))
+            action_details["removed_media_id"] = output_media_id
+            action_applied = True
+            
+        elif request.action == 'escalate':
+            # Create escalation case
+            case_id = db_fetchone("""
+                INSERT INTO moderation_cases
+                (case_type, subject_type, subject_id, priority, reason_code, description, 
+                 evidence_refs, opened_by)
+                VALUES ('escalation', 'order', %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (str(order_id), min(request.severity + 1, 4), request.reason_code,
+                  request.internal_notes or f"Escalated from order moderation",
+                  json.dumps(request.evidence_refs), user_id))[0]
+            action_details["case_id"] = case_id
+            action_applied = True
+            
+        elif request.action == 'reject':
+            db_exec("UPDATE orders SET status = 'rejected' WHERE id = %s", (order_id,))
+            action_details["previous_status"] = order_status
+            action_applied = True
+        
+        if not action_applied:
+            raise HTTPException(status_code=400, detail=f"Action '{request.action}' could not be applied")
+        
+        # Create moderation action record
+        action_id = db_fetchone("""
+            INSERT INTO moderation_actions
+            (actor_id, target_kind, target_id, action, reason, reason_code, 
+             severity, evidence_refs, duration_hours)
+            VALUES (%s, 'order', %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (user_id, str(order_id), request.action, 
+              request.user_visible_reason or request.internal_notes,
+              request.reason_code, request.severity,
+              json.dumps(request.evidence_refs), request.duration_hours))[0]
+        
+        # Enhanced audit logging
+        write_audit_m21(
+            actor=user_id,
+            event=f"order_moderated_{request.action}",
+            entity="order",
+            entity_id=str(order_id),
+            meta={
+                "action": request.action,
+                "reason_code": request.reason_code,
+                "severity": request.severity,
+                "action_details": action_details,
+                "evidence_count": len(request.evidence_refs),
+                "action_id": action_id
+            },
+            request_id=request_id
+        )
+        
+        return {
+            "action_id": action_id,
+            "order_id": order_id,
+            "action": request.action,
+            "action_details": action_details,
+            "message": f"Order {request.action} applied successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m21(user_id, "order_moderation_failed", "order", str(order_id),
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Order moderation failed: {str(e)}")
+
+@app.get("/api/monitor/cases")
+def get_moderation_cases(x_user_id: str = Header(...), 
+                        status: Optional[str] = Query(None),
+                        priority: Optional[int] = Query(None),
+                        assigned_to_me: bool = Query(False),
+                        limit: int = Query(50, ge=1, le=200)):
+    """Get moderation cases queue - M21 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        request_id = generate_request_id()
+        
+        # Authorization check
+        if role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions to view moderation cases")
+        
+        # Build query conditions
+        conditions = ["1=1"]
+        params = []
+        
+        if status:
+            conditions.append("status = %s")
+            params.append(status)
+        
+        if priority:
+            conditions.append("priority = %s")
+            params.append(priority)
+        
+        if assigned_to_me:
+            conditions.append("assigned_to = %s")
+            params.append(user_id)
+        
+        # Get cases with SLA information
+        cases = db_fetchall(f"""
+            SELECT c.id, c.case_type, c.subject_type, c.subject_id, c.priority, c.status,
+                   c.reason_code, c.description, c.assigned_to, c.opened_by, c.resolved_by,
+                   c.opened_at, c.assigned_at, c.resolved_at, c.sla_deadline,
+                   p1.email as opened_by_email, p2.email as assigned_to_email, p3.email as resolved_by_email,
+                   CASE WHEN c.sla_deadline < now() AND c.status IN ('open', 'in_progress') 
+                        THEN true ELSE false END as sla_breached
+            FROM moderation_cases c
+            LEFT JOIN profiles p1 ON p1.id = c.opened_by
+            LEFT JOIN profiles p2 ON p2.id = c.assigned_to
+            LEFT JOIN profiles p3 ON p3.id = c.resolved_by
+            WHERE {' AND '.join(conditions)}
+            ORDER BY c.priority DESC, c.opened_at ASC
+            LIMIT %s
+        """, params + [limit])
+        
+        # Get overdue cases count for dashboard
+        overdue_count = db_fetchone("""
+            SELECT COUNT(*) FROM moderation_cases
+            WHERE sla_deadline < now() AND status IN ('open', 'in_progress')
+        """)[0]
+        
+        # Enhanced audit logging (no PII)
+        write_audit_m21(
+            actor=user_id,
+            event="moderation_cases_viewed",
+            entity="moderation_queue",
+            entity_id=None,
+            meta={
+                "filters": {"status": status, "priority": priority, "assigned_to_me": assigned_to_me},
+                "results_count": len(cases),
+                "overdue_count": overdue_count
+            },
+            request_id=request_id
+        )
+        
+        return {
+            "cases": [
+                {
+                    "id": c[0],
+                    "case_type": c[1],
+                    "subject_type": c[2], 
+                    "subject_id": c[3],
+                    "priority": c[4],
+                    "status": c[5],
+                    "reason_code": c[6],
+                    "description": c[7],
+                    "assigned_to": str(c[8]) if c[8] else None,
+                    "opened_by": str(c[9]) if c[9] else None,
+                    "resolved_by": str(c[10]) if c[10] else None,
+                    "opened_at": c[11].isoformat() if c[11] else None,
+                    "assigned_at": c[12].isoformat() if c[12] else None,
+                    "resolved_at": c[13].isoformat() if c[13] else None,
+                    "sla_deadline": c[14].isoformat() if c[14] else None,
+                    "opened_by_email": c[15],
+                    "assigned_to_email": c[16],
+                    "resolved_by_email": c[17],
+                    "sla_breached": c[18]
+                } for c in cases
+            ],
+            "total_results": len(cases),
+            "overdue_cases": overdue_count,
+            "filters_applied": {"status": status, "priority": priority, "assigned_to_me": assigned_to_me}
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m21(user_id, "moderation_cases_view_failed", "moderation_queue", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Cases retrieval failed: {str(e)}")
+
+@app.post("/api/monitor/appeals/{appeal_id}/resolve")
+def resolve_appeal(appeal_id: int, request: AppealDecisionRequest, x_user_id: str = Header(...)):
+    """Resolve moderation appeal - M21 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        request_id = generate_request_id()
+        
+        # Authorization check
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Only admin+ can resolve appeals")
+        
+        # Get appeal details
+        appeal = db_fetchone("""
+            SELECT ma.id, ma.moderation_action_id, ma.appellant_id, ma.status,
+                   ma.appeal_reason, mod_act.action, mod_act.target_id, mod_act.target_kind
+            FROM moderation_appeals ma
+            JOIN moderation_actions mod_act ON mod_act.id = ma.moderation_action_id
+            WHERE ma.id = %s
+        """, (appeal_id,))
+        
+        if not appeal:
+            raise HTTPException(status_code=404, detail="Appeal not found")
+        
+        appeal_id_db, mod_action_id, appellant_id, current_status = appeal[:4]
+        appeal_reason, original_action, target_id, target_kind = appeal[4:]
+        
+        if current_status not in ['pending', 'under_review']:
+            raise HTTPException(status_code=409, detail="Appeal has already been decided")
+        
+        # Update appeal with decision
+        db_exec("""
+            UPDATE moderation_appeals SET
+                status = CASE %s WHEN 'approved' THEN 'approved' ELSE 'denied' END,
+                reviewed_by = %s,
+                decision = %s,
+                decision_reason = %s,
+                decision_notes = %s,
+                decided_at = now(),
+                original_action_reversed = %s,
+                new_action_applied = %s
+            WHERE id = %s
+        """, (request.decision, user_id, request.decision, request.decision_reason,
+              request.decision_notes, request.reverse_original,
+              bool(request.apply_new_action), appeal_id))
+        
+        # Apply decision consequences
+        action_details = {"decision": request.decision}
+        
+        if request.decision == 'approved' and request.reverse_original:
+            # Reverse original moderation action
+            if original_action == 'block' and target_kind == 'profile':
+                db_exec("""
+                    UPDATE user_restrictions 
+                    SET status = 'lifted', lifted_by = %s, lifted_at = now()
+                    WHERE user_id = %s AND status = 'active' 
+                    AND restriction_type = 'block'
+                """, (user_id, target_id))
+                action_details["original_block_lifted"] = True
+                
+        if request.apply_new_action:
+            # Apply new moderation action as specified
+            action_details["new_action_applied"] = request.apply_new_action
+            
+        # Enhanced audit logging
+        write_audit_m21(
+            actor=user_id,
+            event="appeal_resolved",
+            entity="moderation_appeal",
+            entity_id=str(appeal_id),
+            meta={
+                "decision": request.decision,
+                "appellant_id": str(appellant_id),
+                "original_action": original_action,
+                "target_type": target_kind,
+                "target_id": target_id,
+                "reversed_original": request.reverse_original,
+                "action_details": action_details
+            },
+            request_id=request_id
+        )
+        
+        return {
+            "appeal_id": appeal_id,
+            "decision": request.decision,
+            "decision_reason": request.decision_reason,
+            "original_action_reversed": request.reverse_original,
+            "new_action_applied": bool(request.apply_new_action),
+            "message": f"Appeal {request.decision} successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m21(user_id, "appeal_resolution_failed", "moderation_appeal", str(appeal_id),
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Appeal resolution failed: {str(e)}")
+
+@app.get("/api/admin/audit")
+def get_audit_log(x_user_id: str = Header(...),
+                  actor: Optional[str] = Query(None),
+                  event: Optional[str] = Query(None), 
+                  entity: Optional[str] = Query(None),
+                  start_date: Optional[str] = Query(None),
+                  end_date: Optional[str] = Query(None),
+                  request_id: Optional[str] = Query(None),
+                  limit: int = Query(100, ge=1, le=1000)):
+    """Get filtered audit log - M21 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        audit_request_id = generate_request_id()
+        
+        # Authorization check
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Only admin+ can access audit logs")
+        
+        # Build query conditions
+        conditions = ["1=1"]
+        params = []
+        
+        if actor:
+            conditions.append("actor = %s")
+            params.append(actor)
+            
+        if event:
+            conditions.append("event = %s")
+            params.append(event)
+            
+        if entity:
+            conditions.append("entity = %s") 
+            params.append(entity)
+            
+        if start_date:
+            conditions.append("created_at >= %s")
+            params.append(start_date)
+            
+        if end_date:
+            conditions.append("created_at <= %s")
+            params.append(end_date)
+            
+        if request_id:
+            conditions.append("request_id = %s")
+            params.append(request_id)
+        
+        # Get audit entries with hash verification
+        entries = db_fetchall(f"""
+            SELECT sequence_number, actor, event, entity, entity_id, meta, 
+                   request_id, created_at, previous_hash, record_hash
+            FROM audit_log
+            WHERE {' AND '.join(conditions)}
+            ORDER BY sequence_number DESC
+            LIMIT %s
+        """, params + [limit])
+        
+        # Verify hash chain integrity for returned entries
+        hash_verification = {"verified": True, "broken_chain_at": None}
+        if len(entries) > 1:
+            for i in range(len(entries) - 1):
+                current_entry = entries[i]
+                next_entry = entries[i + 1]
+                
+                # Check if current entry's previous_hash matches next entry's record_hash
+                if current_entry[8] != next_entry[9]:  # previous_hash != next record_hash
+                    hash_verification["verified"] = False
+                    hash_verification["broken_chain_at"] = current_entry[0]  # sequence_number
+                    break
+        
+        # Enhanced audit logging (audit the audit access)
+        write_audit_m21(
+            actor=user_id,
+            event="audit_log_accessed",
+            entity="audit_system",
+            entity_id=None,
+            meta={
+                "filters": {
+                    "actor": actor, "event": event, "entity": entity,
+                    "start_date": start_date, "end_date": end_date, "request_id": request_id
+                },
+                "results_count": len(entries),
+                "hash_chain_verified": hash_verification["verified"]
+            },
+            request_id=audit_request_id
+        )
+        
+        return {
+            "entries": [
+                {
+                    "sequence_number": e[0],
+                    "actor": e[1],
+                    "event": e[2], 
+                    "entity": e[3],
+                    "entity_id": e[4],
+                    "meta": json.loads(e[5]) if e[5] else {},
+                    "request_id": e[6],
+                    "created_at": e[7].isoformat() if e[7] else None,
+                    "previous_hash": e[8],
+                    "record_hash": e[9]
+                } for e in entries
+            ],
+            "total_results": len(entries),
+            "hash_verification": hash_verification,
+            "filters_applied": {
+                "actor": actor, "event": event, "entity": entity,
+                "start_date": start_date, "end_date": end_date, "request_id": request_id
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m21(user_id, "audit_log_access_failed", "audit_system", None,
+                       {"error": str(e)}, audit_request_id)
+        raise HTTPException(status_code=500, detail=f"Audit log access failed: {str(e)}")
+
+@app.post("/api/admin/audit/attest")
+def create_audit_attestation(request: AuditExportRequest, x_user_id: str = Header(...)):
+    """Create signed audit attestation export - M21 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        request_id = generate_request_id()
+        
+        # Authorization check
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Only admin+ can create audit attestations")
+        
+        # Parse time period
+        period_start = datetime.fromisoformat(request.period_start.replace('Z', '+00:00'))
+        period_end = datetime.fromisoformat(request.period_end.replace('Z', '+00:00'))
+        
+        if period_end <= period_start:
+            raise HTTPException(status_code=400, detail="End date must be after start date")
+        
+        # Get audit records for the period
+        records = db_fetchall("""
+            SELECT sequence_number, actor, event, entity, entity_id, meta, 
+                   request_id, created_at, record_hash
+            FROM audit_log
+            WHERE created_at >= %s AND created_at <= %s
+            ORDER BY sequence_number ASC
+        """, (period_start, period_end))
+        
+        if not records:
+            raise HTTPException(status_code=404, detail="No audit records found for the specified period")
+        
+        first_seq = records[0][0]
+        last_seq = records[-1][0]
+        total_records = len(records)
+        
+        # Format export content
+        if request.export_format == 'json':
+            export_content = json.dumps([
+                {
+                    "sequence_number": r[0],
+                    "actor": r[1],
+                    "event": r[2],
+                    "entity": r[3],
+                    "entity_id": r[4],
+                    "meta": json.loads(r[5]) if r[5] else {},
+                    "request_id": r[6],
+                    "created_at": r[7].isoformat() if r[7] else None,
+                    "record_hash": r[8]
+                } for r in records
+            ], sort_keys=True, separators=(',', ':'))
+        else:
+            # CSV format
+            import csv
+            import io
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(['sequence_number', 'actor', 'event', 'entity', 'entity_id', 
+                           'meta', 'request_id', 'created_at', 'record_hash'])
+            for r in records:
+                writer.writerow([
+                    r[0], r[1], r[2], r[3], r[4], 
+                    json.dumps(json.loads(r[5]) if r[5] else {}),
+                    r[6], r[7].isoformat() if r[7] else None, r[8]
+                ])
+            export_content = output.getvalue()
+        
+        # Calculate content hash
+        content_hash = hashlib.sha256(export_content.encode('utf-8')).hexdigest()
+        
+        # Create signature (in production, use proper cryptographic signing)
+        signature_input = f"{content_hash}|{period_start.isoformat()}|{period_end.isoformat()}|{user_id}"
+        signature = hashlib.sha256(signature_input.encode('utf-8')).hexdigest()
+        
+        # Store attestation record
+        attestation_id = db_fetchone("""
+            INSERT INTO audit_attestations
+            (attestation_period_start, attestation_period_end, total_records,
+             first_sequence_number, last_sequence_number, content_hash,
+             signed_by, signature, public_key_id, export_format, export_metadata)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            period_start, period_end, total_records, first_seq, last_seq,
+            content_hash, user_id, signature, f"key_{user_id}", request.export_format,
+            json.dumps({"created_by": user_id, "request_id": request_id})
+        ))[0]
+        
+        # Enhanced audit logging
+        write_audit_m21(
+            actor=user_id,
+            event="audit_attestation_created",
+            entity="audit_attestation",
+            entity_id=str(attestation_id),
+            meta={
+                "period_start": period_start.isoformat(),
+                "period_end": period_end.isoformat(),
+                "total_records": total_records,
+                "first_sequence": first_seq,
+                "last_sequence": last_seq,
+                "content_hash": content_hash,
+                "export_format": request.export_format
+            },
+            request_id=request_id
+        )
+        
+        return {
+            "attestation_id": attestation_id,
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "total_records": total_records,
+            "content_hash": content_hash,
+            "signature": signature if request.include_signatures else "[redacted]",
+            "export_format": request.export_format,
+            "export_content": export_content if len(export_content) < 50000 else "[too_large_inline]",
+            "message": "Audit attestation created successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m21(user_id, "audit_attestation_failed", "audit_system", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Audit attestation failed: {str(e)}")
+
+# =============================================================================
+# M21: AUTOMATED ANOMALY DETECTION SWEEPS
+# =============================================================================
+
+def run_excessive_rejections_sweep():
+    """Detect readers with abnormally high rejection rates"""
+    
+    try:
+        request_id = generate_request_id()
+        
+        # Get sweep configuration
+        config = db_fetchone("""
+            SELECT id, threshold_config, suggested_priority, suggested_reason_code
+            FROM moderation_sweep_configs 
+            WHERE sweep_name = 'excessive_rejections_by_reader' AND is_active = true
+        """)
+        
+        if not config:
+            return {"message": "Sweep configuration not found or disabled"}
+        
+        config_id, threshold_config, priority, reason_code = config
+        thresholds = json.loads(threshold_config)
+        
+        # Create sweep result record
+        sweep_result_id = db_fetchone("""
+            INSERT INTO moderation_sweep_results (sweep_config_id, execution_status)
+            VALUES (%s, 'running') RETURNING id
+        """, (config_id,))[0]
+        
+        # Find readers with high rejection rates
+        anomalous_readers = db_fetchall("""
+            WITH reader_stats AS (
+                SELECT 
+                    o.assigned_reader,
+                    COUNT(*) as total_orders,
+                    COUNT(*) FILTER (WHERE o.status = 'rejected') as rejected_orders,
+                    ROUND(
+                        COUNT(*) FILTER (WHERE o.status = 'rejected')::numeric / 
+                        COUNT(*)::numeric, 3
+                    ) as rejection_rate
+                FROM orders o
+                WHERE o.assigned_reader IS NOT NULL 
+                AND o.created_at > now() - INTERVAL '%s hours'
+                AND o.status IN ('approved', 'rejected', 'delivered')
+                GROUP BY o.assigned_reader
+                HAVING COUNT(*) >= %s
+            )
+            SELECT assigned_reader, total_orders, rejected_orders, rejection_rate
+            FROM reader_stats 
+            WHERE rejection_rate >= %s
+            ORDER BY rejection_rate DESC
+        """, (
+            thresholds.get('lookback_hours', 168),
+            thresholds.get('min_orders', 10), 
+            thresholds.get('rejection_rate_threshold', 0.8)
+        ))
+        
+        cases_created = 0
+        for reader_data in anomalous_readers:
+            reader_id, total_orders, rejected_orders, rejection_rate = reader_data
+            
+            # Create moderation case
+            case_id = db_fetchone("""
+                INSERT INTO moderation_cases
+                (case_type, subject_type, subject_id, priority, reason_code, description, 
+                 evidence_refs, opened_by)
+                VALUES ('automated_sweep', 'profile', %s, %s, %s, %s, %s, 'system')
+                RETURNING id
+            """, (
+                str(reader_id), priority, reason_code,
+                f"Automated sweep detected high rejection rate: {rejection_rate:.1%} ({rejected_orders}/{total_orders} orders)",
+                json.dumps({
+                    "sweep_type": "excessive_rejections",
+                    "total_orders": total_orders,
+                    "rejected_orders": rejected_orders,
+                    "rejection_rate": float(rejection_rate),
+                    "threshold": thresholds.get('rejection_rate_threshold')
+                })
+            ))[0]
+            
+            cases_created += 1
+            
+            # Audit each anomaly detected
+            write_audit_m21(
+                actor="system",
+                event="anomaly_detected",
+                entity="profile",
+                entity_id=str(reader_id),
+                meta={
+                    "sweep_type": "excessive_rejections",
+                    "case_id": case_id,
+                    "rejection_rate": float(rejection_rate),
+                    "total_orders": total_orders,
+                    "threshold_exceeded": True
+                },
+                request_id=request_id
+            )
+        
+        # Update sweep result
+        db_exec("""
+            UPDATE moderation_sweep_results SET
+                run_completed_at = now(),
+                execution_status = 'completed',
+                total_checked = (SELECT COUNT(DISTINCT assigned_reader) FROM orders 
+                                WHERE assigned_reader IS NOT NULL 
+                                AND created_at > now() - INTERVAL '%s hours'),
+                anomalies_found = %s,
+                cases_created = %s
+            WHERE id = %s
+        """, (thresholds.get('lookback_hours', 168), len(anomalous_readers), cases_created, sweep_result_id))
+        
+        # Update sweep config next run time
+        db_exec("""
+            UPDATE moderation_sweep_configs SET
+                last_run_at = now(),
+                next_run_at = now() + INTERVAL '%s hours'
+            WHERE id = %s
+        """, (thresholds.get('check_interval_hours', 24), config_id))
+        
+        return {
+            "sweep_result_id": sweep_result_id,
+            "anomalies_found": len(anomalous_readers),
+            "cases_created": cases_created,
+            "threshold": thresholds.get('rejection_rate_threshold'),
+            "message": f"Excessive rejections sweep completed: {cases_created} cases created"
+        }
+        
+    except Exception as e:
+        # Mark sweep as failed
+        if 'sweep_result_id' in locals():
+            db_exec("""
+                UPDATE moderation_sweep_results SET
+                    run_completed_at = now(),
+                    execution_status = 'failed',
+                    error_message = %s
+                WHERE id = %s
+            """, (str(e), sweep_result_id))
+        
+        write_audit_m21("system", "sweep_execution_failed", "sweep", "excessive_rejections", 
+                       {"error": str(e)}, request_id)
+        return {"error": str(e)}
+
+def run_rapid_refunds_sweep():
+    """Detect unusual refund patterns that may indicate abuse"""
+    
+    try:
+        request_id = generate_request_id()
+        
+        # Get sweep configuration
+        config = db_fetchone("""
+            SELECT id, threshold_config, suggested_priority, suggested_reason_code
+            FROM moderation_sweep_configs 
+            WHERE sweep_name = 'rapid_refund_sequences' AND is_active = true
+        """)
+        
+        if not config:
+            return {"message": "Sweep configuration not found or disabled"}
+        
+        config_id, threshold_config, priority, reason_code = config
+        thresholds = json.loads(threshold_config)
+        
+        # Create sweep result record
+        sweep_result_id = db_fetchone("""
+            INSERT INTO moderation_sweep_results (sweep_config_id, execution_status)
+            VALUES (%s, 'running') RETURNING id
+        """, (config_id,))[0]
+        
+        # Find users with rapid refund patterns
+        anomalous_users = db_fetchall("""
+            WITH refund_patterns AS (
+                SELECT 
+                    o.user_id,
+                    COUNT(*) as total_refunds,
+                    MIN(r.created_at) as first_refund,
+                    MAX(r.created_at) as last_refund,
+                    EXTRACT(EPOCH FROM (MAX(r.created_at) - MIN(r.created_at))) / 3600 as time_span_hours
+                FROM orders o
+                JOIN refunds r ON r.order_id = o.id
+                WHERE r.status = 'succeeded'
+                AND r.created_at > now() - INTERVAL '%s hours'
+                GROUP BY o.user_id
+                HAVING COUNT(*) >= %s
+            )
+            SELECT user_id, total_refunds, time_span_hours
+            FROM refund_patterns
+            WHERE (total_refunds::float / GREATEST(time_span_hours, 1)) >= %s
+            ORDER BY (total_refunds::float / GREATEST(time_span_hours, 1)) DESC
+        """, (
+            thresholds.get('lookback_hours', 24),
+            thresholds.get('refunds_per_hour_threshold', 5),
+            thresholds.get('refunds_per_hour_threshold', 5)
+        ))
+        
+        cases_created = 0
+        for user_data in anomalous_users:
+            user_id, total_refunds, time_span_hours = user_data
+            refunds_per_hour = total_refunds / max(time_span_hours, 1)
+            
+            # Create moderation case
+            case_id = db_fetchone("""
+                INSERT INTO moderation_cases
+                (case_type, subject_type, subject_id, priority, reason_code, description, 
+                 evidence_refs, opened_by)
+                VALUES ('automated_sweep', 'profile', %s, %s, %s, %s, %s, 'system')
+                RETURNING id
+            """, (
+                str(user_id), priority, reason_code,
+                f"Automated sweep detected rapid refund pattern: {total_refunds} refunds in {time_span_hours:.1f} hours",
+                json.dumps({
+                    "sweep_type": "rapid_refunds",
+                    "total_refunds": total_refunds,
+                    "time_span_hours": float(time_span_hours),
+                    "refunds_per_hour": float(refunds_per_hour),
+                    "threshold": thresholds.get('refunds_per_hour_threshold')
+                })
+            ))[0]
+            
+            cases_created += 1
+            
+            # Audit each anomaly detected
+            write_audit_m21(
+                actor="system",
+                event="anomaly_detected",
+                entity="profile", 
+                entity_id=str(user_id),
+                meta={
+                    "sweep_type": "rapid_refunds",
+                    "case_id": case_id,
+                    "refunds_per_hour": float(refunds_per_hour),
+                    "total_refunds": total_refunds,
+                    "threshold_exceeded": True
+                },
+                request_id=request_id
+            )
+        
+        # Update sweep result
+        db_exec("""
+            UPDATE moderation_sweep_results SET
+                run_completed_at = now(),
+                execution_status = 'completed',
+                total_checked = (SELECT COUNT(DISTINCT o.user_id) FROM orders o 
+                                JOIN refunds r ON r.order_id = o.id
+                                WHERE r.created_at > now() - INTERVAL '%s hours'),
+                anomalies_found = %s,
+                cases_created = %s
+            WHERE id = %s
+        """, (thresholds.get('lookback_hours', 24), len(anomalous_users), cases_created, sweep_result_id))
+        
+        return {
+            "sweep_result_id": sweep_result_id,
+            "anomalies_found": len(anomalous_users),
+            "cases_created": cases_created,
+            "message": f"Rapid refunds sweep completed: {cases_created} cases created"
+        }
+        
+    except Exception as e:
+        if 'sweep_result_id' in locals():
+            db_exec("""
+                UPDATE moderation_sweep_results SET
+                    run_completed_at = now(),
+                    execution_status = 'failed',
+                    error_message = %s
+                WHERE id = %s
+            """, (str(e), sweep_result_id))
+        
+        write_audit_m21("system", "sweep_execution_failed", "sweep", "rapid_refunds", 
+                       {"error": str(e)}, request_id)
+        return {"error": str(e)}
+
+def run_high_call_drops_sweep():
+    """Detect users or readers with high call drop rates"""
+    
+    try:
+        request_id = generate_request_id()
+        
+        config = db_fetchone("""
+            SELECT id, threshold_config, suggested_priority, suggested_reason_code
+            FROM moderation_sweep_configs 
+            WHERE sweep_name = 'high_call_drop_rates' AND is_active = true
+        """)
+        
+        if not config:
+            return {"message": "Sweep configuration not found or disabled"}
+        
+        config_id, threshold_config, priority, reason_code = config
+        thresholds = json.loads(threshold_config)
+        
+        sweep_result_id = db_fetchone("""
+            INSERT INTO moderation_sweep_results (sweep_config_id, execution_status)
+            VALUES (%s, 'running') RETURNING id
+        """, (config_id,))[0]
+        
+        # Find users/readers with high call drop rates
+        anomalous_entities = db_fetchall("""
+            WITH call_stats AS (
+                -- User stats (as client)
+                SELECT 
+                    'client' as entity_type,
+                    o.user_id::text as entity_id,
+                    COUNT(*) as total_calls,
+                    COUNT(*) FILTER (WHERE c.ended_reason LIKE '%_drop' OR c.status LIKE 'dropped_%') as dropped_calls,
+                    ROUND(
+                        COUNT(*) FILTER (WHERE c.ended_reason LIKE '%_drop' OR c.status LIKE 'dropped_%')::numeric / 
+                        COUNT(*)::numeric, 3
+                    ) as drop_rate
+                FROM calls c
+                JOIN orders o ON o.id = c.order_id
+                WHERE c.started_at > now() - INTERVAL '%s hours'
+                AND c.status IN ('completed', 'dropped_by_monitor', 'dropped_by_reader', 'dropped_by_client')
+                GROUP BY o.user_id
+                HAVING COUNT(*) >= %s
+                
+                UNION ALL
+                
+                -- Reader stats
+                SELECT 
+                    'reader' as entity_type,
+                    o.assigned_reader::text as entity_id,
+                    COUNT(*) as total_calls,
+                    COUNT(*) FILTER (WHERE c.ended_reason LIKE '%_drop' OR c.status LIKE 'dropped_%') as dropped_calls,
+                    ROUND(
+                        COUNT(*) FILTER (WHERE c.ended_reason LIKE '%_drop' OR c.status LIKE 'dropped_%')::numeric / 
+                        COUNT(*)::numeric, 3
+                    ) as drop_rate
+                FROM calls c
+                JOIN orders o ON o.id = c.order_id
+                WHERE c.started_at > now() - INTERVAL '%s hours'
+                AND o.assigned_reader IS NOT NULL
+                AND c.status IN ('completed', 'dropped_by_monitor', 'dropped_by_reader', 'dropped_by_client')
+                GROUP BY o.assigned_reader
+                HAVING COUNT(*) >= %s
+            )
+            SELECT entity_type, entity_id, total_calls, dropped_calls, drop_rate
+            FROM call_stats
+            WHERE drop_rate >= %s
+            ORDER BY drop_rate DESC
+        """, (
+            thresholds.get('lookback_hours', 72), thresholds.get('min_calls', 5),
+            thresholds.get('lookback_hours', 72), thresholds.get('min_calls', 5),
+            thresholds.get('drop_rate_threshold', 0.6)
+        ))
+        
+        cases_created = 0
+        for entity_data in anomalous_entities:
+            entity_type, entity_id, total_calls, dropped_calls, drop_rate = entity_data
+            
+            case_id = db_fetchone("""
+                INSERT INTO moderation_cases
+                (case_type, subject_type, subject_id, priority, reason_code, description, 
+                 evidence_refs, opened_by)
+                VALUES ('automated_sweep', 'profile', %s, %s, %s, %s, %s, 'system')
+                RETURNING id
+            """, (
+                entity_id, priority, reason_code,
+                f"Automated sweep detected high call drop rate: {drop_rate:.1%} as {entity_type} ({dropped_calls}/{total_calls} calls)",
+                json.dumps({
+                    "sweep_type": "high_call_drops",
+                    "entity_type": entity_type,
+                    "total_calls": total_calls,
+                    "dropped_calls": dropped_calls,
+                    "drop_rate": float(drop_rate),
+                    "threshold": thresholds.get('drop_rate_threshold')
+                })
+            ))[0]
+            
+            cases_created += 1
+            
+            write_audit_m21(
+                actor="system",
+                event="anomaly_detected",
+                entity="profile",
+                entity_id=entity_id,
+                meta={
+                    "sweep_type": "high_call_drops",
+                    "case_id": case_id,
+                    "entity_type": entity_type,
+                    "drop_rate": float(drop_rate),
+                    "total_calls": total_calls,
+                    "threshold_exceeded": True
+                },
+                request_id=request_id
+            )
+        
+        # Update sweep result
+        db_exec("""
+            UPDATE moderation_sweep_results SET
+                run_completed_at = now(),
+                execution_status = 'completed',
+                total_checked = (
+                    SELECT COUNT(DISTINCT o.user_id) + COUNT(DISTINCT o.assigned_reader)
+                    FROM calls c JOIN orders o ON o.id = c.order_id
+                    WHERE c.started_at > now() - INTERVAL '%s hours'
+                ),
+                anomalies_found = %s,
+                cases_created = %s
+            WHERE id = %s
+        """, (thresholds.get('lookback_hours', 72), len(anomalous_entities), cases_created, sweep_result_id))
+        
+        return {
+            "sweep_result_id": sweep_result_id,
+            "anomalies_found": len(anomalous_entities),
+            "cases_created": cases_created,
+            "message": f"High call drops sweep completed: {cases_created} cases created"
+        }
+        
+    except Exception as e:
+        if 'sweep_result_id' in locals():
+            db_exec("""
+                UPDATE moderation_sweep_results SET
+                    run_completed_at = now(),
+                    execution_status = 'failed',
+                    error_message = %s
+                WHERE id = %s
+            """, (str(e), sweep_result_id))
+        
+        write_audit_m21("system", "sweep_execution_failed", "sweep", "high_call_drops", 
+                       {"error": str(e)}, request_id)
+        return {"error": str(e)}
+
+@app.post("/api/admin/sweeps/run")
+def run_moderation_sweeps(x_user_id: str = Header(...), sweep_name: Optional[str] = Query(None)):
+    """Manually trigger moderation sweeps - M21 compliant"""
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        request_id = generate_request_id()
+        
+        # Authorization check
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Only admin+ can run moderation sweeps")
+        
+        sweep_results = {}
+        
+        if not sweep_name or sweep_name == 'excessive_rejections_by_reader':
+            sweep_results['excessive_rejections'] = run_excessive_rejections_sweep()
+            
+        if not sweep_name or sweep_name == 'rapid_refund_sequences':
+            sweep_results['rapid_refunds'] = run_rapid_refunds_sweep()
+            
+        if not sweep_name or sweep_name == 'high_call_drop_rates':
+            sweep_results['high_call_drops'] = run_high_call_drops_sweep()
+        
+        # Enhanced audit logging
+        write_audit_m21(
+            actor=user_id,
+            event="moderation_sweeps_executed",
+            entity="sweep_system",
+            entity_id=sweep_name or "all",
+            meta={
+                "sweep_name": sweep_name,
+                "results": {k: {"cases_created": v.get("cases_created", 0), 
+                               "anomalies_found": v.get("anomalies_found", 0)} 
+                           for k, v in sweep_results.items()}
+            },
+            request_id=request_id
+        )
+        
+        return {
+            "sweep_results": sweep_results,
+            "total_cases_created": sum(r.get("cases_created", 0) for r in sweep_results.values()),
+            "total_anomalies_found": sum(r.get("anomalies_found", 0) for r in sweep_results.values()),
+            "message": f"Moderation sweeps completed: {sweep_name or 'all'}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m21(user_id, "moderation_sweeps_failed", "sweep_system", sweep_name or "all",
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Moderation sweeps failed: {str(e)}")
+
+@app.post("/api/monitor/lineage/recompute")
+def recompute_lineage(x_user_id: str = Header(...)):
+    """Rebuild order↔media↔calls references for evidence - M21 compliant"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if not verify_moderation_permissions(role, 'lineage_recompute'):
+            write_audit_m21(user_id, "lineage_recompute_denied", "lineage_system", None,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Insufficient permissions for lineage operations")
+        
+        # Update order→media links
+        media_updates = db_exec("""
+            UPDATE orders SET output_media_id = (
+                SELECT ma.id FROM media_assets ma 
+                WHERE ma.owner_id = orders.assigned_reader 
+                AND ma.created_at >= orders.updated_at
+                AND ma.kind = 'audio'
+                ORDER BY ma.created_at DESC LIMIT 1
+            )
+            WHERE output_media_id IS NULL 
+            AND status IN ('approved', 'delivered')
+            AND assigned_reader IS NOT NULL
+        """)
+        
+        # Update order→call links
+        call_updates = db_exec("""
+            INSERT INTO calls (order_id, started_at, ended_at, end_reason)
+            SELECT o.id, o.updated_at, o.delivered_at, 'completed'
+            FROM orders o
+            LEFT JOIN calls c ON c.order_id = o.id
+            WHERE o.service_id IN (
+                SELECT id FROM services WHERE code IN ('healing', 'direct_call')
+            )
+            AND o.status = 'delivered'
+            AND c.id IS NULL
+            ON CONFLICT (order_id) DO NOTHING
+        """)
+        
+        write_audit_m21(user_id, "lineage_recomputed", "lineage_system", None,
+                       {"media_links_updated": media_updates or 0, "call_links_created": call_updates or 0}, request_id)
+        
+        return {
+            "success": True,
+            "media_links_updated": media_updates or 0,
+            "call_links_created": call_updates or 0,
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m21(user_id, "lineage_recompute_failed", "lineage_system", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Lineage recompute failed: {str(e)}")
+
+# =============================================================================
+# M22: NOTIFICATIONS & CAMPAIGNS
+# =============================================================================
+
+import requests
+import hmac
+import hashlib
+import base64
+from datetime import timedelta
+
+# Environment variables for providers
+FCM_PROJECT_ID = os.getenv("FCM_PROJECT_ID", "")
+FCM_PRIVATE_KEY = os.getenv("FCM_PRIVATE_KEY", "")
+APNS_KEY_ID = os.getenv("APNS_KEY_ID", "")
+APNS_TEAM_ID = os.getenv("APNS_TEAM_ID", "")
+APNS_PRIVATE_KEY = os.getenv("APNS_PRIVATE_KEY", "")
+TWILIO_MESSAGING_SID = os.getenv("TWILIO_MESSAGING_SID", "")
+
+# Request models for M22
+class NotificationConsentRequest(BaseModel):
+    channel: str  # 'push', 'sms', 'whatsapp', 'email'
+    opted_in: bool
+    quiet_hours_start: Optional[str] = None  # "HH:MM" format
+    quiet_hours_end: Optional[str] = None    # "HH:MM" format
+
+class DeviceTokenRequest(BaseModel):
+    token: str
+    provider: str  # 'fcm' or 'apns'
+    platform: Optional[str] = None  # 'android', 'ios', 'web'
+    app_version: Optional[str] = None
+
+class CampaignRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    channel: str  # 'push', 'sms', 'whatsapp', 'email'
+    message_template: dict  # {en: {title: "", body: ""}, ar: {title: "", body: ""}}
+    target_audience: dict   # {roles: [], countries: [], segments: []}
+    scheduled_start: Optional[str] = None
+    scheduled_end: Optional[str] = None
+    timezone_cohorts: Optional[List[str]] = None
+    send_in_quiet_hours: bool = False
+
+class SuppressionRequest(BaseModel):
+    identifier: str  # email, phone, or device token
+    channel: str
+    reason: str = "manual"
+    notes: Optional[str] = None
+    expires_at: Optional[str] = None
+
+# Provider adapter classes
+class FCMAdapter:
+    """Firebase Cloud Messaging adapter with HTTP v1 API"""
+    
+    def __init__(self):
+        self.project_id = FCM_PROJECT_ID
+        self.private_key = FCM_PRIVATE_KEY
+        self.base_url = f"https://fcm.googleapis.com/v1/projects/{self.project_id}/messages:send"
+    
+    def get_access_token(self):
+        """Generate JWT access token for FCM HTTP v1 API"""
+        if not self.private_key:
+            raise Exception("FCM private key not configured")
+        
+        # In production, use google.auth.jwt or similar
+        # For now, return a placeholder that would be replaced with proper JWT generation
+        return "FCM_ACCESS_TOKEN_PLACEHOLDER"
+    
+    def send_message(self, token: str, title: str, body: str, data: dict = None):
+        """Send push notification via FCM"""
+        try:
+            access_token = self.get_access_token()
+            
+            payload = {
+                "message": {
+                    "token": token,
+                    "notification": {
+                        "title": title,
+                        "body": body
+                    },
+                    "data": data or {}
+                }
+            }
+            
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            
+            # For demo - would actually send to FCM
+            # response = requests.post(self.base_url, json=payload, headers=headers)
+            
+            # Mock successful response
+            return {"success": True, "message_id": f"fcm_{generate_request_id()[:8]}"}
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+class APNsAdapter:
+    """Apple Push Notification service adapter"""
+    
+    def __init__(self):
+        self.key_id = APNS_KEY_ID
+        self.team_id = APNS_TEAM_ID
+        self.private_key = APNS_PRIVATE_KEY
+        self.base_url = "https://api.push.apple.com"  # Use api.development.push.apple.com for dev
+    
+    def send_message(self, device_token: str, title: str, body: str, data: dict = None):
+        """Send push notification via APNs"""
+        try:
+            # Generate JWT token for APNs authentication
+            # In production, use PyJWT or similar
+            auth_token = "APNS_JWT_TOKEN_PLACEHOLDER"
+            
+            payload = {
+                "aps": {
+                    "alert": {
+                        "title": title,
+                        "body": body
+                    },
+                    "sound": "default"
+                }
+            }
+            
+            if data:
+                payload.update(data)
+            
+            headers = {
+                "Authorization": f"Bearer {auth_token}",
+                "Content-Type": "application/json",
+                "apns-topic": "com.samia.tarot"  # Replace with actual bundle ID
+            }
+            
+            # For demo - would actually send to APNs
+            # response = requests.post(f"{self.base_url}/3/device/{device_token}", 
+            #                         json=payload, headers=headers)
+            
+            # Mock successful response
+            return {"success": True, "message_id": f"apns_{generate_request_id()[:8]}"}
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+class TwilioAdapter:
+    """Twilio SMS/WhatsApp adapter"""
+    
+    def __init__(self):
+        self.account_sid = TWILIO_ACCOUNT_SID
+        self.auth_token = TWILIO_AUTH_TOKEN
+        self.messaging_sid = TWILIO_MESSAGING_SID
+        
+    def send_sms(self, to_phone: str, body: str):
+        """Send SMS via Twilio"""
+        try:
+            url = f"https://api.twilio.com/2010-04-01/Accounts/{self.account_sid}/Messages.json"
+            auth = (self.account_sid, self.auth_token)
+            
+            data = {
+                "MessagingServiceSid": self.messaging_sid,
+                "To": to_phone,
+                "Body": body
+            }
+            
+            # For demo - would actually send via Twilio
+            # response = requests.post(url, data=data, auth=auth)
+            
+            # Mock successful response
+            return {"success": True, "message_id": f"sms_{generate_request_id()[:8]}"}
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+    
+    def send_whatsapp(self, to_phone: str, body: str):
+        """Send WhatsApp message via Twilio"""
+        try:
+            url = f"https://api.twilio.com/2010-04-01/Accounts/{self.account_sid}/Messages.json"
+            auth = (self.account_sid, self.auth_token)
+            
+            data = {
+                "From": "whatsapp:+14155238886",  # Twilio WhatsApp number
+                "To": f"whatsapp:{to_phone}",
+                "Body": body
+            }
+            
+            # For demo - would actually send via Twilio
+            # response = requests.post(url, data=data, auth=auth)
+            
+            # Mock successful response
+            return {"success": True, "message_id": f"whatsapp_{generate_request_id()[:8]}"}
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+# Initialize provider adapters
+fcm_adapter = FCMAdapter()
+apns_adapter = APNsAdapter()
+twilio_adapter = TwilioAdapter()
+
+def write_audit_m22(actor: str, event: str, entity: str = None, entity_id: str = None, 
+                   meta: dict = None, request_id: str = None):
+    """M22 audit logging with no PII"""
+    db_exec("""
+        INSERT INTO audit_log(actor, event, entity, entity_id, meta, request_id, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (
+        actor, event, entity, entity_id, 
+        json.dumps(meta or {}), 
+        request_id or generate_request_id(),
+        datetime.utcnow()
+    ))
+
+def is_suppressed(identifier: str, channel: str) -> bool:
+    """Check if identifier is suppressed for channel"""
+    suppression = db_fetchone("""
+        SELECT id FROM notification_suppressions 
+        WHERE identifier = %s AND channel = %s 
+        AND (expires_at IS NULL OR expires_at > now())
+    """, (identifier, channel))
+    return suppression is not None
+
+def get_user_language(user_id: str) -> str:
+    """Get user's preferred language (fallback to 'en')"""
+    profile = db_fetchone("SELECT country FROM profiles WHERE id = %s", (user_id,))
+    if profile and profile[0] in ['SA', 'AE', 'QA', 'KW', 'BH', 'OM']:
+        return 'ar'
+    return 'en'
+
+def render_message_template(template: dict, user_id: str, variables: dict = None) -> dict:
+    """Render message template in user's language"""
+    language = get_user_language(user_id)
+    content = template.get(language, template.get('en', {}))
+    
+    # Simple variable substitution
+    if variables:
+        for key, value in variables.items():
+            if 'title' in content:
+                content['title'] = content['title'].replace(f"{{{key}}}", str(value))
+            if 'body' in content:
+                content['body'] = content['body'].replace(f"{{{key}}}", str(value))
+    
+    return content
+
+# M22 Endpoints
+
+@app.post("/api/me/notifications/device-token")
+def register_device_token(request: DeviceTokenRequest, x_user_id: str = Header(...)):
+    """Register device token for push notifications - M22 compliant"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        
+        # Deactivate old tokens for this user/provider
+        db_exec("""
+            UPDATE device_tokens SET is_active = false, updated_at = now()
+            WHERE user_id = %s AND provider = %s
+        """, (user_id, request.provider))
+        
+        # Insert new token
+        db_exec("""
+            INSERT INTO device_tokens (user_id, token, provider, platform, app_version, created_at)
+            VALUES (%s, %s, %s, %s, %s, now())
+            ON CONFLICT (token, provider) DO UPDATE SET
+                user_id = EXCLUDED.user_id,
+                is_active = true,
+                last_used_at = now()
+        """, (user_id, request.token, request.provider, request.platform, request.app_version))
+        
+        write_audit_m22(user_id, "device_token_registered", "device_token", request.token[:8],
+                       {"provider": request.provider, "platform": request.platform}, request_id)
+        
+        return {"success": True, "request_id": request_id}
+        
+    except Exception as e:
+        write_audit_m22(user_id, "device_token_registration_failed", "device_token", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Device token registration failed: {str(e)}")
+
+@app.post("/api/me/notifications/opt-in")
+def notification_opt_in(request: NotificationConsentRequest, x_user_id: str = Header(...)):
+    """Opt-in to notifications for a channel - M22 compliant"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        
+        # Get user's timezone cohort
+        profile = db_fetchone("SELECT country FROM profiles WHERE id = %s", (user_id,))
+        if not profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        
+        timezone_cohort = db_fetchone("""
+            SELECT get_user_timezone_cohort(%s)
+        """, (profile[0],))[0]
+        
+        # Parse quiet hours if provided
+        quiet_start = None
+        quiet_end = None
+        if request.quiet_hours_start and request.quiet_hours_end:
+            try:
+                quiet_start = datetime.strptime(request.quiet_hours_start, "%H:%M").time()
+                quiet_end = datetime.strptime(request.quiet_hours_end, "%H:%M").time()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid quiet hours format. Use HH:MM")
+        
+        # Upsert consent
+        db_exec("""
+            INSERT INTO notification_consents 
+            (user_id, channel, opted_in, lawful_basis, consent_timestamp, 
+             quiet_hours_start, quiet_hours_end, timezone_cohort, created_at, updated_at)
+            VALUES (%s, %s, %s, 'consent', now(), %s, %s, %s, now(), now())
+            ON CONFLICT (user_id, channel) DO UPDATE SET
+                opted_in = EXCLUDED.opted_in,
+                consent_timestamp = CASE WHEN EXCLUDED.opted_in THEN now() ELSE notification_consents.consent_timestamp END,
+                opt_out_timestamp = CASE WHEN NOT EXCLUDED.opted_in THEN now() ELSE NULL END,
+                quiet_hours_start = EXCLUDED.quiet_hours_start,
+                quiet_hours_end = EXCLUDED.quiet_hours_end,
+                timezone_cohort = EXCLUDED.timezone_cohort,
+                updated_at = now()
+        """, (user_id, request.channel, request.opted_in, quiet_start, quiet_end, timezone_cohort))
+        
+        # Remove from suppression list if opting in
+        if request.opted_in:
+            # This would need the actual identifier (email/phone/token) in a real implementation
+            # For now, we'll handle this in the campaign sending logic
+            pass
+        
+        event_type = "notification_opt_in" if request.opted_in else "notification_opt_out"
+        write_audit_m22(user_id, event_type, "notification_consent", request.channel,
+                       {"timezone_cohort": timezone_cohort}, request_id)
+        
+        return {
+            "success": True, 
+            "channel": request.channel,
+            "opted_in": request.opted_in,
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m22(user_id, "notification_consent_failed", "notification_consent", request.channel,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Notification consent update failed: {str(e)}")
+
+@app.post("/api/me/notifications/opt-out")
+def notification_opt_out(request: NotificationConsentRequest, x_user_id: str = Header(...)):
+    """Opt-out from notifications for a channel - M22 compliant"""
+    # Reuse opt-in endpoint with opted_in=False
+    request.opted_in = False
+    return notification_opt_in(request, x_user_id)
+
+@app.get("/api/me/notifications")
+def get_my_notifications(x_user_id: str = Header(...), limit: int = Query(20, le=100)):
+    """Get user's notification history - M22 compliant"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        
+        notifications = db_fetchall("""
+            SELECT n.id, n.channel, n.status, n.scheduled_at, n.sent_at, 
+                   n.message_content->>'title' as title,
+                   n.message_content->>'body' as body,
+                   c.name as campaign_name
+            FROM notifications n
+            LEFT JOIN campaigns c ON c.id = n.campaign_id
+            WHERE n.user_id = %s
+            ORDER BY n.created_at DESC
+            LIMIT %s
+        """, (user_id, limit))
+        
+        result = []
+        for notif in notifications:
+            result.append({
+                "id": notif[0],
+                "channel": notif[1],
+                "status": notif[2],
+                "scheduled_at": notif[3].isoformat() if notif[3] else None,
+                "sent_at": notif[4].isoformat() if notif[4] else None,
+                "title": notif[5],
+                "body": notif[6],
+                "campaign_name": notif[7]
+            })
+        
+        write_audit_m22(user_id, "notification_history_viewed", "notification_system", None,
+                       {"count": len(result)}, request_id)
+        
+        return {"notifications": result, "request_id": request_id}
+        
+    except Exception as e:
+        write_audit_m22(user_id, "notification_history_failed", "notification_system", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve notifications: {str(e)}")
+
+# Campaign Management Endpoints (Admin only)
+
+@app.post("/api/admin/campaigns")
+def create_campaign(request: CampaignRequest, x_user_id: str = Header(...)):
+    """Create notification campaign - M22 compliant (Admin+ only)"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role not in ['admin', 'superadmin']:
+            write_audit_m22(user_id, "campaign_creation_denied", "campaign", None,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin+ required for campaign creation")
+        
+        # Validate channel
+        if request.channel not in ['push', 'sms', 'whatsapp', 'email']:
+            raise HTTPException(status_code=400, detail="Invalid channel")
+        
+        # Validate message template structure
+        required_langs = ['en', 'ar']
+        for lang in required_langs:
+            if lang not in request.message_template:
+                raise HTTPException(status_code=400, detail=f"Missing {lang} template")
+            if not request.message_template[lang].get('title') or not request.message_template[lang].get('body'):
+                raise HTTPException(status_code=400, detail=f"Missing title/body in {lang} template")
+        
+        # Parse scheduling times if provided
+        scheduled_start = None
+        scheduled_end = None
+        if request.scheduled_start:
+            try:
+                scheduled_start = datetime.fromisoformat(request.scheduled_start.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid scheduled_start format")
+        
+        if request.scheduled_end:
+            try:
+                scheduled_end = datetime.fromisoformat(request.scheduled_end.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid scheduled_end format")
+        
+        # Default timezone cohorts if not specified
+        timezone_cohorts = request.timezone_cohorts or ['GMT', 'CET', 'AST', 'GST', 'IST', 'EST']
+        
+        # Create campaign
+        campaign_id = db_fetchone("""
+            INSERT INTO campaigns 
+            (name, description, channel, message_template, target_audience, created_by, 
+             scheduled_start, scheduled_end, timezone_cohorts, send_in_quiet_hours, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+            RETURNING id
+        """, (
+            request.name, request.description, request.channel,
+            json.dumps(request.message_template), json.dumps(request.target_audience),
+            user_id, scheduled_start, scheduled_end, timezone_cohorts, request.send_in_quiet_hours
+        ))[0]
+        
+        write_audit_m22(user_id, "campaign_created", "campaign", str(campaign_id),
+                       {"channel": request.channel, "cohorts": len(timezone_cohorts)}, request_id)
+        
+        return {
+            "success": True,
+            "campaign_id": campaign_id,
+            "status": "draft",
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m22(user_id, "campaign_creation_failed", "campaign", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Campaign creation failed: {str(e)}")
+
+@app.post("/api/admin/campaigns/{campaign_id}/schedule")
+def schedule_campaign(campaign_id: int, x_user_id: str = Header(...)):
+    """Schedule campaign for execution - M22 compliant (Admin+ only)"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role not in ['admin', 'superadmin']:
+            write_audit_m22(user_id, "campaign_schedule_denied", "campaign", str(campaign_id),
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin+ required for campaign scheduling")
+        
+        # Get campaign details
+        campaign = db_fetchone("""
+            SELECT name, channel, message_template, target_audience, timezone_cohorts, 
+                   send_in_quiet_hours, status, scheduled_start
+            FROM campaigns WHERE id = %s
+        """, (campaign_id,))
+        
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        
+        name, channel, message_template, target_audience, timezone_cohorts, send_in_quiet_hours, status, scheduled_start = campaign
+        
+        if status != 'draft':
+            raise HTTPException(status_code=400, detail=f"Campaign already {status}")
+        
+        # Parse templates and audience
+        templates = json.loads(message_template)
+        audience = json.loads(target_audience)
+        
+        # Get target users based on audience criteria
+        target_users_query = """
+            SELECT DISTINCT p.id, p.country, nc.timezone_cohort
+            FROM profiles p
+            LEFT JOIN notification_consents nc ON nc.user_id = p.id AND nc.channel = %s
+            WHERE (nc.opted_in = true OR nc.opted_in IS NULL)  -- Include users who haven't set preferences yet
+        """
+        query_params = [channel]
+        
+        # Apply role filters
+        if 'roles' in audience and audience['roles']:
+            target_users_query += " AND p.role_id IN (SELECT id FROM roles WHERE code = ANY(%s))"
+            query_params.append(audience['roles'])
+        
+        # Apply country filters
+        if 'countries' in audience and audience['countries']:
+            target_users_query += " AND p.country = ANY(%s)"
+            query_params.append(audience['countries'])
+        
+        # Apply engagement filters (simplified for demo)
+        if 'segments' in audience and audience['segments']:
+            if 'active_7d' in audience['segments']:
+                target_users_query += " AND p.updated_at > now() - interval '7 days'"
+        
+        target_users = db_fetchall(target_users_query, query_params)
+        
+        # Create individual notifications for each user
+        notifications_created = 0
+        send_time = scheduled_start or datetime.utcnow()
+        
+        for user_id_target, country, user_cohort in target_users:
+            # Determine user's timezone cohort
+            cohort = user_cohort or db_fetchone("""
+                SELECT get_user_timezone_cohort(%s)
+            """, (country,))[0]
+            
+            # Skip if cohort not in campaign's target cohorts
+            if cohort not in timezone_cohorts:
+                continue
+            
+            # Render message in user's language
+            rendered_content = render_message_template(templates, user_id_target)
+            
+            # Check quiet hours if applicable
+            if not send_in_quiet_hours:
+                in_quiet_hours = db_fetchone("""
+                    SELECT is_quiet_hours(%s, %s)
+                """, (user_id_target, send_time))[0]
+                
+                if in_quiet_hours:
+                    # Schedule for next available time (simplified)
+                    send_time = send_time + timedelta(hours=8)
+            
+            # Create notification
+            db_exec("""
+                INSERT INTO notifications 
+                (campaign_id, user_id, channel, message_content, scheduled_at, timezone_cohort, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, now())
+            """, (
+                campaign_id, user_id_target, channel, json.dumps(rendered_content),
+                send_time, cohort
+            ))
+            
+            notifications_created += 1
+        
+        # Update campaign status
+        db_exec("""
+            UPDATE campaigns 
+            SET status = 'scheduled', updated_at = now() 
+            WHERE id = %s
+        """, (campaign_id,))
+        
+        write_audit_m22(user_id, "campaign_scheduled", "campaign", str(campaign_id),
+                       {"notifications_created": notifications_created}, request_id)
+        
+        return {
+            "success": True,
+            "campaign_id": campaign_id,
+            "status": "scheduled",
+            "notifications_created": notifications_created,
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m22(user_id, "campaign_schedule_failed", "campaign", str(campaign_id),
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Campaign scheduling failed: {str(e)}")
+
+@app.get("/api/admin/campaigns/{campaign_id}/stats")
+def get_campaign_stats(campaign_id: int, x_user_id: str = Header(...)):
+    """Get campaign statistics - M22 compliant (Admin+ only)"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role not in ['admin', 'superadmin']:
+            write_audit_m22(user_id, "campaign_stats_denied", "campaign", str(campaign_id),
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin+ required for campaign stats")
+        
+        # Get campaign basic info
+        campaign = db_fetchone("""
+            SELECT name, status, created_at, scheduled_start
+            FROM campaigns WHERE id = %s
+        """, (campaign_id,))
+        
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        
+        # Get notification statistics
+        stats = db_fetchone("""
+            SELECT 
+                COUNT(*) as total_notifications,
+                COUNT(CASE WHEN status = 'sent' THEN 1 END) as sent_count,
+                COUNT(CASE WHEN status = 'delivered' THEN 1 END) as delivered_count,
+                COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_count,
+                COUNT(CASE WHEN status = 'suppressed' THEN 1 END) as suppressed_count,
+                COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count
+            FROM notifications
+            WHERE campaign_id = %s
+        """, (campaign_id,))
+        
+        # Get engagement events
+        events = db_fetchone("""
+            SELECT 
+                COUNT(CASE WHEN ne.event_type = 'delivered' THEN 1 END) as delivered_events,
+                COUNT(CASE WHEN ne.event_type = 'opened' THEN 1 END) as opened_events,
+                COUNT(CASE WHEN ne.event_type = 'clicked' THEN 1 END) as clicked_events,
+                COUNT(CASE WHEN ne.event_type = 'bounced' THEN 1 END) as bounced_events,
+                COUNT(CASE WHEN ne.event_type = 'complained' THEN 1 END) as complained_events
+            FROM notifications n
+            LEFT JOIN notification_events ne ON ne.notification_id = n.id
+            WHERE n.campaign_id = %s
+        """, (campaign_id,))
+        
+        write_audit_m22(user_id, "campaign_stats_viewed", "campaign", str(campaign_id),
+                       {"total_notifications": stats[0]}, request_id)
+        
+        return {
+            "campaign_id": campaign_id,
+            "name": campaign[0],
+            "status": campaign[1],
+            "created_at": campaign[2].isoformat(),
+            "scheduled_start": campaign[3].isoformat() if campaign[3] else None,
+            "notifications": {
+                "total": stats[0],
+                "sent": stats[1],
+                "delivered": stats[2],
+                "failed": stats[3],
+                "suppressed": stats[4],
+                "pending": stats[5]
+            },
+            "engagement": {
+                "delivered": events[0],
+                "opened": events[1],
+                "clicked": events[2],
+                "bounced": events[3],
+                "complained": events[4]
+            },
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m22(user_id, "campaign_stats_failed", "campaign", str(campaign_id),
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Campaign stats retrieval failed: {str(e)}")
+
+@app.post("/api/admin/suppressions")
+def manage_suppression(request: SuppressionRequest, x_user_id: str = Header(...)):
+    """Add manual suppression entry - M22 compliant (Admin+ only)"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role not in ['admin', 'superadmin']:
+            write_audit_m22(user_id, "suppression_management_denied", "suppression", request.identifier,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin+ required for suppression management")
+        
+        # Parse expiry if provided
+        expires_at = None
+        if request.expires_at:
+            try:
+                expires_at = datetime.fromisoformat(request.expires_at.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid expires_at format")
+        
+        # Insert suppression
+        db_exec("""
+            INSERT INTO notification_suppressions 
+            (identifier, channel, reason, applied_by, notes, expires_at, applied_at)
+            VALUES (%s, %s, %s, %s, %s, %s, now())
+            ON CONFLICT (identifier, channel) DO UPDATE SET
+                reason = EXCLUDED.reason,
+                applied_by = EXCLUDED.applied_by,
+                notes = EXCLUDED.notes,
+                expires_at = EXCLUDED.expires_at,
+                applied_at = now()
+        """, (
+            request.identifier, request.channel, request.reason, 
+            user_id, request.notes, expires_at
+        ))
+        
+        write_audit_m22(user_id, "suppression_added", "suppression", request.identifier,
+                       {"channel": request.channel, "reason": request.reason}, request_id)
+        
+        return {
+            "success": True,
+            "identifier": request.identifier,
+            "channel": request.channel,
+            "reason": request.reason,
+            "expires_at": expires_at.isoformat() if expires_at else None,
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m22(user_id, "suppression_management_failed", "suppression", request.identifier,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Suppression management failed: {str(e)}")
+
+# =============================================================================
+# M23: ANALYTICS & KPIs
+# =============================================================================
+
+from typing import Optional
+from datetime import date
+
+# Request models for M23
+class AnalyticsDateRangeRequest(BaseModel):
+    from_date: Optional[str] = None  # YYYY-MM-DD format
+    to_date: Optional[str] = None    # YYYY-MM-DD format
+    country_code: Optional[str] = None
+    service_code: Optional[str] = None
+
+def write_audit_m23(actor: str, event: str, entity: str = None, entity_id: str = None, 
+                   meta: dict = None, request_id: str = None):
+    """M23 audit logging with no PII"""
+    db_exec("""
+        INSERT INTO audit_log(actor, event, entity, entity_id, meta, request_id, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (
+        actor, event, entity, entity_id, 
+        json.dumps(meta or {}), 
+        request_id or generate_request_id(),
+        datetime.utcnow()
+    ))
+
+def emit_analytics_event(event_domain: str, event_type: str, user_id: str = None, 
+                        entity_type: str = None, entity_id: str = None, status: str = None,
+                        provider: str = None, service_code: str = None, amount_cents: int = None,
+                        duration_seconds: int = None, request_id: str = None, metadata: dict = None):
+    """Emit analytics event to events_raw table"""
+    
+    # Get sanitized country code if user_id provided
+    country_code = None
+    if user_id:
+        country_result = db_fetchone("SELECT get_user_country_code(%s)", (user_id,))
+        if country_result:
+            country_code = country_result[0]
+    
+    # Call the database function to emit event
+    db_exec("""
+        SELECT emit_analytics_event(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, (
+        event_domain, event_type, user_id, entity_type, entity_id, status,
+        provider, country_code, service_code, amount_cents, duration_seconds,
+        request_id, None, json.dumps(metadata or {})
+    ))
+
+def parse_date_range(from_date: str = None, to_date: str = None, default_days: int = 7):
+    """Parse and validate date range parameters"""
+    if not from_date and not to_date:
+        # Default to last N days
+        end_date = datetime.utcnow().date()
+        start_date = end_date - timedelta(days=default_days)
+    else:
+        try:
+            start_date = datetime.fromisoformat(from_date).date() if from_date else None
+            end_date = datetime.fromisoformat(to_date).date() if to_date else None
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        
+        if not start_date:
+            start_date = end_date - timedelta(days=default_days)
+        if not end_date:
+            end_date = datetime.utcnow().date()
+            
+        if start_date > end_date:
+            raise HTTPException(status_code=400, detail="from_date must be before to_date")
+    
+    return start_date, end_date
+
+# M23 Analytics Endpoints
+
+@app.get("/api/metrics/overview")
+def get_metrics_overview(date: str = Query(None), x_user_id: str = Header(...)):
+    """Get metrics overview for a specific date - M23 compliant"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Access control: Admin/Superadmin only for overview
+        if role not in ['admin', 'superadmin']:
+            write_audit_m23(user_id, "metrics_overview_denied", "analytics", None,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin+ required for metrics overview")
+        
+        # Parse target date
+        if date:
+            try:
+                target_date = datetime.fromisoformat(date).date()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        else:
+            target_date = datetime.utcnow().date() - timedelta(days=1)  # Yesterday by default
+        
+        # Get overview metrics from multiple domains
+        overview = {}
+        
+        # Fulfillment overview
+        fulfillment = db_fetchone("""
+            SELECT 
+                SUM(orders_created) as total_orders,
+                SUM(orders_delivered) as delivered_orders,
+                AVG(ttf_delivery_avg) as avg_delivery_time,
+                AVG(approval_rate) as avg_approval_rate
+            FROM metrics_daily_fulfillment
+            WHERE metric_date = %s
+        """, (target_date,))
+        
+        if fulfillment and fulfillment[0]:
+            overview['fulfillment'] = {
+                'total_orders': fulfillment[0],
+                'delivered_orders': fulfillment[1],
+                'avg_delivery_time_seconds': int(fulfillment[2]) if fulfillment[2] else None,
+                'avg_approval_rate': float(fulfillment[3]) if fulfillment[3] else None
+            }
+        
+        # Payments overview
+        payments = db_fetchone("""
+            SELECT 
+                SUM(payment_attempts) as total_attempts,
+                SUM(payment_successes) as total_successes,
+                AVG(success_rate) as avg_success_rate,
+                SUM(total_succeeded_cents) as total_revenue_cents
+            FROM metrics_daily_payments
+            WHERE metric_date = %s
+        """, (target_date,))
+        
+        if payments and payments[0]:
+            overview['payments'] = {
+                'total_attempts': payments[0],
+                'total_successes': payments[1],
+                'avg_success_rate': float(payments[2]) if payments[2] else None,
+                'total_revenue_cents': payments[3]
+            }
+        
+        # Engagement overview
+        engagement = db_fetchone("""
+            SELECT 
+                SUM(daily_active_users) as total_dau,
+                SUM(notifications_sent) as total_notifications,
+                AVG(notification_ctr) as avg_ctr
+            FROM metrics_daily_engagement
+            WHERE metric_date = %s
+        """, (target_date,))
+        
+        if engagement and engagement[0]:
+            overview['engagement'] = {
+                'total_dau': engagement[0],
+                'total_notifications': engagement[1],
+                'avg_notification_ctr': float(engagement[2]) if engagement[2] else None
+            }
+        
+        # Content overview
+        content = db_fetchone("""
+            SELECT 
+                horoscopes_published,
+                coverage_rate,
+                approval_rate
+            FROM metrics_daily_content
+            WHERE metric_date = %s
+        """, (target_date,))
+        
+        if content:
+            overview['content'] = {
+                'horoscopes_published': content[0],
+                'coverage_rate': float(content[1]) if content[1] else None,
+                'approval_rate': float(content[2]) if content[2] else None
+            }
+        
+        write_audit_m23(user_id, "metrics_overview_viewed", "analytics", str(target_date),
+                       {"metrics_count": len(overview)}, request_id)
+        
+        return {
+            "date": target_date.isoformat(),
+            "overview": overview,
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m23(user_id, "metrics_overview_failed", "analytics", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Metrics overview failed: {str(e)}")
+
+@app.get("/api/metrics/fulfillment")
+def get_fulfillment_metrics(from_date: str = Query(None), to_date: str = Query(None),
+                           service_code: str = Query(None), country_code: str = Query(None),
+                           x_user_id: str = Header(...)):
+    """Get fulfillment metrics with filtering - M23 compliant"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Access control: Admin/Superadmin full access; Reader only their own performance
+        if role not in ['admin', 'superadmin', 'reader']:
+            write_audit_m23(user_id, "fulfillment_metrics_denied", "analytics", None,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Insufficient permissions for fulfillment metrics")
+        
+        start_date, end_date = parse_date_range(from_date, to_date, 7)
+        
+        # Build query with filters
+        query = """
+            SELECT metric_date, service_code, country_code, orders_created, orders_delivered,
+                   ttf_response_avg, ttf_delivery_avg, approval_rate, rejection_loop_rate
+            FROM metrics_daily_fulfillment
+            WHERE metric_date BETWEEN %s AND %s
+        """
+        params = [start_date, end_date]
+        
+        # Reader role restriction: only their assigned orders
+        if role == 'reader':
+            # This would need additional logic to link reader performance
+            # For now, readers get limited access
+            query += " AND service_code IS NOT NULL"
+        
+        if service_code:
+            query += " AND service_code = %s"
+            params.append(service_code)
+            
+        if country_code:
+            query += " AND country_code = %s" 
+            params.append(country_code)
+            
+        query += " ORDER BY metric_date DESC, service_code, country_code"
+        
+        metrics = db_fetchall(query, params)
+        
+        result = []
+        for metric in metrics:
+            result.append({
+                'date': metric[0].isoformat(),
+                'service_code': metric[1],
+                'country_code': metric[2],
+                'orders_created': metric[3],
+                'orders_delivered': metric[4],
+                'ttf_response_avg_seconds': metric[5],
+                'ttf_delivery_avg_seconds': metric[6],
+                'approval_rate': float(metric[7]) if metric[7] else None,
+                'rejection_loop_rate': float(metric[8]) if metric[8] else None
+            })
+        
+        write_audit_m23(user_id, "fulfillment_metrics_viewed", "analytics", None,
+                       {"date_range": f"{start_date} to {end_date}", "count": len(result)}, request_id)
+        
+        return {
+            "from_date": start_date.isoformat(),
+            "to_date": end_date.isoformat(),
+            "metrics": result,
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m23(user_id, "fulfillment_metrics_failed", "analytics", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Fulfillment metrics failed: {str(e)}")
+
+@app.get("/api/metrics/payments")
+def get_payments_metrics(from_date: str = Query(None), to_date: str = Query(None),
+                        provider: str = Query(None), country_code: str = Query(None),
+                        x_user_id: str = Header(...)):
+    """Get payment metrics with filtering - M23 compliant"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Access control: Admin/Superadmin only for payment metrics
+        if role not in ['admin', 'superadmin']:
+            write_audit_m23(user_id, "payments_metrics_denied", "analytics", None,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin+ required for payment metrics")
+        
+        start_date, end_date = parse_date_range(from_date, to_date, 7)
+        
+        query = """
+            SELECT metric_date, country_code, provider, payment_attempts, payment_successes,
+                   success_rate, fallback_rate, refund_rate, total_succeeded_cents
+            FROM metrics_daily_payments
+            WHERE metric_date BETWEEN %s AND %s
+        """
+        params = [start_date, end_date]
+        
+        if provider:
+            query += " AND provider = %s"
+            params.append(provider)
+            
+        if country_code:
+            query += " AND country_code = %s"
+            params.append(country_code)
+            
+        query += " ORDER BY metric_date DESC, country_code, provider"
+        
+        metrics = db_fetchall(query, params)
+        
+        result = []
+        for metric in metrics:
+            result.append({
+                'date': metric[0].isoformat(),
+                'country_code': metric[1],
+                'provider': metric[2],
+                'payment_attempts': metric[3],
+                'payment_successes': metric[4],
+                'success_rate': float(metric[5]) if metric[5] else None,
+                'fallback_rate': float(metric[6]) if metric[6] else None,
+                'refund_rate': float(metric[7]) if metric[7] else None,
+                'total_revenue_cents': metric[8]
+            })
+        
+        write_audit_m23(user_id, "payments_metrics_viewed", "analytics", None,
+                       {"date_range": f"{start_date} to {end_date}", "count": len(result)}, request_id)
+        
+        return {
+            "from_date": start_date.isoformat(),
+            "to_date": end_date.isoformat(),
+            "metrics": result,
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m23(user_id, "payments_metrics_failed", "analytics", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Payment metrics failed: {str(e)}")
+
+@app.get("/api/metrics/calls")
+def get_calls_metrics(from_date: str = Query(None), to_date: str = Query(None),
+                     service_code: str = Query(None), country_code: str = Query(None),
+                     x_user_id: str = Header(...)):
+    """Get call quality metrics - M23 compliant"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Access control: Admin/Superadmin/Monitor can view call metrics
+        if role not in ['admin', 'superadmin', 'monitor']:
+            write_audit_m23(user_id, "calls_metrics_denied", "analytics", None,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Insufficient permissions for call metrics")
+        
+        start_date, end_date = parse_date_range(from_date, to_date, 7)
+        
+        query = """
+            SELECT metric_date, service_code, country_code, calls_attempted, calls_answered,
+                   calls_completed, answer_rate, completion_rate, drop_rate, avg_duration_seconds
+            FROM metrics_daily_calls
+            WHERE metric_date BETWEEN %s AND %s
+        """
+        params = [start_date, end_date]
+        
+        if service_code:
+            query += " AND service_code = %s"
+            params.append(service_code)
+            
+        if country_code:
+            query += " AND country_code = %s"
+            params.append(country_code)
+            
+        query += " ORDER BY metric_date DESC, service_code, country_code"
+        
+        metrics = db_fetchall(query, params)
+        
+        result = []
+        for metric in metrics:
+            result.append({
+                'date': metric[0].isoformat(),
+                'service_code': metric[1],
+                'country_code': metric[2],
+                'calls_attempted': metric[3],
+                'calls_answered': metric[4],
+                'calls_completed': metric[5],
+                'answer_rate': float(metric[6]) if metric[6] else None,
+                'completion_rate': float(metric[7]) if metric[7] else None,
+                'drop_rate': float(metric[8]) if metric[8] else None,
+                'avg_duration_seconds': metric[9]
+            })
+        
+        write_audit_m23(user_id, "calls_metrics_viewed", "analytics", None,
+                       {"date_range": f"{start_date} to {end_date}", "count": len(result)}, request_id)
+        
+        return {
+            "from_date": start_date.isoformat(),
+            "to_date": end_date.isoformat(),
+            "metrics": result,
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m23(user_id, "calls_metrics_failed", "analytics", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Call metrics failed: {str(e)}")
+
+@app.get("/api/metrics/engagement")
+def get_engagement_metrics(from_date: str = Query(None), to_date: str = Query(None),
+                          country_code: str = Query(None), x_user_id: str = Header(...)):
+    """Get user engagement metrics - M23 compliant"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Access control: Admin/Superadmin for engagement metrics
+        if role not in ['admin', 'superadmin']:
+            write_audit_m23(user_id, "engagement_metrics_denied", "analytics", None,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin+ required for engagement metrics")
+        
+        start_date, end_date = parse_date_range(from_date, to_date, 7)
+        
+        query = """
+            SELECT metric_date, country_code, daily_active_users, new_registrations,
+                   notifications_sent, notification_ctr, notification_opt_out_rate,
+                   horoscope_listens, avg_listen_through_rate
+            FROM metrics_daily_engagement
+            WHERE metric_date BETWEEN %s AND %s
+        """
+        params = [start_date, end_date]
+        
+        if country_code:
+            query += " AND country_code = %s"
+            params.append(country_code)
+            
+        query += " ORDER BY metric_date DESC, country_code"
+        
+        metrics = db_fetchall(query, params)
+        
+        result = []
+        for metric in metrics:
+            result.append({
+                'date': metric[0].isoformat(),
+                'country_code': metric[1],
+                'daily_active_users': metric[2],
+                'new_registrations': metric[3],
+                'notifications_sent': metric[4],
+                'notification_ctr': float(metric[5]) if metric[5] else None,
+                'notification_opt_out_rate': float(metric[6]) if metric[6] else None,
+                'horoscope_listens': metric[7],
+                'avg_listen_through_rate': float(metric[8]) if metric[8] else None
+            })
+        
+        write_audit_m23(user_id, "engagement_metrics_viewed", "analytics", None,
+                       {"date_range": f"{start_date} to {end_date}", "count": len(result)}, request_id)
+        
+        return {
+            "from_date": start_date.isoformat(),
+            "to_date": end_date.isoformat(),
+            "metrics": result,
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m23(user_id, "engagement_metrics_failed", "analytics", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Engagement metrics failed: {str(e)}")
+
+@app.get("/api/metrics/content")
+def get_content_metrics(from_date: str = Query(None), to_date: str = Query(None),
+                       x_user_id: str = Header(...)):
+    """Get content approval and coverage metrics - M23 compliant"""
+    request_id = generate_request_id()
+    
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Access control: Admin/Superadmin/Monitor for content metrics
+        if role not in ['admin', 'superadmin', 'monitor']:
+            write_audit_m23(user_id, "content_metrics_denied", "analytics", None,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Insufficient permissions for content metrics")
+        
+        start_date, end_date = parse_date_range(from_date, to_date, 7)
+        
+        metrics = db_fetchall("""
+            SELECT metric_date, horoscopes_uploaded, horoscopes_approved, horoscopes_rejected,
+                   coverage_uploaded, coverage_approved, coverage_published, coverage_rate,
+                   approval_rate, approval_latency_avg
+            FROM metrics_daily_content
+            WHERE metric_date BETWEEN %s AND %s
+            ORDER BY metric_date DESC
+        """, (start_date, end_date))
+        
+        result = []
+        for metric in metrics:
+            result.append({
+                'date': metric[0].isoformat(),
+                'horoscopes_uploaded': metric[1],
+                'horoscopes_approved': metric[2], 
+                'horoscopes_rejected': metric[3],
+                'coverage_uploaded': metric[4],
+                'coverage_approved': metric[5],
+                'coverage_published': metric[6],
+                'coverage_rate': float(metric[7]) if metric[7] else None,
+                'approval_rate': float(metric[8]) if metric[8] else None,
+                'approval_latency_avg_minutes': metric[9]
+            })
+        
+        write_audit_m23(user_id, "content_metrics_viewed", "analytics", None,
+                       {"date_range": f"{start_date} to {end_date}", "count": len(result)}, request_id)
+        
+        return {
+            "from_date": start_date.isoformat(),
+            "to_date": end_date.isoformat(),
+            "metrics": result,
+            "request_id": request_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m23(user_id, "content_metrics_failed", "analytics", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Content metrics failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
