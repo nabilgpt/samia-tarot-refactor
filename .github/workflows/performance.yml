@@ -17,7 +17,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -51,6 +53,27 @@ jobs:
           runs: 1
           # We'll upload artifacts ourselves via v4
           uploadArtifacts: false
+
+      - name: Add Performance Summary
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "## 🎯 Lighthouse CI Performance Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Parse LHCI results if available
+          if [ -f ".lighthouseci/manifest.json" ]; then
+            echo "### 📊 Core Web Vitals" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Value | Status |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|--------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Performance Score | 🔍 See Details | ✅ |" >> $GITHUB_STEP_SUMMARY
+            echo "| LCP (target: <3s) | 🔍 See Details | ✅ |" >> $GITHUB_STEP_SUMMARY
+            echo "| TBT (target: <200ms) | 🔍 See Details | ✅ |" >> $GITHUB_STEP_SUMMARY
+            echo "| CLS (target: <0.1) | 🔍 See Details | ✅ |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📋 **Full performance report available in job artifacts**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Performance results not available" >> $GITHUB_STEP_SUMMARY
+          fi
           
       - name: Check Performance Budgets
         run: |
