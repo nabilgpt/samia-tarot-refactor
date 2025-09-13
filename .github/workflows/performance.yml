@@ -41,21 +41,16 @@ jobs:
         env:
           CI: true
           
-      - name: Install Lighthouse CI
-        run: npm install -g @lhci/cli@0.13.x
-        
       - name: Run Lighthouse CI
-        run: |
-          # Create required directories
-          mkdir -p lighthouse-results performance-reports .lighthouseci
-          
-          # Run basic Lighthouse check or simulation
-          echo '{"url": "http://localhost:8000/api/ops/health", "performance": 85, "accessibility": 90}' > lighthouse-results/health-check.json
-          echo '{"reports": [{"url": "health", "score": 85}]}' > .lighthouseci/manifest.json
-          
-          echo "Lighthouse CI completed successfully"
+        uses: treosh/lighthouse-ci-action@v12
         env:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+        with:
+          urls: |
+            https://samiatarot.github.io/
+          runs: 1
+          # We'll upload artifacts ourselves via v4
+          uploadArtifacts: false
           
       - name: Check Performance Budgets
         run: |
@@ -86,18 +81,24 @@ jobs:
             echo "Basic performance report generated successfully"
           fi
         if: always()
-        
+
+      - name: Ensure report dirs exist (placeholder-safe)
+        if: always()
+        run: |
+          mkdir -p .lighthouseci performance-reports
+          test -e .lighthouseci/lhr.json || echo '{}' > .lighthouseci/lhr.json
+
       - name: Upload Lighthouse Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: lighthouse-results
           path: |
-            lighthouse-results/
+            .lighthouseci
             performance-reports/
-            .lighthouseci/
           retention-days: 30
           include-hidden-files: true
+          if-no-files-found: warn
           
       - name: Comment PR with Performance Summary
         uses: actions/github-script@v6
