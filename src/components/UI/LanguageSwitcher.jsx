@@ -28,11 +28,36 @@ const LanguageSwitcher = ({
   const availableLanguages = getAvailableLanguages();
   const currentLang = availableLanguages.find(lang => lang.code === currentLanguage);
   const directionClasses = getDirectionClasses();
+  
+  // Generate unique IDs for ARIA
+  const menuId = `language-menu-${Math.random().toString(36).substr(2, 9)}`;
+  const buttonId = `language-button-${Math.random().toString(36).substr(2, 9)}`;
 
   const handleLanguageChange = async (langCode) => {
     if (langCode !== currentLanguage) {
       await changeLanguage(langCode);
       setIsOpen(false);
+    }
+  };
+
+  // Keyboard navigation for dropdown
+  const handleKeyDown = (event) => {
+    switch (event.key) {
+      case 'Escape':
+        setIsOpen(false);
+        break;
+      case 'ArrowDown':
+      case 'ArrowUp':
+        event.preventDefault();
+        if (!isOpen) {
+          setIsOpen(true);
+        }
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        setIsOpen(!isOpen);
+        break;
     }
   };
 
@@ -85,6 +110,8 @@ const LanguageSwitcher = ({
             border border-gray-700 hover:border-purple-500
           `}
           disabled={isLoading}
+          aria-label={t('ui.language.toggleLanguage', 'Toggle between Arabic and English')}
+          aria-pressed={currentLanguage === 'ar'}
         >
           {showFlag && currentLang && (
             <span className="text-lg">{currentLang.flag}</span>
@@ -100,7 +127,11 @@ const LanguageSwitcher = ({
   // Buttons variant (separate button for each language)
   if (variant === 'buttons') {
     return (
-      <div className={`flex items-center space-x-2 ${className}`}>
+      <div 
+        className={`flex items-center space-x-2 ${className}`}
+        role="radiogroup"
+        aria-label={t('ui.language.chooseLanguage', 'Choose language')}
+      >
         {availableLanguages.map((lang) => (
           <button
             key={lang.code}
@@ -116,15 +147,18 @@ const LanguageSwitcher = ({
               }
             `}
             disabled={isLoading}
+            role="radio"
+            aria-checked={currentLanguage === lang.code}
+            aria-label={t('ui.language.selectLanguage', 'Select {{language}}', { language: lang.native })}
           >
             {showFlag && (
-              <span className="text-lg">{lang.flag}</span>
+              <span className="text-lg" aria-hidden="true">{lang.flag}</span>
             )}
             {showLabel && (
               <span>{lang.native}</span>
             )}
             {currentLanguage === lang.code && (
-              <FaCheck className="w-3 h-3" />
+              <FaCheck className="w-3 h-3" aria-hidden="true" />
             )}
           </button>
         ))}
@@ -136,7 +170,9 @@ const LanguageSwitcher = ({
   return (
     <div className={`relative ${className}`}>
       <button
+        id={buttonId}
         onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={handleKeyDown}
         className={`
           ${getSizeClasses()}
           bg-gray-800 hover:bg-gray-700 text-white rounded-lg 
@@ -145,6 +181,10 @@ const LanguageSwitcher = ({
           ${isOpen ? 'ring-2 ring-purple-500' : ''}
         `}
         disabled={isLoading}
+        aria-label={t('ui.language.switchLanguage', 'Switch language')}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        aria-controls={menuId}
       >
         <FaGlobe className="w-4 h-4" />
         {showFlag && currentLang && (
@@ -172,7 +212,12 @@ const LanguageSwitcher = ({
           />
           
           {/* Dropdown */}
-          <div className={getDropdownPositionClasses()}>
+          <div 
+            id={menuId}
+            className={getDropdownPositionClasses()}
+            role="menu"
+            aria-labelledby={buttonId}
+          >
             <div className="py-2">
               {availableLanguages.map((lang) => (
                 <button
@@ -183,12 +228,15 @@ const LanguageSwitcher = ({
                     transition-colors duration-150 flex items-center space-x-3
                     ${currentLanguage === lang.code ? 'bg-purple-600 text-white' : 'text-gray-300'}
                   `}
+                  role="menuitem"
+                  aria-current={currentLanguage === lang.code ? 'true' : undefined}
+                  aria-label={t('ui.language.selectLanguage', 'Select {{language}}', { language: lang.native })}
                 >
-                  <span className="text-lg">{lang.flag}</span>
+                  <span className="text-lg" aria-hidden="true">{lang.flag}</span>
                   <span className="font-medium">{lang.native}</span>
                   <span className="text-sm text-gray-400">({lang.label})</span>
                   {currentLanguage === lang.code && (
-                    <FaCheck className="w-3 h-3 ml-auto" />
+                    <FaCheck className="w-3 h-3 ml-auto" aria-hidden="true" />
                   )}
                 </button>
               ))}

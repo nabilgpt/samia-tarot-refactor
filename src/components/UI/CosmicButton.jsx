@@ -11,6 +11,9 @@ const CosmicButton = React.forwardRef(({
   disabled = false,
   glow = false,
   animated = true,
+  ariaLabel,
+  ariaDescribedBy,
+  loadingText = "Loading...",
   ...props 
 }, ref) => {
   const baseClasses = `
@@ -134,6 +137,9 @@ const CosmicButton = React.forwardRef(({
       )}
       disabled={disabled || loading}
       ref={ref}
+      aria-label={ariaLabel}
+      aria-describedby={ariaDescribedBy}
+      aria-busy={loading}
       variants={animated ? buttonVariants : {}}
       initial={animated ? "initial" : {}}
       whileHover={animated && !disabled ? "hover" : {}}
@@ -146,7 +152,13 @@ const CosmicButton = React.forwardRef(({
       {/* Content */}
       <div className="relative z-10 flex items-center">
         {loading && (
-          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          <>
+            <div 
+              className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+              aria-hidden="true"
+            />
+            <span className="sr-only">{loadingText}</span>
+          </>
         )}
         {children}
       </div>

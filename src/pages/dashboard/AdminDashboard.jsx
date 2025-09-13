@@ -12,7 +12,9 @@ import {
   DocumentDuplicateIcon,
   ChartBarIcon,
   CloudArrowUpIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  BoltIcon,
+  BuildingStorefrontIcon
 } from '@heroicons/react/24/outline';
 
 const AdminDashboard = () => {
@@ -158,7 +160,7 @@ const AdminDashboard = () => {
             Observability & Monitoring
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Golden Signals Dashboard */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 group hover:bg-white/20 transition-all duration-300">
               <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -207,9 +209,181 @@ const AdminDashboard = () => {
               </CosmicButton>
             </div>
 
+            {/* E2E & Synthetics Dashboard */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 group hover:bg-white/20 transition-all duration-300">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 mb-4 group-hover:scale-110 transition-transform duration-300">
+                <ShieldCheckIcon className="h-6 w-6 text-white" />
+              </div>
+              
+              <h3 className="text-xl font-semibold text-white mb-2">
+                E2E & Synthetics
+              </h3>
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                Black-box testing, synthetic monitors, rate-limit conformance, and burn-rate alerting.
+              </p>
+              
+              <CosmicButton
+                variant="neon"
+                size="sm"
+                className="w-full"
+                onClick={() => navigate('/dashboard/e2e-synthetics')}
+              >
+                <ShieldCheckIcon className="h-4 w-4 mr-2" />
+                Open Dashboard
+              </CosmicButton>
+            </div>
+
+            {/* M36 Performance Dashboard */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 group hover:bg-white/20 transition-all duration-300">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-r from-yellow-600 to-orange-600 mb-4 group-hover:scale-110 transition-transform duration-300">
+                <BoltIcon className="h-6 w-6 text-white" />
+              </div>
+              
+              <h3 className="text-xl font-semibold text-white mb-2">
+                Performance (M36)
+              </h3>
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                Core Web Vitals monitoring, Lighthouse CI, and performance budgets with p75 targets.
+              </p>
+              
+              <CosmicButton
+                variant="warning"
+                size="sm"
+                className="w-full"
+                onClick={() => navigate('/dashboard/performance')}
+              >
+                <BoltIcon className="h-4 w-4 mr-2" />
+                Open Dashboard
+              </CosmicButton>
+            </div>
+          </div>
+        </motion.div>
+        
+        {/* M38 Legal & Compliance Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="mt-12"
+        >
+          <h2 className="text-2xl font-bold text-white mb-6 text-center">
+            Legal Compliance & Data Rights (M38)
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {/* DSR Management */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 group hover:bg-white/20 transition-all duration-300">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 mb-4 group-hover:scale-110 transition-transform duration-300">
+                <DocumentTextIcon className="h-6 w-6 text-white" />
+              </div>
+              
+              <h3 className="text-xl font-semibold text-white mb-2">
+                DSR Requests
+              </h3>
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                GDPR Article 15/17 compliance - Data export and deletion requests with immutable audit trails.
+              </p>
+              
+              <CosmicButton
+                variant="cosmic"
+                size="sm"
+                className="w-full"
+                onClick={() => navigate('/admin/dsr-requests')}
+              >
+                <DocumentTextIcon className="h-4 w-4 mr-2" />
+                Manage DSR
+              </CosmicButton>
+            </div>
+
+            {/* Age Verification */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 group hover:bg-white/20 transition-all duration-300">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-r from-red-600 to-orange-600 mb-4 group-hover:scale-110 transition-transform duration-300">
+                <ShieldCheckIcon className="h-6 w-6 text-white" />
+              </div>
+              
+              <h3 className="text-xl font-semibold text-white mb-2">
+                Age Verification
+              </h3>
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                18+ enforcement with COPPA protection. Monitor age verification and handle under-13 incidents.
+              </p>
+              
+              <CosmicButton
+                variant="danger"
+                size="sm"
+                className="w-full"
+                onClick={() => navigate('/admin/age-verification')}
+              >
+                <ShieldCheckIcon className="h-4 w-4 mr-2" />
+                Age Compliance
+              </CosmicButton>
+            </div>
+
+            {/* Audit Trails */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 group hover:bg-white/20 transition-all duration-300">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 mb-4 group-hover:scale-110 transition-transform duration-300">
+                <ClipboardDocumentListIcon className="h-6 w-6 text-white" />
+              </div>
+              
+              <h3 className="text-xl font-semibold text-white mb-2">
+                Audit Trails
+              </h3>
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                Immutable hash-chained audit logs for DSR requests. Tamper detection and integrity verification.
+              </p>
+              
+              <CosmicButton
+                variant="neon"
+                size="sm"
+                className="w-full"
+                onClick={() => navigate('/admin/audit-trails')}
+              >
+                <ClipboardDocumentListIcon className="h-4 w-4 mr-2" />
+                View Audits
+              </CosmicButton>
+            </div>
+
+            {/* Store Readiness */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 group hover:bg-white/20 transition-all duration-300">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-r from-green-600 to-teal-600 mb-4 group-hover:scale-110 transition-transform duration-300">
+                <BuildingStorefrontIcon className="h-6 w-6 text-white" />
+              </div>
+              
+              <h3 className="text-xl font-semibold text-white mb-2">
+                Store Readiness
+              </h3>
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                Mobile app packaging, store submissions, privacy manifests, and compliance validation.
+              </p>
+              
+              <CosmicButton
+                variant="success"
+                size="sm"
+                className="w-full"
+                onClick={() => navigate('/admin/store-readiness')}
+              >
+                <BuildingStorefrontIcon className="h-4 w-4 mr-2" />
+                View Status
+              </CosmicButton>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Testing & Quality Assurance Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="mt-12"
+        >
+          <h2 className="text-2xl font-bold text-white mb-6 text-center">
+            Testing & Quality Assurance
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* M34 Features */}
             <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">M34 Features</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">M34 Backup & DR Features</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center text-green-400">
                   <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
@@ -230,6 +404,37 @@ const AdminDashboard = () => {
                 <div className="flex items-center text-green-400">
                   <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
                   Immutable audit trails
+                </div>
+              </div>
+            </div>
+            
+            {/* M35 Features */}
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">M35 E2E & Synthetics Features</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center text-purple-400">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full mr-2"></div>
+                  Critical E2E journeys (Auth, Booking, Emergency)
+                </div>
+                <div className="flex items-center text-purple-400">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full mr-2"></div>
+                  24/7 synthetic monitoring with health endpoints
+                </div>
+                <div className="flex items-center text-purple-400">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full mr-2"></div>
+                  Rate-limit conformance (HTTP 429 + Retry-After)
+                </div>
+                <div className="flex items-center text-purple-400">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full mr-2"></div>
+                  Burn-rate alerting with noise control
+                </div>
+                <div className="flex items-center text-purple-400">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full mr-2"></div>
+                  Security content-lint gate (malware prevention)
+                </div>
+                <div className="flex items-center text-purple-400">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full mr-2"></div>
+                  PITR confidence checks with backup validation
                 </div>
               </div>
             </div>

@@ -4,12 +4,70 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>سامية تاروت - SAMIA TAROT</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    
+    <!-- M36 Performance optimizations - DNS and connection setup -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="dns-prefetch" href="https://api.supabase.io">
+    <link rel="dns-prefetch" href="https://api.stripe.com">
+    
+    <!-- M36 LCP optimization - Preload critical fonts -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"></noscript>
+    
+    <!-- M36 Resource hints for critical resources -->
+    <link rel="modulepreload" href="/src/main.jsx">
+    <link rel="modulepreload" href="/src/App.jsx">
+    
+    <title>سامية تاروت - SAMIA TAROT</title>
     <meta name="description" content="منصة سامية تاروت للعرافة والتنجيم - اكتشف مستقبلك مع أفضل القراء">
     <meta name="keywords" content="تاروت, عرافة, تنجيم, قراءة الطالع, سامية تاروت">
+    
+    <!-- M36 Performance hints -->
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="color-scheme" content="dark">
+    
+    <!-- M36 Font fallback to reduce CLS -->
+    <style>
+      /* Critical CSS for font loading and layout stability */
+      :root {
+        --font-arabic: 'Noto Sans Arabic', 'Segoe UI Arabic', 'Tahoma', sans-serif;
+        --font-latin: 'Inter', 'Segoe UI', 'Roboto', system-ui, sans-serif;
+      }
+      
+      html {
+        font-family: var(--font-arabic);
+        font-display: swap;
+      }
+      
+      body {
+        font-family: var(--font-arabic);
+        font-display: swap;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #1e1b4b 0%, #1a1a2e 50%, #16213e 100%);
+        color: white;
+        line-height: 1.6;
+      }
+      
+      /* Prevent layout shift during component loading */
+      #root {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      /* Loading fallback to prevent CLS */
+      .app-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        font-size: 1.2rem;
+        color: #667eea;
+      }
+    </style>
   </head>
   <body class="bg-cosmic-gradient min-h-screen text-white font-arabic">
     <div id="root"></div>

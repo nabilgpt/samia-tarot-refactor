@@ -19,6 +19,8 @@ Samia Tarot ("we," "our," or "us") respects your privacy and is committed to pro
 - **Usage Data:** Service interactions, session durations, feature usage
 - **Technical Data:** IP address, device information, browser type
 - **Cookies:** Essential cookies for functionality and user preferences
+- **Consent Records:** Tracking of consent given/withdrawn with timestamps and IP addresses
+- **Age Verification:** Date of birth declarations and verification records
 
 ## How We Use Your Information
 
@@ -66,21 +68,41 @@ We implement appropriate technical and organizational measures to protect your p
 
 ## Your Rights
 
-### Access and Control
-- **Access:** Request copies of your personal data
-- **Correction:** Update or correct inaccurate information
-- **Deletion:** Request deletion of your account and data
-- **Portability:** Export your data in a portable format
+You have the following rights regarding your personal data under GDPR and other applicable privacy laws:
+
+### Data Subject Rights (GDPR Article 15-22)
+- **Access (Article 15):** Request copies of your personal data and information about processing
+- **Rectification (Article 16):** Update or correct inaccurate information
+- **Erasure (Article 17):** Request deletion of your account and data ("Right to be Forgotten")
+- **Portability (Article 20):** Export your data in a machine-readable format
+- **Restriction (Article 18):** Limit processing of your data in certain circumstances
+- **Objection (Article 21):** Object to processing based on legitimate interests
+
+### How to Exercise Your Rights
+1. **Online Portal:** Use your account settings for basic data management
+2. **DSR Request:** Submit formal Data Subject Rights requests through our compliance portal
+3. **Email:** Contact privacy@samiatarot.com for assistance
+4. **Verification:** Identity verification required for security (email token or admin override)
+
+### Response Timeframes
+- **Acknowledgment:** Within 72 hours of request
+- **Fulfillment:** Within 30 days (may extend to 60 days for complex requests)
+- **Appeal Process:** Available if request is denied
 
 ### Communication Preferences
 - **Opt-out:** Unsubscribe from marketing communications
 - **Preferences:** Manage notification settings
+- **Consent Withdrawal:** Withdraw consent for specific processing activities
 
-### Account Deletion
-You may request account deletion at any time. We will:
-- Soft-delete your profile within 24 hours
-- Mask personal identifiers immediately
-- Complete data purge within 30 days
+### Account Deletion Process
+When you request account deletion:
+1. **Immediate:** Profile marked for deletion and access restricted
+2. **Grace Period:** 72-hour reversibility window for accidental requests
+3. **Verification:** Email verification or admin approval required
+4. **Completion:** Irreversible deletion after grace period expires
+5. **Confirmation:** Deletion confirmation and certificate provided
+
+**Note:** Some data may be retained for legal compliance, fraud prevention, or dispute resolution as permitted by law.
 
 ## Data Retention
 
@@ -89,9 +111,30 @@ You may request account deletion at any time. We will:
 - **Legal Requirements:** Retain as required by law
 - **Dispute Resolution:** Retain until resolution complete
 
-## Children's Privacy
+## Age Restrictions and Child Protection
 
-Our services are not intended for individuals under 18 years of age. We do not knowingly collect personal information from children under 18.
+### 18+ Service Requirement
+Our services are exclusively intended for individuals 18 years of age and older. We require age verification for all users.
+
+### Age Verification Process
+- **Registration:** Users must declare their date of birth
+- **Verification:** Email verification required for account activation
+- **Monitoring:** Automated detection of potential underage users
+- **COPPA Compliance:** Enhanced protection for users under 13
+
+### Under-18 Detection and Response
+If we detect or are notified that a user is under 18:
+1. **Immediate Action:** Account access suspended pending verification
+2. **Data Protection:** Enhanced privacy safeguards applied
+3. **Parental Notification:** Parents contacted for users under 13 (COPPA)
+4. **Account Resolution:** Permanent closure or age verification required
+
+### Child Protection (COPPA Compliance)
+For users suspected to be under 13 years of age:
+- **Zero Tolerance:** No services provided regardless of parental consent
+- **Immediate Blocking:** Automatic account suspension
+- **Data Deletion:** Expedited data removal within 30 days
+- **Incident Logging:** All under-13 incidents documented for compliance
 
 ## International Transfers
 

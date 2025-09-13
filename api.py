@@ -4,11 +4,11 @@
 
 import os, json, uuid, subprocess, hashlib, base64
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
-from fastapi import FastAPI, HTTPException, Header, Query, Response
+from fastapi import FastAPI, HTTPException, Header, Query, Response, Request
 from pydantic import BaseModel
 import requests
 
@@ -25,11 +25,11 @@ TWILIO_VERIFY_SID = os.getenv("TWILIO_VERIFY_SID")
 TWILIO_VOICE_CALLER_ID = os.getenv("TWILIO_VOICE_CALLER_ID")
 TWILIO_WEBHOOK_BASE = os.getenv("TWILIO_WEBHOOK_BASE")
 
-# M5 - TikTok ingestion and Supabase Storage credentials (required - no defaults)
+# M5 - Supabase Storage credentials (required - no defaults)
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE = os.getenv("SUPABASE_SERVICE")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "audio")  # default bucket name
-YTDLP_BIN = os.getenv("YTDLP_BIN", "yt-dlp")  # default to 'yt-dlp' in PATH
+# YTDLP_BIN removed - TikTok ingestion disabled per master context
 
 # M5 Upgrade - Voice synthesis and timezone support
 VOICE_PROVIDER = os.getenv("VOICE_PROVIDER")  # e.g. 'elevenlabs', 'azure'
@@ -114,11 +114,11 @@ class ApproveRequest(BaseModel):
 class RejectRequest(BaseModel):
     reason: str
 
-# M5 - Horoscope models
-class HoroscopeIngestRequest(BaseModel):
-    tiktok_url: str
+# M5 - Horoscope models (Admin-only upload)
+class HoroscopeUploadRequest(BaseModel):
     zodiac: str
     ref_date: str  # YYYY-MM-DD format
+    audio_file: Optional[str] = None  # Base64 encoded audio or file path
 
 class HoroscopeApproveRequest(BaseModel):
     note: Optional[str] = None
@@ -130,9 +130,8 @@ class HoroscopeRejectRequest(BaseModel):
 class HoroscopeRegenerateRequest(BaseModel):
     zodiac: str
     ref_date: Optional[str] = None  # defaults to server UTC date
-    source: str  # 'tiktok' or 'voice_model'
-    tiktok_url: Optional[str] = None  # required if source='tiktok'
-    script_text: Optional[str] = None  # optional guidance if source='voice_model'
+    source: str = "voice_model"  # Only 'voice_model' allowed (admin upload)
+    script_text: Optional[str] = None  # optional guidance for voice synthesis
 
 # M18 - New models for compliant horoscope ingestion
 class HoroscopeUploadRequest(BaseModel):
@@ -141,11 +140,7 @@ class HoroscopeUploadRequest(BaseModel):
     audio_file_base64: str  # Base64 encoded audio file
     content_type: str  # audio/mpeg, audio/m4a
     
-class HoroscopeTikTokIngestRequest(BaseModel):
-    zodiac: str
-    ref_date: str  # YYYY-MM-DD format
-    tiktok_url: str  # Official TikTok post URL
-    api_metadata: Optional[dict] = None  # From official TikTok API
+# TikTokIngestRequest removed - Admin-only uploads enforced per master context
 
 # M19 - Calls & Emergency models
 class CallScheduleRequest(BaseModel):
@@ -374,39 +369,12 @@ def storage_sign_url(bucket: str, path: str, expires: int = 3600) -> str:
     return f"{SUPABASE_URL}/storage/v1/object/sign/{bucket}/{path}?token={signed_token}"
 
 # M5 - TikTok download helper
-def download_tiktok_audio(tiktok_url: str) -> bytes:
-    """Download audio from TikTok URL using yt-dlp, return MP3 bytes"""
-    if not YTDLP_BIN:
-        raise HTTPException(status_code=503, detail="TikTok ingestion not configured (YTDLP_BIN missing)")
-    
-    try:
-        # Run yt-dlp to extract audio to stdout as MP3
-        cmd = [
-            YTDLP_BIN,
-            "-x",  # extract audio only
-            "--audio-format", "mp3",
-            "-o", "-",  # output to stdout
-            tiktok_url
-        ]
-        
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            timeout=60,  # 60 second timeout
-            check=True
-        )
-        
-        if not result.stdout:
-            raise HTTPException(status_code=400, detail="No audio extracted from TikTok URL")
-        
-        return result.stdout
-        
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=408, detail="TikTok download timeout")
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=400, detail=f"TikTok extraction failed: {e.stderr.decode()}")
-    except FileNotFoundError:
-        raise HTTPException(status_code=503, detail=f"yt-dlp not found at: {YTDLP_BIN}")
+# TikTok download DISABLED - Admin-only uploads enforced
+# def download_tiktok_audio(tiktok_url: str) -> bytes:
+#     """DISABLED: TikTok download removed - Use admin upload only"""
+#     raise HTTPException(status_code=410, detail="TikTok ingestion disabled")
+
+# TikTok download functionality completely removed - Admin-only uploads enforced per master context
 
 # M5 - Zodiac validation
 VALID_ZODIAC_SIGNS = [
@@ -3218,78 +3186,14 @@ def health_check(x_user_id: str = Header(...)):
 
 # M5 - TikTok Horoscope Ingestion Endpoints
 
-@app.post("/api/horoscopes/ingest")
-def ingest_horoscope(request: HoroscopeIngestRequest, x_user_id: str = Header(...)):
-    """Ingest TikTok audio for daily horoscope (monitor/admin/superadmin only)"""
-    try:
-        user_id = x_user_id
-        role = get_user_role(user_id)
-        
-        if role not in ['monitor', 'admin', 'superadmin']:
-            raise HTTPException(status_code=403, detail="Monitor access required")
-        
-        # Validate environment
-        ensure_env(['DB_DSN', 'SUPABASE_URL', 'SUPABASE_SERVICE'])
-        
-        # Validate inputs
-        zodiac = validate_zodiac(request.zodiac)
-        ref_date = validate_date(request.ref_date)
-        
-        # Download audio from TikTok
-        audio_bytes = download_tiktok_audio(request.tiktok_url)
-        
-        # Calculate SHA256
-        sha256_hash = hashlib.sha256(audio_bytes).hexdigest()
-        
-        # Build storage path
-        storage_path = f"horoscopes/daily/{ref_date}/{zodiac}.mp3"
-        
-        # Upload to Supabase Storage
-        storage_key = storage_upload_bytes(SUPABASE_BUCKET, storage_path, audio_bytes, "audio/mpeg")
-        
-        # Insert media asset
-        media_id = db_fetchone("""
-            INSERT INTO media_assets(kind, url, bytes, sha256, created_at)
-            VALUES ('audio', %s, %s, %s, %s)
-            RETURNING id
-        """, (storage_key, len(audio_bytes), sha256_hash, datetime.utcnow()))[0]
-        
-        # Upsert horoscope (enforce uniqueness on scope, zodiac, ref_date)
-        horoscope_id = db_fetchone("""
-            INSERT INTO horoscopes(scope, zodiac, ref_date, audio_media_id, tiktok_post_url)
-            VALUES ('daily', %s, %s, %s, %s)
-            ON CONFLICT (scope, zodiac, ref_date) 
-            DO UPDATE SET 
-                audio_media_id = EXCLUDED.audio_media_id,
-                tiktok_post_url = EXCLUDED.tiktok_post_url,
-                approved_by = NULL,
-                approved_at = NULL
-            RETURNING id
-        """, (zodiac, ref_date, media_id, request.tiktok_url))[0]
-        
-        # Audit log
-        write_audit(
-            actor=user_id,
-            event="horoscope_ingest",
-            entity="horoscope",
-            entity_id=str(horoscope_id),
-            meta={
-                "zodiac": zodiac,
-                "ref_date": ref_date,
-                "tiktok_url_hash": hashlib.sha256(request.tiktok_url.encode()).hexdigest()[:16]
-            }
-        )
-        
-        return {
-            "horoscope_id": horoscope_id,
-            "media_id": media_id,
-            "status": "pending_approval"
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Horoscope ingestion failed: {str(e)}")
+@app.post("/api/horoscopes/ingest", include_in_schema=False)
+def deprecated_tiktok_ingest():
+    """DEPRECATED: TikTok ingestion removed - Use admin upload endpoint"""
+    write_audit("system", "deprecated_endpoint_accessed", "api", "/api/horoscopes/ingest", {
+        "replacement": "/api/admin/horoscopes/upload",
+        "reason": "tiktok_ingestion_disabled"
+    })
+    raise HTTPException(status_code=410, detail="TikTok ingestion disabled - Use /api/admin/horoscopes/upload")
 
 @app.get("/api/horoscopes/pending")
 def list_pending_horoscopes(x_user_id: str = Header(...)):
@@ -3303,7 +3207,7 @@ def list_pending_horoscopes(x_user_id: str = Header(...)):
         
         # Get pending horoscopes
         pending = db_fetchall("""
-            SELECT h.id, h.scope, h.zodiac, h.ref_date, h.tiktok_post_url,
+            SELECT h.id, h.scope, h.zodiac, h.ref_date,
                    m.bytes, m.created_at
             FROM horoscopes h
             JOIN media_assets m ON m.id = h.audio_media_id
@@ -3312,7 +3216,7 @@ def list_pending_horoscopes(x_user_id: str = Header(...)):
         """)
         
         # Convert to list of dicts
-        columns = ['id', 'scope', 'zodiac', 'ref_date', 'tiktok_post_url', 'bytes', 'created_at']
+        columns = ['id', 'scope', 'zodiac', 'ref_date', 'bytes', 'created_at']
         result = [dict(zip(columns, row)) for row in pending]
         
         # Audit log
@@ -3471,7 +3375,7 @@ def get_daily_horoscope(zodiac: str = Query(...), date: str = Query(...)):
         # Get horoscope (with or without approval requirement based on settings)
         if auto_publish:
             horoscope = db_fetchone("""
-                SELECT h.zodiac, h.ref_date, h.tiktok_post_url, m.url as storage_key
+                SELECT h.zodiac, h.ref_date, m.url as storage_key
                 FROM horoscopes h
                 JOIN media_assets m ON m.id = h.audio_media_id
                 WHERE h.scope = 'daily' 
@@ -3480,7 +3384,7 @@ def get_daily_horoscope(zodiac: str = Query(...), date: str = Query(...)):
             """, (zodiac, ref_date))
         else:
             horoscope = db_fetchone("""
-                SELECT h.zodiac, h.ref_date, h.tiktok_post_url, m.url as storage_key
+                SELECT h.zodiac, h.ref_date, m.url as storage_key
                 FROM horoscopes h
                 JOIN media_assets m ON m.id = h.audio_media_id
                 WHERE h.scope = 'daily' 
@@ -3495,7 +3399,7 @@ def get_daily_horoscope(zodiac: str = Query(...), date: str = Query(...)):
                 status_msg += " or not approved"
             raise HTTPException(status_code=404, detail=status_msg)
         
-        zodiac, ref_date, tiktok_post_url, storage_key = horoscope
+        zodiac, ref_date, storage_key = horoscope
         
         # Parse storage key (format: bucket/path)
         if '/' not in storage_key:
@@ -3521,8 +3425,7 @@ def get_daily_horoscope(zodiac: str = Query(...), date: str = Query(...)):
         return {
             "zodiac": zodiac,
             "ref_date": ref_date,
-            "audio_url": signed_url,
-            "tiktok_post_url": tiktok_post_url
+            "audio_url": signed_url
         }
         
     except HTTPException:
@@ -3903,27 +3806,11 @@ def schedule_horoscopes(request: HoroscopeScheduleRequest, x_user_id: str = Head
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Scheduling failed: {str(e)}")
 
-@app.post("/api/admin/horoscopes/ingest/tiktok")
-def ingest_tiktok_horoscope(request: HoroscopeTikTokIngestRequest, x_user_id: str = Header(...)):
-    """Ingest TikTok metadata for daily horoscope (admin/superadmin only) - M18 compliant"""
-    try:
-        user_id = x_user_id
-        
-        # M16.2 RLS route guard
-        if not can_access_horoscope(user_id, for_management=True):
-            raise HTTPException(status_code=403, detail="Access denied")
-        
-        role = get_user_role(user_id)
-        if role not in ['admin', 'superadmin']:
-            raise HTTPException(status_code=403, detail="Admin access required")
-        
-        # Validate inputs
-        zodiac = validate_zodiac(request.zodiac)
-        ref_date = validate_date(request.ref_date)
-        
-        # Validate TikTok URL format (basic check)
-        if not request.tiktok_url.startswith(('https://www.tiktok.com/', 'https://vm.tiktok.com/')):
-            raise HTTPException(status_code=400, detail="Invalid TikTok URL format")
+# TikTok ingestion DISABLED - Admin-only uploads enforced per SAMIA-TAROT-CONTEXT-ENGINEERING-2.md
+# @app.post("/api/admin/horoscopes/ingest/tiktok")
+# def ingest_tiktok_horoscope(request: HoroscopeTikTokIngestRequest, x_user_id: str = Header(...)):
+#     """DISABLED: TikTok ingestion removed - Use admin upload only"""
+#     raise HTTPException(status_code=410, detail="TikTok ingestion disabled - Use admin upload endpoint")
         
         # M18 Compliance: This is a placeholder for official TikTok API integration
         # In real implementation, would use official TikTok Business/Developer APIs
@@ -5509,6 +5396,22 @@ SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID")
 SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN")
 SQUARE_WEBHOOK_SECRET = os.getenv("SQUARE_WEBHOOK_SECRET")
 SQUARE_ENVIRONMENT = os.getenv("SQUARE_ENVIRONMENT", "sandbox")  # sandbox or production
+
+# Signed URL security settings (Master Policy: ≤15min default)
+SIGNED_URL_DEFAULT_TTL_MIN = int(os.getenv("SIGNED_URL_DEFAULT_TTL_MIN", "15"))
+PAY_PROVIDER = os.getenv("PAY_PROVIDER", "stripe")  # stripe, square, checkout, tap
+
+# TTL whitelist with explicit justifications (per master context)
+SIGNED_URL_OVERRIDES = {
+    "invoice": 60,      # Invoices need longer access for user download/print
+    "dsr_export": 30,   # DSR exports need time for user to download large files
+}
+
+def get_signed_url_ttl(resource_type: str = "default") -> int:
+    """Get TTL for signed URLs with security-first defaults per master policy"""
+    if resource_type in SIGNED_URL_OVERRIDES:
+        return SIGNED_URL_OVERRIDES[resource_type]
+    return SIGNED_URL_DEFAULT_TTL_MIN
 
 def get_user_wallet(user_id: str, currency: str = "USD"):
     """Get or create user wallet"""
@@ -10384,6 +10287,632 @@ def test_rate_limit(
         write_audit_m29(x_user_id, "rate_limit_test_failed", "rate_limit", test_data.get('policy_name'),
                        {"error": str(e)}, request_id)
         raise HTTPException(status_code=500, detail=f"Rate limit test failed: {str(e)}")
+
+# ========================================
+# M14 Payment Intents API (Idempotent with HMAC verification)
+# ========================================
+
+class PaymentIntentRequest(BaseModel):
+    order_id: int
+    amount_cents: int
+    currency: str = "USD"
+    payment_method: str  # stripe_card, square_card, usdt, manual_transfer
+    idempotency_key: str
+
+@app.post("/api/payments/intents")
+def create_payment_intent(request: PaymentIntentRequest, x_user_id: str = Header(...)):
+    """Create idempotent payment intent - M14"""
+    try:
+        user_id = x_user_id
+        
+        # Check for existing intent with same idempotency key
+        existing = db_fetchone("""
+            SELECT id, external_id, status, amount_cents 
+            FROM payment_intents 
+            WHERE idempotency_key = %s
+        """, (request.idempotency_key,))
+        
+        if existing:
+            return {
+                "payment_intent_id": existing[0],
+                "external_id": existing[1],
+                "status": existing[2],
+                "amount_cents": existing[3],
+                "idempotent": True
+            }
+        
+        # Verify order and authorization
+        order = db_fetchone("""
+            SELECT user_id, status FROM orders WHERE id = %s
+        """, (request.order_id,))
+        
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        if str(order[0]) != user_id:
+            role = get_user_role(user_id)
+            if role not in ['admin', 'superadmin']:
+                raise HTTPException(status_code=403, detail="Cannot create payment for this order")
+        
+        # Generate external ID
+        external_id = f"pi_{uuid.uuid4().hex[:24]}"
+        
+        # Create payment intent
+        intent_id = db_fetchone("""
+            INSERT INTO payment_intents (
+                external_id, idempotency_key, user_id, order_id,
+                amount_cents, currency, payment_method, status
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'pending')
+            RETURNING id
+        """, (external_id, request.idempotency_key, user_id, request.order_id,
+              request.amount_cents, request.currency, request.payment_method))[0]
+        
+        # Audit log
+        write_audit(user_id, "payment_intent_created", "payment_intent", str(intent_id), {
+            "order_id": request.order_id,
+            "amount_cents": request.amount_cents,
+            "payment_method": request.payment_method
+        })
+        
+        return {
+            "payment_intent_id": intent_id,
+            "external_id": external_id,
+            "status": "pending",
+            "amount_cents": request.amount_cents,
+            "idempotent": False
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Payment intent creation failed: {str(e)}")
+
+@app.post("/api/payments/webhook")
+def payment_webhook_dispatcher(
+    request: Request, 
+    stripe_signature: str = Header(None, alias="stripe-signature"),
+    square_signature: str = Header(None, alias="x-square-signature")
+):
+    """Provider-agnostic payment webhook dispatcher with HMAC verification - M14"""
+    import hashlib
+    import hmac
+    
+    try:
+        # Get raw body
+        body = request.body()
+        
+        # Determine provider based on configured PAY_PROVIDER and available signatures
+        provider = PAY_PROVIDER.lower()
+        signature = None
+        webhook_secret = None
+        
+        if provider == "stripe" and stripe_signature:
+            signature = stripe_signature
+            webhook_secret = STRIPE_WEBHOOK_SECRET
+        elif provider == "square" and square_signature:
+            signature = square_signature
+            webhook_secret = SQUARE_WEBHOOK_SECRET
+        else:
+            # Try to detect from headers if PAY_PROVIDER doesn't match
+            if stripe_signature and STRIPE_WEBHOOK_SECRET:
+                provider = "stripe"
+                signature = stripe_signature
+                webhook_secret = STRIPE_WEBHOOK_SECRET
+            elif square_signature and SQUARE_WEBHOOK_SECRET:
+                provider = "square"
+                signature = square_signature
+                webhook_secret = SQUARE_WEBHOOK_SECRET
+            else:
+                raise HTTPException(status_code=503, detail=f"No webhook configuration for provider: {PAY_PROVIDER}")
+        
+        if not webhook_secret:
+            raise HTTPException(status_code=503, detail=f"{provider.title()} webhook secret not configured")
+        
+        # Verify HMAC signature based on provider
+        if provider == "stripe":
+            expected_sig = f"v1={hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()}"
+            signature_valid = hmac.compare_digest(signature, expected_sig)
+        elif provider == "square":
+            # Square uses URL + body for signature
+            expected_sig = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
+            signature_valid = hmac.compare_digest(signature, expected_sig)
+        else:
+            signature_valid = False
+        
+        if not signature_valid:
+            write_audit("system", "webhook_verification_failed", "payment_event", None, {
+                "provider": provider,
+                "signature_valid": False
+            })
+            raise HTTPException(status_code=400, detail="Invalid webhook signature")
+        
+        # Parse event
+        event = json.loads(body)
+        event_id = event.get("id") if provider == "stripe" else event.get("event_id")
+        event_type = event.get("type")
+        
+        # Idempotency check
+        existing = db_fetchone("""
+            SELECT id FROM payment_events 
+            WHERE external_event_id = %s AND provider = %s
+        """, (event_id, provider))
+        
+        if existing:
+            return {"received": True, "processed": "already_handled"}
+        
+        # Log event
+        db_exec("""
+            INSERT INTO payment_events (
+                external_event_id, provider, event_type, payload, 
+                hmac_signature, verified_at
+            ) VALUES (%s, %s, %s, %s, %s, NOW())
+        """, (event_id, provider, event_type, json.dumps(event), signature))
+        
+        # Dispatch to provider-specific handler
+        if provider == "stripe":
+            _handle_stripe_webhook(event, event_type)
+        elif provider == "square":
+            _handle_square_webhook(event, event_type)
+        
+        return {"received": True, "processed": True}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit("system", "webhook_processing_failed", "payment_event", None, {
+            "provider": provider if 'provider' in locals() else "unknown", 
+            "error": str(e)
+        })
+        raise HTTPException(status_code=500, detail=f"Webhook processing failed: {str(e)}")
+
+def _handle_stripe_webhook(event: dict, event_type: str):
+    """Handle Stripe-specific webhook events"""
+    if event_type in ["payment_intent.succeeded", "payment_intent.payment_failed"]:
+        intent_data = event.get("data", {}).get("object", {})
+        external_id = intent_data.get("id")
+        
+        if external_id:
+            new_status = "succeeded" if event_type == "payment_intent.succeeded" else "failed"
+            
+            db_exec("""
+                UPDATE payment_intents 
+                SET status = %s, provider_response = %s, updated_at = NOW()
+                WHERE external_id = %s
+            """, (new_status, json.dumps(intent_data), external_id))
+
+def _handle_square_webhook(event: dict, event_type: str):
+    """Handle Square-specific webhook events"""
+    if event_type in ["payment.updated"]:
+        payment_data = event.get("data", {}).get("object", {}).get("payment", {})
+        external_id = payment_data.get("id")
+        status = payment_data.get("status")
+        
+        if external_id and status:
+            # Map Square status to our status
+            new_status = "succeeded" if status == "COMPLETED" else "failed"
+            
+            db_exec("""
+                UPDATE payment_intents 
+                SET status = %s, provider_response = %s, updated_at = NOW()
+                WHERE external_id = %s
+            """, (new_status, json.dumps(payment_data), external_id))
+
+# ========================================
+# M15 Notifications API (Rate Limited)
+# ========================================
+
+class NotificationPreferencesUpdate(BaseModel):
+    push_enabled: Optional[bool] = None
+    sms_enabled: Optional[bool] = None
+    whatsapp_enabled: Optional[bool] = None
+    email_enabled: Optional[bool] = None
+    daily_horoscope: Optional[bool] = None
+    promotional: Optional[bool] = None
+    quiet_hours_start: Optional[str] = None  # HH:MM format
+    quiet_hours_end: Optional[str] = None
+    timezone: Optional[str] = None
+
+class DeviceTokenRequest(BaseModel):
+    token: str
+    platform: str  # ios, android, web
+    app_version: Optional[str] = None
+
+class CampaignCreateRequest(BaseModel):
+    name: str
+    type: str  # broadcast, targeted, transactional
+    notification_type: str  # daily_horoscope, order_update, etc.
+    title: str
+    body: str
+    target_roles: Optional[List[str]] = []
+    target_countries: Optional[List[str]] = []
+    scheduled_at: Optional[str] = None  # ISO format
+
+@app.get("/api/notifications/preferences")
+def get_notification_preferences(x_user_id: str = Header(...)):
+    """Get user notification preferences - M15"""
+    try:
+        user_id = x_user_id
+        
+        prefs = db_fetchone("""
+            SELECT push_enabled, sms_enabled, whatsapp_enabled, email_enabled,
+                   daily_horoscope, order_updates, payment_receipts, promotional,
+                   quiet_hours_start, quiet_hours_end, timezone
+            FROM notification_preferences 
+            WHERE user_id = %s
+        """, (user_id,))
+        
+        if not prefs:
+            # Create default preferences
+            db_exec("""
+                INSERT INTO notification_preferences (user_id) VALUES (%s)
+            """, (user_id,))
+            
+            prefs = (True, False, False, True, True, True, True, False, None, None, 'UTC')
+        
+        return {
+            "push_enabled": prefs[0],
+            "sms_enabled": prefs[1],
+            "whatsapp_enabled": prefs[2],
+            "email_enabled": prefs[3],
+            "daily_horoscope": prefs[4],
+            "order_updates": prefs[5],
+            "payment_receipts": prefs[6],
+            "promotional": prefs[7],
+            "quiet_hours_start": prefs[8],
+            "quiet_hours_end": prefs[9],
+            "timezone": prefs[10]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get preferences: {str(e)}")
+
+@app.put("/api/notifications/preferences")
+def update_notification_preferences(request: NotificationPreferencesUpdate, x_user_id: str = Header(...)):
+    """Update user notification preferences - M15"""
+    try:
+        user_id = x_user_id
+        
+        # Check rate limit
+        bucket_key = f"{user_id}:preferences"
+        if not db_fetchone("SELECT check_rate_limit(%s, %s, %s, %s, %s)", 
+                          (bucket_key, "email", 1, 10, 5)):
+            raise HTTPException(status_code=429, detail="Rate limit exceeded", 
+                              headers={"Retry-After": "3600"})
+        
+        # Build update query dynamically
+        updates = []
+        params = []
+        
+        for field, value in request.dict(exclude_unset=True).items():
+            updates.append(f"{field} = %s")
+            params.append(value)
+        
+        if updates:
+            params.append(user_id)
+            db_exec(f"""
+                INSERT INTO notification_preferences (user_id) VALUES (%s)
+                ON CONFLICT (user_id) DO UPDATE SET {', '.join(updates)}, updated_at = NOW()
+            """, [user_id] + params)
+        
+        # Audit log
+        write_audit(user_id, "notification_preferences_updated", "notification_preferences", user_id, 
+                   request.dict(exclude_unset=True))
+        
+        return {"success": True, "updated": len(updates)}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update preferences: {str(e)}")
+
+@app.post("/api/notifications/device-token")
+def register_device_token(request: DeviceTokenRequest, x_user_id: str = Header(...)):
+    """Register device token for push notifications - M15"""
+    try:
+        user_id = x_user_id
+        
+        # Check rate limit
+        bucket_key = f"{user_id}:device_tokens"
+        if not db_fetchone("SELECT check_rate_limit(%s, %s, %s, %s, %s)", 
+                          (bucket_key, "fcm_push", 1, 20, 10)):
+            raise HTTPException(status_code=429, detail="Rate limit exceeded",
+                              headers={"Retry-After": "3600"})
+        
+        # Upsert device token
+        db_exec("""
+            INSERT INTO device_tokens (user_id, token, platform, app_version, is_active, last_used_at)
+            VALUES (%s, %s, %s, %s, true, NOW())
+            ON CONFLICT (token) DO UPDATE SET 
+                user_id = EXCLUDED.user_id,
+                platform = EXCLUDED.platform,
+                app_version = EXCLUDED.app_version,
+                is_active = true,
+                last_used_at = NOW(),
+                updated_at = NOW()
+        """, (user_id, request.token, request.platform, request.app_version))
+        
+        # Audit log
+        write_audit(user_id, "device_token_registered", "device_token", request.token, {
+            "platform": request.platform,
+            "app_version": request.app_version
+        })
+        
+        return {"success": True, "token_registered": True}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to register device token: {str(e)}")
+
+@app.post("/api/admin/notifications/campaigns")
+def create_campaign(request: CampaignCreateRequest, x_user_id: str = Header(...)):
+    """Create notification campaign (admin only) - M15"""
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Check rate limit for campaign creation
+        bucket_key = f"global:campaigns"
+        if not db_fetchone("SELECT check_rate_limit(%s, %s, %s, %s, %s)", 
+                          (bucket_key, "email", 1, 50, 10)):
+            raise HTTPException(status_code=429, detail="Campaign creation rate limit exceeded",
+                              headers={"Retry-After": "3600"})
+        
+        # Create campaign
+        campaign_id = db_fetchone("""
+            INSERT INTO campaigns (
+                name, type, notification_type, title, body,
+                target_roles, target_countries, scheduled_at, created_by
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            request.name, request.type, request.notification_type,
+            request.title, request.body, request.target_roles, request.target_countries,
+            request.scheduled_at, user_id
+        ))[0]
+        
+        # Audit log
+        write_audit(user_id, "campaign_created", "campaign", str(campaign_id), {
+            "name": request.name,
+            "type": request.type,
+            "notification_type": request.notification_type
+        })
+        
+        return {
+            "success": True,
+            "campaign_id": campaign_id,
+            "status": "draft"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Campaign creation failed: {str(e)}")
+
+# ========================================
+# PDF Invoice Generation (Private Bucket + Signed URLs)
+# ========================================
+
+class InvoiceGenerateRequest(BaseModel):
+    payment_intent_id: int
+    billing_details: Optional[dict] = None
+
+@app.post("/api/invoices/generate")
+def generate_invoice(request: InvoiceGenerateRequest, x_user_id: str = Header(...)):
+    """Generate PDF invoice and store in private bucket - M14"""
+    try:
+        user_id = x_user_id
+        
+        # Get payment intent
+        intent = db_fetchone("""
+            SELECT user_id, order_id, amount_cents, currency, status
+            FROM payment_intents 
+            WHERE id = %s
+        """, (request.payment_intent_id,))
+        
+        if not intent:
+            raise HTTPException(status_code=404, detail="Payment intent not found")
+        
+        intent_user_id, order_id, amount_cents, currency, status = intent
+        
+        # Authorization check
+        if str(intent_user_id) != user_id:
+            role = get_user_role(user_id)
+            if role not in ['admin', 'superadmin']:
+                raise HTTPException(status_code=403, detail="Cannot generate invoice for this payment")
+        
+        # Check if invoice already exists
+        existing_invoice = db_fetchone("""
+            SELECT id, pdf_storage_key FROM invoices 
+            WHERE payment_intent_id = %s
+        """, (request.payment_intent_id,))
+        
+        if existing_invoice:
+            invoice_id, pdf_key = existing_invoice
+            
+            # Generate signed URL for existing invoice
+            if pdf_key:
+                signed_url = generate_signed_url(pdf_key, "invoice")  # 60min per TTL whitelist
+                return {
+                    "invoice_id": invoice_id,
+                    "pdf_url": signed_url,
+                    "status": "existing",
+                    "expires_in": get_signed_url_ttl("invoice") * 60
+                }
+        
+        # Generate invoice number
+        invoice_number = db_fetchone("SELECT generate_invoice_number()")[0]
+        
+        # Create line items
+        line_items = [{
+            "description": f"Payment for Order #{order_id}",
+            "amount_cents": amount_cents,
+            "currency": currency
+        }]
+        
+        # Create invoice record
+        invoice_id = db_fetchone("""
+            INSERT INTO invoices (
+                invoice_number, user_id, payment_intent_id,
+                amount_cents, currency, line_items, billing_details,
+                status, issued_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, 'draft', NOW())
+            RETURNING id
+        """, (
+            invoice_number, intent_user_id, request.payment_intent_id,
+            amount_cents, currency, json.dumps(line_items), 
+            json.dumps(request.billing_details or {})
+        ))[0]
+        
+        # Generate PDF (mock implementation)
+        pdf_content = generate_pdf_invoice_content(invoice_number, line_items, request.billing_details)
+        
+        # Store in private bucket
+        pdf_storage_key = f"invoices/{invoice_id}/{invoice_number}.pdf"
+        
+        # Mock S3 upload - in production would upload to actual bucket
+        # import boto3
+        # s3 = boto3.client('s3')
+        # s3.put_object(
+        #     Bucket=PRIVATE_BUCKET_NAME,
+        #     Key=pdf_storage_key,
+        #     Body=pdf_content,
+        #     ContentType='application/pdf',
+        #     ServerSideEncryption='AES256'
+        # )
+        
+        # Update invoice with PDF info
+        db_exec("""
+            UPDATE invoices SET 
+                pdf_storage_key = %s, 
+                pdf_generated_at = NOW(),
+                status = 'sent'
+            WHERE id = %s
+        """, (pdf_storage_key, invoice_id))
+        
+        # Generate signed URL
+        signed_url = generate_signed_url(pdf_storage_key, "invoice")  # 60min per TTL whitelist
+        
+        # Audit log
+        write_audit(user_id, "invoice_generated", "invoice", str(invoice_id), {
+            "payment_intent_id": request.payment_intent_id,
+            "invoice_number": invoice_number,
+            "amount_cents": amount_cents
+        })
+        
+        return {
+            "invoice_id": invoice_id,
+            "invoice_number": invoice_number,
+            "pdf_url": signed_url,
+            "status": "generated",
+            "expires_in": get_signed_url_ttl("invoice") * 60
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Invoice generation failed: {str(e)}")
+
+@app.get("/api/invoices/{invoice_id}")
+def get_invoice(invoice_id: int, x_user_id: str = Header(...)):
+    """Get invoice with signed PDF URL - M14"""
+    try:
+        user_id = x_user_id
+        
+        # Get invoice
+        invoice = db_fetchone("""
+            SELECT i.user_id, i.invoice_number, i.amount_cents, i.currency,
+                   i.pdf_storage_key, i.status, i.issued_at,
+                   pi.order_id
+            FROM invoices i
+            JOIN payment_intents pi ON pi.id = i.payment_intent_id
+            WHERE i.id = %s
+        """, (invoice_id,))
+        
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        
+        invoice_user_id, invoice_number, amount_cents, currency, pdf_key, status, issued_at, order_id = invoice
+        
+        # Authorization check
+        if str(invoice_user_id) != user_id:
+            role = get_user_role(user_id)
+            if role not in ['admin', 'superadmin']:
+                raise HTTPException(status_code=403, detail="Cannot access this invoice")
+        
+        # Generate signed URL if PDF exists
+        pdf_url = None
+        expires_in_seconds = None
+        if pdf_key:
+            pdf_url = generate_signed_url(pdf_key, "invoice")  # 60min per TTL whitelist
+            expires_in_seconds = get_signed_url_ttl("invoice") * 60
+        
+        return {
+            "invoice_id": invoice_id,
+            "invoice_number": invoice_number,
+            "amount_cents": amount_cents,
+            "currency": currency,
+            "status": status,
+            "issued_at": issued_at,
+            "order_id": order_id,
+            "pdf_url": pdf_url,
+            "expires_in": expires_in_seconds
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get invoice: {str(e)}")
+
+def generate_pdf_invoice_content(invoice_number: str, line_items: list, billing_details: dict) -> bytes:
+    """Generate PDF invoice content (mock implementation)"""
+    # In production, use libraries like reportlab, weasyprint, or jsPDF
+    pdf_content = f"""
+    INVOICE #{invoice_number}
+    
+    Billing Details:
+    {json.dumps(billing_details, indent=2)}
+    
+    Line Items:
+    {json.dumps(line_items, indent=2)}
+    
+    Generated: {datetime.utcnow().isoformat()}
+    """
+    return pdf_content.encode('utf-8')
+
+def generate_signed_url(storage_key: str, resource_type: str = "default") -> str:
+    """Generate signed URL for private bucket access with security-first TTL"""
+    # Get TTL based on resource type and master policy (≤15min default)
+    expires_in_seconds = get_signed_url_ttl(resource_type) * 60
+    
+    # In production, use boto3 to generate actual signed URLs
+    # import boto3
+    # s3 = boto3.client('s3')
+    # return s3.generate_presigned_url(
+    #     'get_object',
+    #     Params={'Bucket': PRIVATE_BUCKET_NAME, 'Key': storage_key},
+    #     ExpiresIn=expires_in_seconds
+    # )
+    
+    # Mock signed URL with security-first TTL
+    import base64
+    import time
+    
+    expires_at = int(time.time()) + expires_in_seconds
+    payload = f"{storage_key}:{expires_at}"
+    signature = base64.b64encode(payload.encode()).decode()
+    
+    # Audit signed URL generation
+    write_audit("system", "signed_url_generated", "storage", storage_key, {
+        "resource_type": resource_type,
+        "ttl_minutes": expires_in_seconds // 60,
+        "expires_at": expires_at
+    })
+    
+    return f"https://private-bucket.example.com/{storage_key}?signature={signature}&expires={expires_at}"
 
 # Background jobs for SRE operations
 def collect_golden_signals_metrics():

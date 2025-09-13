@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { UIProvider } from './context/UIContext';
@@ -7,49 +7,61 @@ import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import { initializeSupabase } from './lib/supabase';
 import { initializeMonitoring } from './utils/monitoring.jsx';
 import ErrorBoundary from './components/ErrorBoundary';
+import PerformanceProvider from './components/Performance/PerformanceProvider';
+import LCPOptimizer from './components/Performance/LCPOptimizer';
+import INPOptimizer from './components/Performance/INPOptimizer';
+import CLSOptimizer, { FontLoadingOptimizer } from './components/Performance/CLSOptimizer';
 import dashboardHealthMonitor from './utils/dashboardHealthMonitor';
 import systemIntegration from './utils/systemIntegration';
 import ProtectedRoute from './components/ProtectedRoute';
-import Layout from './components/Layout';
 import QuickCommandPalette from './components/Admin/QuickCommandPalette';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './styles/toast-styles.css';
+// M36 Critical path imports (loaded immediately)
 import Home from './pages/Home';
 import Login from './pages/Login';
-import Signup from './pages/Signup';
-import AuthPage from './pages/AuthPage';
-import ForgotPassword from './pages/ForgotPassword';
-import BookingPage from './pages/BookingPage';
-import ReadersPage from './pages/ReadersPage';
-import Services from './pages/Services';
-import ServiceDetails from './pages/ServiceDetails';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import ProfilePage from './pages/ProfilePage';
-import WalletPage from './pages/WalletPage';
-import MessagesPage from './pages/MessagesPage';
-import BookingsPage from './pages/BookingsPage';
-import ClientDashboard from './pages/dashboard/ClientDashboard';
-import ReaderDashboard from './pages/dashboard/ReaderDashboard';
-import AdminDashboard from './pages/dashboard/AdminDashboard';
-import MonitorDashboard from './pages/dashboard/MonitorDashboard';
-import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
-import ObservabilityDashboard from './pages/dashboard/ObservabilityDashboard';
-import BackupDashboard from './pages/dashboard/BackupDashboard';
-import WalletDashboardPage from './pages/dashboard/WalletDashboardPage';
-// Import Admin Pages
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminReadersPage from './pages/admin/AdminReadersPage';
-import AdminFinancesPage from './pages/admin/AdminFinancesPage';
-import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
-import AdminReviewsPage from './pages/admin/AdminReviewsPage';
-import AdminMessagesPage from './pages/admin/AdminMessagesPage';
-import AdminReportsPage from './pages/admin/AdminReportsPage';
-import AdminIncidentsPage from './pages/admin/AdminIncidentsPage';
-import AdminSecurityPage from './pages/admin/AdminSecurityPage';
-import AdminProfilePage from './pages/admin/AdminProfilePage';
-import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+import Layout from './components/Layout';
+
+// M36 INP Optimization - Lazy load non-critical components
+const Signup = React.lazy(() => import('./pages/Signup'));
+const AuthPage = React.lazy(() => import('./pages/AuthPage'));
+const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'));
+const BookingPage = React.lazy(() => import('./pages/BookingPage'));
+const ReadersPage = React.lazy(() => import('./pages/ReadersPage'));
+const Services = React.lazy(() => import('./pages/Services'));
+const ServiceDetails = React.lazy(() => import('./pages/ServiceDetails'));
+const About = React.lazy(() => import('./pages/About'));
+const Contact = React.lazy(() => import('./pages/Contact'));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
+const WalletPage = React.lazy(() => import('./pages/WalletPage'));
+const MessagesPage = React.lazy(() => import('./pages/MessagesPage'));
+const BookingsPage = React.lazy(() => import('./pages/BookingsPage'));
+
+// Dashboard components (heavy, lazy load)
+const ClientDashboard = React.lazy(() => import('./pages/dashboard/ClientDashboard'));
+const ReaderDashboard = React.lazy(() => import('./pages/dashboard/ReaderDashboard'));
+const AdminDashboard = React.lazy(() => import('./pages/dashboard/AdminDashboard'));
+const MonitorDashboard = React.lazy(() => import('./pages/dashboard/MonitorDashboard'));
+const SuperAdminDashboard = React.lazy(() => import('./pages/dashboard/SuperAdminDashboard'));
+const ObservabilityDashboard = React.lazy(() => import('./pages/dashboard/ObservabilityDashboard'));
+const BackupDashboard = React.lazy(() => import('./pages/dashboard/BackupDashboard'));
+const E2ESyntheticsDashboard = React.lazy(() => import('./pages/dashboard/E2ESyntheticsDashboard'));
+const PerformanceDashboard = React.lazy(() => import('./pages/dashboard/PerformanceDashboard'));
+const WalletDashboardPage = React.lazy(() => import('./pages/dashboard/WalletDashboardPage'));
+
+// Admin pages (heavy, lazy load)
+const AdminUsersPage = React.lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminReadersPage = React.lazy(() => import('./pages/admin/AdminReadersPage'));
+const AdminFinancesPage = React.lazy(() => import('./pages/admin/AdminFinancesPage'));
+const AdminAnalyticsPage = React.lazy(() => import('./pages/admin/AdminAnalyticsPage'));
+const AdminReviewsPage = React.lazy(() => import('./pages/admin/AdminReviewsPage'));
+const AdminMessagesPage = React.lazy(() => import('./pages/admin/AdminMessagesPage'));
+const AdminReportsPage = React.lazy(() => import('./pages/admin/AdminReportsPage'));
+const AdminIncidentsPage = React.lazy(() => import('./pages/admin/AdminIncidentsPage'));
+const AdminSecurityPage = React.lazy(() => import('./pages/admin/AdminSecurityPage'));
+const AdminProfilePage = React.lazy(() => import('./pages/admin/AdminProfilePage'));
+const AdminSettingsPage = React.lazy(() => import('./pages/admin/AdminSettingsPage'));
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import './i18n';
@@ -169,16 +181,22 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <LanguageProvider>
-      <UIProvider>
-        <AuthProvider>
-          <ConfigProvider>
+      <PerformanceProvider>
+        <LanguageProvider>
+        <UIProvider>
+          <AuthProvider>
+            <ConfigProvider>
             <Router future={{
               v7_startTransition: true,
               v7_relativeSplatPath: true,
             }}>
-              <QuickCommandPalette />
-              <Routes>
+              <LCPOptimizer fallback={<div className="app-loading">Loading...</div>}>
+                <INPOptimizer>
+                  <CLSOptimizer>
+                    <FontLoadingOptimizer />
+                    <QuickCommandPalette />
+                  <Suspense fallback={<div className="app-loading">Loading...</div>}>
+                  <Routes>
                 <Route path="/" element={<Layout />}>
                   {/* Public Routes */}
                   <Route index element={<Home />} />
@@ -301,6 +319,22 @@ function App() {
                       </ProtectedRoute>
                     } 
                   />
+                  <Route 
+                    path="dashboard/e2e-synthetics" 
+                    element={
+                      <ProtectedRoute requiredRoles={getAdminRoles()} showUnauthorized={true}>
+                        <E2ESyntheticsDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="dashboard/performance" 
+                    element={
+                      <ProtectedRoute requiredRoles={getAdminRoles()} showUnauthorized={true}>
+                        <PerformanceDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
                   
                   {/* Admin Routes */}
                   <Route path="admin/users" element={
@@ -375,13 +409,18 @@ function App() {
                     </div>
                   } />
                 </Route>
-              </Routes>
+                      </Routes>
+                    </Suspense>
+                  </CLSOptimizer>
+                </INPOptimizer>
+              </LCPOptimizer>
                 <BilingualToastContainer />
             </Router>
-          </ConfigProvider>
-        </AuthProvider>
-      </UIProvider>
-      </LanguageProvider>
+            </ConfigProvider>
+          </AuthProvider>
+        </UIProvider>
+        </LanguageProvider>
+      </PerformanceProvider>
     </ErrorBoundary>
   );
 }

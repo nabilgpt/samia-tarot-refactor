@@ -35,12 +35,23 @@
     "audit:deployment": "node scripts/audit-logger.js deployment",
     "audit:report": "node scripts/audit-logger.js report",
     "ci:prepare": "npm install && npm run lint:check && npm run test",
-    "ci:deploy": "npm run ci:prepare && npm run deploy:prod",
+    "ci:performance": "npm run lighthouse:ci && npm run performance:budget",
+    "ci:deploy": "npm run ci:prepare && npm run ci:performance && npm run deploy:prod",
     "emergency:kill": "npm run server:kill",
     "emergency:restore": "npm run migrate:rollback && npm run server:restart \"Emergency restore\" \"Emergency\"",
     "logs:server": "tail -f logs/server-management.log",
     "logs:deployment": "tail -f logs/deployment-audit.log",
-    "logs:clear": "rm -rf logs/*.log"
+    "logs:clear": "rm -rf logs/*.log",
+    "lighthouse:ci": "lhci autorun",
+    "lighthouse:collect": "lhci collect",
+    "lighthouse:assert": "lhci assert",
+    "lighthouse:upload": "lhci upload",
+    "performance:test": "npm run lighthouse:ci",
+    "performance:report": "node scripts/performance-reporter.js",
+    "performance:budget": "node scripts/performance-budget-check.js",
+    "performance:cwv": "python cwv_synthetic_monitors.py",
+    "performance:validate": "python validate_cwv_targets.py",
+    "performance:full": "npm run performance:cwv && npm run lighthouse:ci && npm run performance:budget && npm run performance:report && npm run performance:validate"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -135,7 +146,8 @@
     "swagger-ui-express": "^5.0.0",
     "tailwindcss": "^3.4.17",
     "vitest": "^3.2.2",
-    "webpack-bundle-analyzer": "^4.9.0"
+    "webpack-bundle-analyzer": "^4.9.0",
+    "@lhci/cli": "^0.13.0"
   },
   "keywords": [
     "tarot",

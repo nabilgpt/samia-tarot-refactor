@@ -1,0 +1,428 @@
+{
+  "timestamp": "audit_timestamp",
+  "wcag_version": "2.2 AA",
+  "compliance_summary": {
+    "total_combinations": 30,
+    "compliant_combinations": 24,
+    "violation_count": 6,
+    "compliance_rate": "80.0%",
+    "overall_status": "FAIL"
+  },
+  "theme_results": {
+    "dark_theme": [
+      {
+        "ratio": 17.85,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#ffffff",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 14.48,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#e2e8f0",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 6.96,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#94a3b8",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 14.63,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#ffffff",
+        "background": "#1e293b",
+        "theme": "dark"
+      },
+      {
+        "ratio": 11.87,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#e2e8f0",
+        "background": "#1e293b",
+        "theme": "dark"
+      },
+      {
+        "ratio": 15.37,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#ffffff",
+        "background": "rgba(30, 41, 59, 0.8)",
+        "theme": "dark"
+      },
+      {
+        "ratio": 12.02,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#cbd5e1",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 5.16,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "#d946ef",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 10.69,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "#fbbf24",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 4.22,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "#8b5cf6",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 3.46,
+        "compliant": false,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#ffffff",
+        "background": "#d946ef",
+        "theme": "dark"
+      },
+      {
+        "ratio": 1.67,
+        "compliant": false,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#ffffff",
+        "background": "#fbbf24",
+        "theme": "dark"
+      },
+      {
+        "ratio": 7.25,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "#e879f9",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 12.38,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "#fcd34d",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 6.56,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "#a78bfa",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 6.5,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#1e1b4b",
+        "background": "#e879f9",
+        "theme": "dark"
+      },
+      {
+        "ratio": 11.09,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#1e1b4b",
+        "background": "#fcd34d",
+        "theme": "dark"
+      },
+      {
+        "ratio": 1.49,
+        "compliant": false,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "rgba(217, 70, 239, 0.3)",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 1.53,
+        "compliant": false,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "rgba(251, 191, 36, 0.2)",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 3.34,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "rgba(232, 121, 249, 0.6)",
+        "background": "#0f172a",
+        "theme": "dark"
+      },
+      {
+        "ratio": 3.91,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "rgba(252, 211, 77, 0.5)",
+        "background": "#0f172a",
+        "theme": "dark"
+      }
+    ],
+    "light_theme": [
+      {
+        "ratio": 13.98,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#1e293b",
+        "background": "#f8fafc",
+        "theme": "light"
+      },
+      {
+        "ratio": 7.24,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#475569",
+        "background": "#f8fafc",
+        "theme": "light"
+      },
+      {
+        "ratio": 4.55,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#64748b",
+        "background": "#f8fafc",
+        "theme": "light"
+      },
+      {
+        "ratio": 4.05,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "#8b5cf6",
+        "background": "#f8fafc",
+        "theme": "light"
+      },
+      {
+        "ratio": 3.04,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "#d97706",
+        "background": "#f8fafc",
+        "theme": "light"
+      },
+      {
+        "ratio": 4.23,
+        "compliant": false,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#ffffff",
+        "background": "#8b5cf6",
+        "theme": "light"
+      },
+      {
+        "ratio": 3.19,
+        "compliant": false,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#ffffff",
+        "background": "#d97706",
+        "theme": "light"
+      },
+      {
+        "ratio": 5.45,
+        "compliant": true,
+        "required": 3.0,
+        "standard": "WCAG AA UI Component",
+        "foreground": "#7c3aed",
+        "background": "#f8fafc",
+        "theme": "light"
+      },
+      {
+        "ratio": 5.7,
+        "compliant": true,
+        "required": 4.5,
+        "standard": "WCAG AA Normal Text",
+        "foreground": "#ffffff",
+        "background": "#7c3aed",
+        "theme": "light"
+      }
+    ]
+  },
+  "violations": [
+    {
+      "theme": "dark",
+      "foreground": "#ffffff",
+      "background": "#d946ef",
+      "type": "normal",
+      "ratio": 3.46,
+      "required": 4.5
+    },
+    {
+      "theme": "dark",
+      "foreground": "#ffffff",
+      "background": "#fbbf24",
+      "type": "normal",
+      "ratio": 1.67,
+      "required": 4.5
+    },
+    {
+      "theme": "dark",
+      "foreground": "rgba(217, 70, 239, 0.3)",
+      "background": "#0f172a",
+      "type": "ui",
+      "ratio": 1.49,
+      "required": 3.0
+    },
+    {
+      "theme": "dark",
+      "foreground": "rgba(251, 191, 36, 0.2)",
+      "background": "#0f172a",
+      "type": "ui",
+      "ratio": 1.53,
+      "required": 3.0
+    },
+    {
+      "theme": "light",
+      "foreground": "#ffffff",
+      "background": "#8b5cf6",
+      "type": "normal",
+      "ratio": 4.23,
+      "required": 4.5
+    },
+    {
+      "theme": "light",
+      "foreground": "#ffffff",
+      "background": "#d97706",
+      "type": "normal",
+      "ratio": 3.19,
+      "required": 4.5
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "MEDIUM",
+      "action": "Improve contrast for WCAG AA compliance",
+      "theme": "dark",
+      "combination": "#ffffff on #d946ef",
+      "current_ratio": 3.46,
+      "required_ratio": 4.5,
+      "suggestions": [
+        "Lighten the foreground color",
+        "Darken the background color",
+        "Increase font weight for better perceived contrast",
+        "Add text shadow or stroke for enhanced visibility"
+      ]
+    },
+    {
+      "priority": "HIGH",
+      "action": "Critical contrast violation - immediate fix required",
+      "theme": "dark",
+      "combination": "#ffffff on #fbbf24",
+      "current_ratio": 1.67,
+      "required_ratio": 4.5,
+      "suggestions": [
+        "Lighten the foreground color",
+        "Darken the background color",
+        "Increase font weight for better perceived contrast",
+        "Add text shadow or stroke for enhanced visibility"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Improve contrast for large text/UI elements",
+      "theme": "dark",
+      "combination": "rgba(217, 70, 239, 0.3) on #0f172a",
+      "current_ratio": 1.49,
+      "required_ratio": 3.0,
+      "suggestions": [
+        "Lighten the foreground color",
+        "Darken the background color",
+        "Increase font weight for better perceived contrast",
+        "Add text shadow or stroke for enhanced visibility"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Improve contrast for large text/UI elements",
+      "theme": "dark",
+      "combination": "rgba(251, 191, 36, 0.2) on #0f172a",
+      "current_ratio": 1.53,
+      "required_ratio": 3.0,
+      "suggestions": [
+        "Lighten the foreground color",
+        "Darken the background color",
+        "Increase font weight for better perceived contrast",
+        "Add text shadow or stroke for enhanced visibility"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Improve contrast for WCAG AA compliance",
+      "theme": "light",
+      "combination": "#ffffff on #8b5cf6",
+      "current_ratio": 4.23,
+      "required_ratio": 4.5,
+      "suggestions": [
+        "Darken the foreground color",
+        "Lighten the background color",
+        "Use a bolder font weight",
+        "Consider adding subtle background patterns"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Improve contrast for WCAG AA compliance",
+      "theme": "light",
+      "combination": "#ffffff on #d97706",
+      "current_ratio": 3.19,
+      "required_ratio": 4.5,
+      "suggestions": [
+        "Darken the foreground color",
+        "Lighten the background color",
+        "Use a bolder font weight",
+        "Consider adding subtle background patterns"
+      ]
+    }
+  ],
+  "standards": {
+    "normal_text": "\u22654.5:1",
+    "large_text": "\u22653.0:1",
+    "ui_components": "\u22653.0:1"
+  }
+}

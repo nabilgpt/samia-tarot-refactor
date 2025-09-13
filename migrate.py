@@ -27,7 +27,9 @@ MIGRATIONS = [
     ("007_payments.sql", load_migration_file("007_payments.sql")),
     ("008_notifications.sql", load_migration_file("008_notifications.sql")),
     ("009_privacy.sql", load_migration_file("009_privacy.sql")),
+    ("009_remove_tiktok.sql", load_migration_file("009_remove_tiktok.sql")),
     ("010_rls.sql", load_migration_file("010_rls.sql")),
+    ("002_dsr_compliance.sql", load_migration_file("002_dsr_compliance.sql")),
 ]
 
 def exec_sql(sql: str):

@@ -84,7 +84,7 @@ alter table if exists orders
   add constraint orders_input_media_id_fkey foreign key (input_media_id) references media_assets(id),
   add constraint orders_output_media_id_fkey foreign key (output_media_id) references media_assets(id);
 
--- Daily Horoscopes (link to ingested TikTok audio)
+-- Daily Horoscopes (admin-only uploads per M38 security hardening)
 create table if not exists horoscopes (
   id bigserial primary key,
   scope text check (scope in ('daily','monthly')) not null,
