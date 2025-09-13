@@ -35,6 +35,8 @@ import ReaderDashboard from './pages/dashboard/ReaderDashboard';
 import AdminDashboard from './pages/dashboard/AdminDashboard';
 import MonitorDashboard from './pages/dashboard/MonitorDashboard';
 import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
+import ObservabilityDashboard from './pages/dashboard/ObservabilityDashboard';
+import BackupDashboard from './pages/dashboard/BackupDashboard';
 import WalletDashboardPage from './pages/dashboard/WalletDashboardPage';
 // Import Admin Pages
 import AdminUsersPage from './pages/admin/AdminUsersPage';
@@ -280,6 +282,22 @@ function App() {
                     element={
                       <ProtectedRoute requiredRoles={['super_admin']} showUnauthorized={true}>
                         <SuperAdminDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="dashboard/observability" 
+                    element={
+                      <ProtectedRoute requiredRoles={getAdminRoles()} showUnauthorized={true}>
+                        <ObservabilityDashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="dashboard/backup" 
+                    element={
+                      <ProtectedRoute requiredRoles={getAdminRoles()} showUnauthorized={true}>
+                        <BackupDashboard />
                       </ProtectedRoute>
                     } 
                   />

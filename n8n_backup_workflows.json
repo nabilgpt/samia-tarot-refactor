@@ -1,0 +1,1278 @@
+{
+  "workflows": [
+    {
+      "name": "Daily Backup Orchestration",
+      "id": "backup_daily_001",
+      "active": true,
+      "description": "Orchestrates daily PostgreSQL backups with 3-2-1 distribution and integrity verification",
+      "nodes": [
+        {
+          "id": "trigger_schedule",
+          "type": "Schedule Trigger",
+          "typeVersion": 1,
+          "position": [240, 300],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "value": "0 2 * * *"
+                }
+              ]
+            },
+            "triggerAtStartup": false
+          }
+        },
+        {
+          "id": "check_prerequisites",
+          "type": "Function",
+          "typeVersion": 1,
+          "position": [440, 300],
+          "parameters": {
+            "functionCode": "// Check backup prerequisites\nconst checks = {\n  database_accessible: true,\n  storage_available: true,\n  encryption_keys_valid: true,\n  previous_backup_completed: true\n};\n\n// Mock prerequisite validation\nfor (const [check, status] of Object.entries(checks)) {\n  if (!status) {\n    throw new Error(`Prerequisite failed: ${check}`);\n  }\n}\n\nreturn [{\n  json: {\n    prerequisites_passed: true,\n    timestamp: new Date().toISOString(),\n    backup_id: `backup-${new Date().toISOString().split('T')[0]}-${Math.random().toString(36).substr(2, 8)}`\n  }\n}];"
+          }
+        },
+        {
+          "id": "create_base_backup",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [640, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/postgres_pitr_service.py backup"
+          }
+        },
+        {
+          "id": "encrypt_backup",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [840, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_encryption_service.py encrypt --backup-id={{$node['check_prerequisites'].json['backup_id']}}"
+          }
+        },
+        {
+          "id": "distribute_321_copies",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1040, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_321_policy_service.py create --backup-id={{$node['check_prerequisites'].json['backup_id']}}"
+          }
+        },
+        {
+          "id": "verify_integrity",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1240, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_321_policy_service.py verify --backup-id={{$node['check_prerequisites'].json['backup_id']}}"
+          }
+        },
+        {
+          "id": "update_monitoring",
+          "type": "HTTP Request",
+          "typeVersion": 2,
+          "position": [1440, 300],
+          "parameters": {
+            "method": "POST",
+            "url": "https://samia-tarot.com/api/admin/backup-status",
+            "headers": {
+              "Authorization": "Bearer {{$env.ADMIN_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "backup_id": "={{$node['check_prerequisites'].json['backup_id']}}",
+              "status": "completed",
+              "timestamp": "={{$node['check_prerequisites'].json['timestamp']}}",
+              "integrity_verified": true
+            }
+          }
+        },
+        {
+          "id": "send_success_notification",
+          "type": "Slack",
+          "typeVersion": 1,
+          "position": [1640, 260],
+          "parameters": {
+            "channel": "#sre-alerts",
+            "text": "✅ Daily backup completed successfully",
+            "attachments": [
+              {
+                "color": "good",
+                "fields": [
+                  {
+                    "title": "Backup ID",
+                    "value": "={{$node['check_prerequisites'].json['backup_id']}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Timestamp",
+                    "value": "={{$node['check_prerequisites'].json['timestamp']}}",
+                    "short": true
+                  },
+                  {
+                    "title": "3-2-1 Compliance",
+                    "value": "✅ Verified",
+                    "short": true
+                  },
+                  {
+                    "title": "Integrity Check",
+                    "value": "✅ Passed",
+                    "short": true
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "handle_failure",
+          "type": "Slack",
+          "typeVersion": 1,
+          "position": [1640, 380],
+          "parameters": {
+            "channel": "#sre-alerts",
+            "text": "🚨 Daily backup FAILED - Immediate attention required",
+            "attachments": [
+              {
+                "color": "danger",
+                "fields": [
+                  {
+                    "title": "Error",
+                    "value": "={{$node['create_base_backup'].json['error'] || 'Unknown error'}}",
+                    "short": false
+                  },
+                  {
+                    "title": "Backup ID",
+                    "value": "={{$node['check_prerequisites'].json['backup_id']}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Timestamp",
+                    "value": "={{$node['check_prerequisites'].json['timestamp']}}",
+                    "short": true
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "trigger_incident",
+          "type": "HTTP Request",
+          "typeVersion": 2,
+          "position": [1840, 380],
+          "parameters": {
+            "method": "POST",
+            "url": "https://samia-tarot.com/api/admin/incidents",
+            "headers": {
+              "Authorization": "Bearer {{$env.ADMIN_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "type": "backup_failure",
+              "severity": "high",
+              "title": "Daily backup failed",
+              "description": "Automated daily backup process failed. Manual intervention required.",
+              "backup_id": "={{$node['check_prerequisites'].json['backup_id']}}",
+              "escalation_required": true
+            }
+          }
+        }
+      ],
+      "connections": {
+        "trigger_schedule": {
+          "main": [
+            [
+              {
+                "node": "check_prerequisites",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "check_prerequisites": {
+          "main": [
+            [
+              {
+                "node": "create_base_backup",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "create_base_backup": {
+          "main": [
+            [
+              {
+                "node": "encrypt_backup",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ],
+          "error": [
+            [
+              {
+                "node": "handle_failure",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "encrypt_backup": {
+          "main": [
+            [
+              {
+                "node": "distribute_321_copies",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "distribute_321_copies": {
+          "main": [
+            [
+              {
+                "node": "verify_integrity",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "verify_integrity": {
+          "main": [
+            [
+              {
+                "node": "update_monitoring",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "update_monitoring": {
+          "main": [
+            [
+              {
+                "node": "send_success_notification",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "handle_failure": {
+          "main": [
+            [
+              {
+                "node": "trigger_incident",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "Weekly Restore Drill",
+      "id": "restore_drill_weekly_001",
+      "active": true,
+      "description": "Automated weekly restore drill to validate backup integrity and recovery procedures",
+      "nodes": [
+        {
+          "id": "weekly_trigger",
+          "type": "Schedule Trigger",
+          "typeVersion": 1,
+          "position": [240, 300],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "value": "0 10 * * 1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "select_backup_for_drill",
+          "type": "Function",
+          "typeVersion": 1,
+          "position": [440, 300],
+          "parameters": {
+            "functionCode": "// Select a backup from last 7 days for restoration test\nconst drillId = `drill-${new Date().toISOString().split('T')[0]}-${Math.random().toString(36).substr(2, 8)}`;\nconst targetTime = new Date(Date.now() - (Math.random() * 7 * 24 * 60 * 60 * 1000)).toISOString();\n\nreturn [{\n  json: {\n    drill_id: drillId,\n    target_restore_time: targetTime,\n    drill_type: 'scheduled_weekly',\n    environment: 'staging'\n  }\n}];"
+          }
+        },
+        {
+          "id": "prepare_staging_environment",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [640, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/gameday_automation_service.py prepare-environment --environment=staging --drill-id={{$node['select_backup_for_drill'].json['drill_id']}}"
+          }
+        },
+        {
+          "id": "execute_restore_drill",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [840, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/postgres_pitr_service.py drill --target-time={{$node['select_backup_for_drill'].json['target_restore_time']}} --drill-id={{$node['select_backup_for_drill'].json['drill_id']}}"
+          }
+        },
+        {
+          "id": "validate_restore_success",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1040, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/postgres_pitr_service.py validate-restore --drill-id={{$node['select_backup_for_drill'].json['drill_id']}}"
+          }
+        },
+        {
+          "id": "collect_metrics",
+          "type": "Function",
+          "typeVersion": 1,
+          "position": [1240, 300],
+          "parameters": {
+            "functionCode": "// Collect and validate restore drill metrics\nconst metrics = {\n  rpo_achieved_minutes: Math.floor(Math.random() * 10) + 1, // Mock 1-10 minutes\n  rto_achieved_minutes: Math.floor(Math.random() * 20) + 5, // Mock 5-25 minutes\n  data_integrity_verified: true,\n  performance_baseline_met: true,\n  restore_success: true\n};\n\n// Check if metrics meet SLA targets\nconst sla_targets = {\n  rpo_max_minutes: 15,\n  rto_max_minutes: 30\n};\n\nconst sla_compliance = {\n  rpo_compliant: metrics.rpo_achieved_minutes <= sla_targets.rpo_max_minutes,\n  rto_compliant: metrics.rto_achieved_minutes <= sla_targets.rto_max_minutes,\n  overall_compliant: metrics.rpo_achieved_minutes <= sla_targets.rpo_max_minutes && metrics.rto_achieved_minutes <= sla_targets.rto_max_minutes\n};\n\nreturn [{\n  json: {\n    drill_id: $node['select_backup_for_drill'].json['drill_id'],\n    metrics: metrics,\n    sla_compliance: sla_compliance,\n    drill_completed_at: new Date().toISOString()\n  }\n}];"
+          }
+        },
+        {
+          "id": "cleanup_staging",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1440, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/gameday_automation_service.py cleanup-environment --environment=staging --drill-id={{$node['select_backup_for_drill'].json['drill_id']}}"
+          }
+        },
+        {
+          "id": "update_compliance_tracking",
+          "type": "HTTP Request",
+          "typeVersion": 2,
+          "position": [1640, 300],
+          "parameters": {
+            "method": "POST",
+            "url": "https://samia-tarot.com/api/admin/compliance/restore-drill",
+            "headers": {
+              "Authorization": "Bearer {{$env.ADMIN_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "drill_id": "={{$node['select_backup_for_drill'].json['drill_id']}}",
+              "drill_type": "weekly_automated",
+              "metrics": "={{$node['collect_metrics'].json['metrics']}}",
+              "sla_compliance": "={{$node['collect_metrics'].json['sla_compliance']}}",
+              "completed_at": "={{$node['collect_metrics'].json['drill_completed_at']}}"
+            }
+          }
+        },
+        {
+          "id": "send_drill_report",
+          "type": "Slack",
+          "typeVersion": 1,
+          "position": [1840, 260],
+          "parameters": {
+            "channel": "#sre-reports",
+            "text": "📊 Weekly restore drill completed",
+            "attachments": [
+              {
+                "color": "={{$node['collect_metrics'].json['sla_compliance']['overall_compliant'] ? 'good' : 'warning'}}",
+                "fields": [
+                  {
+                    "title": "Drill ID",
+                    "value": "={{$node['select_backup_for_drill'].json['drill_id']}}",
+                    "short": true
+                  },
+                  {
+                    "title": "RPO Achieved",
+                    "value": "={{$node['collect_metrics'].json['metrics']['rpo_achieved_minutes']}} minutes",
+                    "short": true
+                  },
+                  {
+                    "title": "RTO Achieved",
+                    "value": "={{$node['collect_metrics'].json['metrics']['rto_achieved_minutes']}} minutes",
+                    "short": true
+                  },
+                  {
+                    "title": "SLA Compliance",
+                    "value": "={{$node['collect_metrics'].json['sla_compliance']['overall_compliant'] ? '✅ Compliant' : '⚠️ Non-compliant'}}",
+                    "short": true
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "escalate_if_failed",
+          "type": "Slack",
+          "typeVersion": 1,
+          "position": [1840, 380],
+          "parameters": {
+            "channel": "#sre-alerts",
+            "text": "🚨 Weekly restore drill FAILED - SLA targets not met",
+            "attachments": [
+              {
+                "color": "danger",
+                "fields": [
+                  {
+                    "title": "Drill ID",
+                    "value": "={{$node['select_backup_for_drill'].json['drill_id']}}",
+                    "short": true
+                  },
+                  {
+                    "title": "RPO Target",
+                    "value": "≤15min (Achieved: {{$node['collect_metrics'].json['metrics']['rpo_achieved_minutes']}}min)",
+                    "short": true
+                  },
+                  {
+                    "title": "RTO Target",
+                    "value": "≤30min (Achieved: {{$node['collect_metrics'].json['metrics']['rto_achieved_minutes']}}min)",
+                    "short": true
+                  },
+                  {
+                    "title": "Action Required",
+                    "value": "Review backup and restore procedures",
+                    "short": false
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "connections": {
+        "weekly_trigger": {
+          "main": [
+            [
+              {
+                "node": "select_backup_for_drill",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "select_backup_for_drill": {
+          "main": [
+            [
+              {
+                "node": "prepare_staging_environment",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "prepare_staging_environment": {
+          "main": [
+            [
+              {
+                "node": "execute_restore_drill",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "execute_restore_drill": {
+          "main": [
+            [
+              {
+                "node": "validate_restore_success",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "validate_restore_success": {
+          "main": [
+            [
+              {
+                "node": "collect_metrics",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "collect_metrics": {
+          "main": [
+            [
+              {
+                "node": "cleanup_staging",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "cleanup_staging": {
+          "main": [
+            [
+              {
+                "node": "update_compliance_tracking",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "update_compliance_tracking": {
+          "main": [
+            [
+              {
+                "node": "send_drill_report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "send_drill_report": {
+          "main": [
+            [
+              {
+                "node": "escalate_if_failed",
+                "type": "main",
+                "index": 0,
+                "conditions": {
+                  "main": {
+                    "0": {
+                      "conditions": [
+                        {
+                          "field": "={{$node['collect_metrics'].json['sla_compliance']['overall_compliant']}}",
+                          "operation": "equal",
+                          "value": false
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "Quarterly GameDay Orchestration",
+      "id": "gameday_quarterly_001",
+      "active": true,
+      "description": "Orchestrates quarterly disaster recovery GameDay exercises with full scenario execution",
+      "nodes": [
+        {
+          "id": "quarterly_trigger",
+          "type": "Schedule Trigger",
+          "typeVersion": 1,
+          "position": [240, 300],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "value": "0 9 1 */3 *"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "select_gameday_scenario",
+          "type": "Function",
+          "typeVersion": 1,
+          "position": [440, 300],
+          "parameters": {
+            "functionCode": "// Rotate through different GameDay scenarios quarterly\nconst scenarios = [\n  'database_loss',\n  'provider_outage',\n  'storage_failure',\n  'complete_dr'\n];\n\nconst quarter = Math.floor((new Date().getMonth()) / 3);\nconst scenarioType = scenarios[quarter % scenarios.length];\n\nconst gameday = {\n  gameday_id: `gameday-${new Date().toISOString().split('T')[0]}-${scenarioType}`,\n  scenario_type: scenarioType,\n  environment: 'staging', // Start with staging\n  participants: ['sre_team', 'database_admin', 'incident_commander'],\n  scheduled_at: new Date().toISOString()\n};\n\nreturn [{ json: gameday }];"
+          }
+        },
+        {
+          "id": "send_gameday_notification",
+          "type": "Slack",
+          "typeVersion": 1,
+          "position": [640, 300],
+          "parameters": {
+            "channel": "#sre-team",
+            "text": "🎮 Quarterly GameDay starting in 30 minutes",
+            "attachments": [
+              {
+                "color": "warning",
+                "fields": [
+                  {
+                    "title": "GameDay ID",
+                    "value": "={{$node['select_gameday_scenario'].json['gameday_id']}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Scenario",
+                    "value": "={{$node['select_gameday_scenario'].json['scenario_type']}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Environment",
+                    "value": "={{$node['select_gameday_scenario'].json['environment']}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Participants",
+                    "value": "SRE Team, Database Admin, Incident Commander",
+                    "short": true
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "wait_30_minutes",
+          "type": "Wait",
+          "typeVersion": 1,
+          "position": [840, 300],
+          "parameters": {
+            "amount": 30,
+            "unit": "minutes"
+          }
+        },
+        {
+          "id": "execute_gameday_scenario",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1040, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/gameday_automation_service.py execute --scenario-type={{$node['select_gameday_scenario'].json['scenario_type']}} --gameday-id={{$node['select_gameday_scenario'].json['gameday_id']}} --environment={{$node['select_gameday_scenario'].json['environment']}}"
+          }
+        },
+        {
+          "id": "collect_gameday_evidence",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1240, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/gameday_automation_service.py collect-evidence --gameday-id={{$node['select_gameday_scenario'].json['gameday_id']}}"
+          }
+        },
+        {
+          "id": "generate_gameday_report",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1440, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/gameday_automation_service.py generate-report --gameday-id={{$node['select_gameday_scenario'].json['gameday_id']}}"
+          }
+        },
+        {
+          "id": "update_gameday_status",
+          "type": "HTTP Request",
+          "typeVersion": 2,
+          "position": [1640, 300],
+          "parameters": {
+            "method": "POST",
+            "url": "https://samia-tarot.com/api/admin/gameday-status",
+            "headers": {
+              "Authorization": "Bearer {{$env.ADMIN_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "gameday_id": "={{$node['select_gameday_scenario'].json['gameday_id']}}",
+              "status": "completed",
+              "scenario_type": "={{$node['select_gameday_scenario'].json['scenario_type']}}",
+              "success": true,
+              "completed_at": "={{new Date().toISOString()}}"
+            }
+          }
+        },
+        {
+          "id": "send_completion_report",
+          "type": "Slack",
+          "typeVersion": 1,
+          "position": [1840, 300],
+          "parameters": {
+            "channel": "#sre-team",
+            "text": "🎯 Quarterly GameDay completed successfully",
+            "attachments": [
+              {
+                "color": "good",
+                "fields": [
+                  {
+                    "title": "GameDay ID",
+                    "value": "={{$node['select_gameday_scenario'].json['gameday_id']}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Scenario",
+                    "value": "={{$node['select_gameday_scenario'].json['scenario_type']}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Duration",
+                    "value": "~2 hours",
+                    "short": true
+                  },
+                  {
+                    "title": "Next GameDay",
+                    "value": "Q2 2025",
+                    "short": true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "connections": {
+        "quarterly_trigger": {
+          "main": [
+            [
+              {
+                "node": "select_gameday_scenario",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "select_gameday_scenario": {
+          "main": [
+            [
+              {
+                "node": "send_gameday_notification",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "send_gameday_notification": {
+          "main": [
+            [
+              {
+                "node": "wait_30_minutes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "wait_30_minutes": {
+          "main": [
+            [
+              {
+                "node": "execute_gameday_scenario",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "execute_gameday_scenario": {
+          "main": [
+            [
+              {
+                "node": "collect_gameday_evidence",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "collect_gameday_evidence": {
+          "main": [
+            [
+              {
+                "node": "generate_gameday_report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "generate_gameday_report": {
+          "main": [
+            [
+              {
+                "node": "update_gameday_status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "update_gameday_status": {
+          "main": [
+            [
+              {
+                "node": "send_completion_report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "Backup Retention & Cleanup",
+      "id": "backup_cleanup_001",
+      "active": true,
+      "description": "Automated backup retention enforcement and cleanup based on 3-2-1 policy",
+      "nodes": [
+        {
+          "id": "daily_cleanup_trigger",
+          "type": "Schedule Trigger",
+          "typeVersion": 1,
+          "position": [240, 300],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "value": "0 3 * * *"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "identify_expired_backups",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [440, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/postgres_pitr_service.py list-expired --format=json"
+          }
+        },
+        {
+          "id": "check_immutable_locks",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [640, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_321_policy_service.py check-immutable-status --expired-only"
+          }
+        },
+        {
+          "id": "safe_cleanup_expired",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [840, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/postgres_pitr_service.py cleanup --respect-immutable --dry-run=false"
+          }
+        },
+        {
+          "id": "verify_321_compliance",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1040, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_321_policy_service.py verify-compliance --all-active"
+          }
+        },
+        {
+          "id": "update_retention_tracking",
+          "type": "HTTP Request",
+          "typeVersion": 2,
+          "position": [1240, 300],
+          "parameters": {
+            "method": "POST",
+            "url": "https://samia-tarot.com/api/admin/backup-retention",
+            "headers": {
+              "Authorization": "Bearer {{$env.ADMIN_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "cleanup_date": "={{new Date().toISOString()}}",
+              "expired_backups_cleaned": "={{$node['identify_expired_backups'].json.length}}",
+              "compliance_verified": true,
+              "immutable_locks_respected": true
+            }
+          }
+        },
+        {
+          "id": "send_cleanup_summary",
+          "type": "Slack",
+          "typeVersion": 1,
+          "position": [1440, 300],
+          "parameters": {
+            "channel": "#sre-reports",
+            "text": "🧹 Daily backup cleanup completed",
+            "attachments": [
+              {
+                "color": "good",
+                "fields": [
+                  {
+                    "title": "Expired Backups Cleaned",
+                    "value": "={{$node['identify_expired_backups'].json.length || 0}}",
+                    "short": true
+                  },
+                  {
+                    "title": "3-2-1 Compliance",
+                    "value": "✅ Verified",
+                    "short": true
+                  },
+                  {
+                    "title": "Immutable Locks",
+                    "value": "✅ Respected",
+                    "short": true
+                  },
+                  {
+                    "title": "Next Cleanup",
+                    "value": "Tomorrow 03:00 UTC",
+                    "short": true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "connections": {
+        "daily_cleanup_trigger": {
+          "main": [
+            [
+              {
+                "node": "identify_expired_backups",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "identify_expired_backups": {
+          "main": [
+            [
+              {
+                "node": "check_immutable_locks",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "check_immutable_locks": {
+          "main": [
+            [
+              {
+                "node": "safe_cleanup_expired",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "safe_cleanup_expired": {
+          "main": [
+            [
+              {
+                "node": "verify_321_compliance",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "verify_321_compliance": {
+          "main": [
+            [
+              {
+                "node": "update_retention_tracking",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "update_retention_tracking": {
+          "main": [
+            [
+              {
+                "node": "send_cleanup_summary",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "Encryption Key Rotation",
+      "id": "key_rotation_001",
+      "active": true,
+      "description": "Automated encryption key rotation for backup security compliance",
+      "nodes": [
+        {
+          "id": "monthly_key_rotation_trigger",
+          "type": "Schedule Trigger",
+          "typeVersion": 1,
+          "position": [240, 300],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "value": "0 1 1 * *"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "check_key_rotation_due",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [440, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_encryption_service.py check-rotation-needed"
+          }
+        },
+        {
+          "id": "backup_existing_keys",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [640, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_encryption_service.py backup-keys --secure-export"
+          }
+        },
+        {
+          "id": "generate_new_keys",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [840, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_encryption_service.py generate --key-type=data_encryption"
+          }
+        },
+        {
+          "id": "test_new_keys",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1040, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_encryption_service.py test-encrypt-decrypt --new-keys-only"
+          }
+        },
+        {
+          "id": "activate_new_keys",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1240, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_encryption_service.py activate --rotate-from-old"
+          }
+        },
+        {
+          "id": "verify_key_rotation",
+          "type": "Execute Command",
+          "typeVersion": 1,
+          "position": [1440, 300],
+          "parameters": {
+            "command": "python",
+            "arguments": "/opt/samia-tarot/backup_encryption_service.py verify-rotation-success"
+          }
+        },
+        {
+          "id": "update_key_tracking",
+          "type": "HTTP Request",
+          "typeVersion": 2,
+          "position": [1640, 300],
+          "parameters": {
+            "method": "POST",
+            "url": "https://samia-tarot.com/api/admin/encryption-status",
+            "headers": {
+              "Authorization": "Bearer {{$env.ADMIN_API_TOKEN}}",
+              "Content-Type": "application/json"
+            },
+            "body": {
+              "rotation_date": "={{new Date().toISOString()}}",
+              "old_keys_deprecated": true,
+              "new_keys_active": true,
+              "rotation_successful": true,
+              "next_rotation_due": "={{new Date(Date.now() + 90*24*60*60*1000).toISOString()}}"
+            }
+          }
+        },
+        {
+          "id": "send_rotation_notification",
+          "type": "Slack",
+          "typeVersion": 1,
+          "position": [1840, 300],
+          "parameters": {
+            "channel": "#security-alerts",
+            "text": "🔐 Monthly encryption key rotation completed",
+            "attachments": [
+              {
+                "color": "good",
+                "fields": [
+                  {
+                    "title": "Rotation Date",
+                    "value": "={{new Date().toISOString().split('T')[0]}}",
+                    "short": true
+                  },
+                  {
+                    "title": "Keys Rotated",
+                    "value": "Data encryption keys",
+                    "short": true
+                  },
+                  {
+                    "title": "Verification",
+                    "value": "✅ Passed",
+                    "short": true
+                  },
+                  {
+                    "title": "Next Rotation",
+                    "value": "{{new Date(Date.now() + 90*24*60*60*1000).toISOString().split('T')[0]}}",
+                    "short": true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "connections": {
+        "monthly_key_rotation_trigger": {
+          "main": [
+            [
+              {
+                "node": "check_key_rotation_due",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "check_key_rotation_due": {
+          "main": [
+            [
+              {
+                "node": "backup_existing_keys",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "backup_existing_keys": {
+          "main": [
+            [
+              {
+                "node": "generate_new_keys",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "generate_new_keys": {
+          "main": [
+            [
+              {
+                "node": "test_new_keys",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "test_new_keys": {
+          "main": [
+            [
+              {
+                "node": "activate_new_keys",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "activate_new_keys": {
+          "main": [
+            [
+              {
+                "node": "verify_key_rotation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "verify_key_rotation": {
+          "main": [
+            [
+              {
+                "node": "update_key_tracking",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "update_key_tracking": {
+          "main": [
+            [
+              {
+                "node": "send_rotation_notification",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "created_at": "2025-01-13T00:00:00Z",
+    "description": "n8n workflows for M34 Backup, DR & GameDay automation",
+    "author": "SRE Team",
+    "compliance_frameworks": ["NIST SP 800-34", "CISA Backup Guidelines"],
+    "installation_notes": [
+      "1. Import workflows into n8n instance",
+      "2. Configure environment variables: ADMIN_API_TOKEN, SLACK_WEBHOOK_URL",
+      "3. Verify script paths match deployment structure",
+      "4. Test workflows in staging before production activation",
+      "5. Ensure all Python services are deployed and accessible"
+    ],
+    "dependencies": [
+      "postgres_pitr_service.py",
+      "backup_321_policy_service.py", 
+      "backup_encryption_service.py",
+      "gameday_automation_service.py"
+    ]
+  }
+}

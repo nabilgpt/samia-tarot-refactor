@@ -1,7 +1,7 @@
 # SAMIA-TAROT — Context Engineering (Master Prompts Pack v3)
 **File**: SAMIA-TAROT-CONTEXT-ENGINEERING-3.md  
-**Version**: v1.1 (regenerated)  
-**Scope**: Authoritative prompts from **M21 → M29** to complete the project.  
+**Version**: v1.2 (with M30–M31)  
+**Scope**: Authoritative prompts from **M21 → M31** to complete the project.  
 **Rule**: Every prompt **must** begin with the Read-First block. No UI/theme changes. Keep code **maintainable & short**.
 
 ---
@@ -15,7 +15,6 @@ Do not proceed unless alignment is confirmed.
 
 Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
 
----
 
 ## M21 (Moderation & Audit)
 “Before doing anything, first read and strictly comply with:
@@ -25,28 +24,12 @@ C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTE
 Do not proceed unless alignment is confirmed.
 
 Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
+Goal (M21): Ship a robust **Moderation & Audit** layer: block/unblock, taxonomy, appeals, **tamper-evident audit** (hash-chain + signed exports), anomaly sweeps — **DB-first RLS** and OWASP logging.
 
-Goal (M21): Ship a robust **Moderation & Audit** layer: block/unblock, case taxonomy, escalation and appeals, **tamper-evident audit trail** (hash-chained + signed periodic exports), automated anomaly sweeps — all with **DB-first RLS** and OWASP-aligned logging.
+Scope: data (`moderation_actions`, `audit_log`, links), RLS (monitor/admin/superadmin full; others scoped), appeals table, append-only audit (prev_hash/row_hash), endpoints (block/unblock, moderate, cases, appeals resolve, admin/audit & attest, lineage recompute), nightly sweeps, logging w/o PII, retention windows.
+Deliverables: minimal handlers; RLS parity; tamper-evident audits; tests `test_m21_moderation_audit.py`; docs `MODERATION_AUDIT_README.md`.
+Acceptance: RLS isolation; signed audits; appeals; sweeps create cases; zero theme changes.”
 
-Scope:
-- Data & RLS (no UI changes):
-  * Use/extend: `moderation_actions`, `audit_log`, linkages to `orders`, `media_assets`, `calls`.
-  * RLS: Monitor/Admin/Superadmin full moderation visibility; Readers/Clients restricted to own scope; public = none.
-  * Taxonomy: normalized reasons (harassment, abuse, fraud, copyright, safety, …) + severity.
-  * Appeals: `appeals(id, subject_ref, opened_at, decided_at, decision, decided_by, notes)`.
-  * Audit integrity: **append-only** `audit_log` with `prev_hash`, `row_hash`; **monthly signed export** (detached signature).
-- Endpoints (JWT, deny-by-default):
-  * POST /monitor/block-user | POST /monitor/unblock-user — reason, duration, evidence refs.
-  * POST /monitor/moderate/order/:id — actions (hold, unlist, remove_media, escalate), reason/evidence.
-  * GET /monitor/cases — queue (pending + auto-sweeps).
-  * POST /monitor/appeals/:id/open | /resolve — decision + rationale.
-  * GET /admin/audit — filterable; POST /admin/audit/attest — signed snapshot.
-  * POST /monitor/lineage/recompute — rebuild order↔media↔calls evidence.
-- Automated sweeps (jobs): nightly rules for abnormal reject rates, refund loops, high call-drop %, payment fallback spikes, spam/bulk orders.
-- Logging: **no PII/OTP/tokens**; concise fields only; sanitized errors.
-- Retention: fixed windows for audit/moderation/appeals; auto-purge on schedule.
-Deliverables: minimal handlers; RLS+guards parity; audit integrity mechanism; tests (`test_m21_moderation_audit.py`); docs (`MODERATION_AUDIT_README.md`).
-Acceptance: RLS isolation; tamper-evident + signed audits; working appeals; sweeps produce cases; zero theme changes.”
 
 ---
 
@@ -58,61 +41,14 @@ C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTE
 Do not proceed unless alignment is confirmed.
 
 Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
-Goal (M22): Implement **Notifications & Campaigns** with per-TZ scheduling, consent/opt-in-out discipline, suppression lists, proofs, and minimal analytics — fully aligned with FCM/APNs push standards and Twilio SMS/WhatsApp compliance.
+Goal (M22): Implement **Notifications & Campaigns** with per-TZ scheduling, consent/opt-in-out, suppression, proofs, minimal analytics — **FCM/APNs** for push and **Twilio SMS/WhatsApp** compliance.
 
-Scope:
-- Channels & Providers:
-  * Push: **FCM** (Android/Web) and **APNs** (iOS); follow HTTP/2/TLS requirements and FCM HTTP v1.  
-  * Messaging: **Twilio SMS & WhatsApp**; enable standard **STOP/UNSTOP/HELP** and **Advanced Opt-Out** as needed.
-- Data Model:
-  * `notifications` (single events), `campaigns` (bulk), `audiences`, `sends`, `bounces`, `suppressions`, `consents`.  
-  * Store provider message IDs and delivery states; no PII payloads in logs.
-- Consent & Compliance:
-  * Per-channel **opt-in/opt-out** flags; record lawful basis; support **quiet hours** by **timezone cohorts** (reuse M18A cohorts).  
-  * Enforce suppression on complaints/hard-bounces automatically; admin can add manual suppressions.
-- Targeting:
-  * By role, country, engagement segments (e.g., last-7-day listeners), and “daily zodiac push” hook to M18A seeding.
-- Scheduling & Delivery:
-  * Cron-like jobs per **TZ cohort**; retries with backoff; idempotent send ops; request-scoped audit entries.  
-  * Track delivery/open/click when supported by the provider.
-- RLS/Guards:
-  * Users can view **their own** notification history; Admin/Superadmin aggregate stats; Monitor can view escalations only.  
-  * Deny-by-default; DB-first policies with route-guard parity.
+Scope: channels (FCM/APNs, Twilio), data (`notifications`,`campaigns`,`audiences`,`sends`,`bounces`,`suppressions`,`consents`), consent + quiet hours (TZ cohorts), targeting (role/country/engagement + daily zodiac), scheduling/retries/idempotent, proofs, RLS (user own history; admin aggregates; monitor escalations).
+Endpoints: create/schedule/stats campaigns; me/opt-in|opt-out; me/notifications; admin/suppressions.
+Deliverables: minimal handlers + adapters, jobs, tests `test_m22_notifications.py`, docs `NOTIFICATIONS_README.md`.
+Acceptance: opt-in respected; per-TZ works; webhooks verified; suppression honored; RLS parity; zero theme changes.”
 
-Endpoints (JWT, deny-by-default):
-- `POST /admin/campaigns` — create campaign (metadata, audience, channel, schedule window).  
-- `POST /admin/campaigns/:id/schedule` — activate; compute TZ cohort runs; idempotent.  
-- `GET /admin/campaigns/:id/stats` — aggregates (sends/delivered/open/click/bounce/opt-out).  
-- `POST /me/notifications/opt-in` | `POST /me/notifications/opt-out` — per-channel updates.  
-- `GET /me/notifications` — user’s own sends (last N).  
-- `POST /admin/suppressions` — add/remove suppression entries.
 
-Validation & Security:
-- Enforce **consent** before send; block if user opted-out; respect **quiet hours**.  
-- Use provider **HMAC/signature verification** for webhooks; store only message IDs/state.  
-- Logs: IDs/status/timestamps only; **no PII** or message bodies.
-
-Deliverables:
-1) Minimal, readable handlers for endpoints above.  
-2) Provider adapters (FCM/APNs/Twilio) with signature/credential verification.  
-3) Jobs: per-TZ scheduler, retries/backoff, suppression enforcement.  
-4) Tests: `test_m22_notifications.py` — consent/opt-out, per-TZ sends, idempotent dispatch, webhook verification, suppression flows, RLS parity.  
-5) Docs: `NOTIFICATIONS_README.md` — provider setup, cohort map, quiet hours, failure modes.
-
-Acceptance Criteria:
-- Campaigns send **only** to opted-in users; opt-outs honored instantly.  
-- Per-TZ cohort scheduling works; no cross-TZ leaks; retries are idempotent.  
-- Twilio/FCM/APNs webhooks/signatures verified; delivery states accurate.  
-- Suppressions applied automatically on complaint/hard-bounce; manual overrides respected.  
-- RLS prevents unauthorized reads; route-guards match DB policies.  
-- Zero theme/UX changes.
-
-Rollback Plan:
-- Disable campaigns/scheduler; keep data intact.  
-- Provider configs can be turned off via env/feature flags.  
-- No destructive schema rollback required.
-
-Reminder: Keep implementations concise and maintainable. Do not over-fragment files or introduce any theme/UI edits.”
 ---
 
 ## M23 (Analytics & KPIs)
@@ -123,22 +59,16 @@ C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTE
 Do not proceed unless alignment is confirmed.
 
 Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
+Goal (M23): Backend **Analytics & KPIs** via aggregates and query APIs (no UI): fulfillment, payments, calls QoS, engagement, content approval.
 
-Goal (M23): Deliver **Analytics & KPIs** via backend aggregates and query APIs (no UI work): fulfillment, payments, QoS for calls, engagement, content approval.
+Scope: `events_raw` (no PII) + nightly ETL to `metrics_daily_*`, KPIs list, RLS roles, endpoints `/metrics/*`, privacy & indexes.
+Deliverables: ETL, views/tables, tests `test_m23_analytics.py`, docs `ANALYTICS_README.md`.
+Acceptance: correct KPIs; RLS isolation; no PII; zero theme changes.”
 
-Scope:
-- Events: compact server events (no PII) → `events_raw` with schema versioning.
-- Aggregation: nightly jobs to roll-up into `metrics_daily_*` tables (materialized views allowed).
-- KPIs (non-exhaustive): TTF-Response, TTF-Delivery, approval rate, refund rate, payment success by provider/country, fallback rate, call answer/drop %, DAU/WAU/MAU, retention cohorts, notification CTR, listen-through.
-- Access: RLS — Admin/Superadmin wide; Monitor scoped to moderation-relevant; Reader scoped to own performance.
-- APIs: GET /metrics/overview?date=…, GET /metrics/fulfillment, /payments, /calls, /engagement, /content.
-- Privacy: minimize fields; keep IDs/hashes; retention windows for raw vs aggregates.
-Deliverables: ETL jobs; aggregate tables/views; tests (`test_m23_analytics.py`); docs (`ANALYTICS_README.md`).
-Acceptance: metrics compute correctly; RLS isolation; no PII leakage; zero theme changes.”
 
 ---
 
-## M24 (Community — Optional, Feature-Flagged)
+## M24 (Community — Feature-Flagged)
 “Before doing anything, first read and strictly comply with:
 C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTEXT-ENGINEERING.md
 and
@@ -146,18 +76,13 @@ C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTE
 Do not proceed unless alignment is confirmed.
 
 Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
+Goal (M24): Comments/Reactions behind a **feature flag (OFF)**, strict moderation & privacy.
 
-Goal (M24): Add **Community features** behind a feature flag (OFF by default): comments/reactions on delivered readings, with strict moderation & privacy.
+Scope: tables (`community_comments`,`community_reactions`,`community_flags`), flag `/admin/features`, M21 integration, RLS, retention jobs.
+Endpoints: create/list/moderate; stats.
+Deliverables: handlers, RLS parity, jobs, tests `test_m24_community.py`, docs `COMMUNITY_README.md`.
+Acceptance: flag OFF hides surface; moderation & appeals work; zero theme changes.”
 
-Scope:
-- Data: `comments`, `reactions`, `community_flags`.
-- RLS: author sees own; reader/admin/monitor per policy; public = none unless explicitly approved (default OFF).
-- Moderation: auto-queue to M21 pipeline; appeals supported.
-- Privacy: no personal identifiers in payloads; redact media in flags.
-- Feature Flag: /admin/features toggles; default OFF.
-Endpoints: POST /community/comments, POST /community/reactions, GET /community/threads (scoped), POST /monitor/community/:id/moderate.
-Deliverables: minimal handlers; tests (`test_m24_community.py`); docs (`COMMUNITY_README.md`).
-Acceptance: isolation via flag; moderation works; zero theme changes.”
 
 ---
 
@@ -169,18 +94,12 @@ C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTE
 Do not proceed unless alignment is confirmed.
 
 Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
+Goal (M25): Server-side personalization (internal only): ranked IDs + confidence; **no AI text to clients**.
 
-Goal (M25): Implement **server-side personalization** (internal-AI only): ranking/suggestions for content ordering, **no AI text surfaced to clients**.
+Scope: features (no PII), ranks, eval; APIs `/personalization/recommend`, `/personalization/metrics`; jobs; RLS; caching.
+Deliverables: handlers, pipelines, tests `test_m25_personalization.py`, docs `PERSONALIZATION_README.md`.
+Acceptance: stable rankings; opt-out honored; zero theme changes.”
 
-Scope:
-- Inputs: past engagement (listen-through, notifications CTR), cohort, country, device.
-- Outputs: ranked list of content IDs or notification candidates; confidence & rationale stored internally.
-- Privacy: no PII in models; opt-out respected.
-- Evaluation: offline A/B buckets; metrics only (no UI changes).
-- RLS: Admin/Superadmin metrics; Reader sees own analytics; clients unaffected.
-Endpoints: POST /personalization/recommend (internal), GET /personalization/metrics.
-Deliverables: lightweight service; tests (`test_m25_personalization.py`); docs (`PERSONALIZATION_README.md`).
-Acceptance: stable rankings; no client-visible AI text; KPIs measurable; zero theme changes.”
 
 ---
 
@@ -192,16 +111,12 @@ C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTE
 Do not proceed unless alignment is confirmed.
 
 Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
+Goal (M26): Backend for **AR assets** (optional): secure storage & linking; no UI.
 
-Goal (M26): Prepare backend for **AR assets** experiments (optional): store/retrieve AR overlays/effects linked to readings, with no UI dependency.
-
-Scope:
-- Data: `ar_assets`, linking table to orders or horoscopes.
-- Storage: private buckets + Signed URLs; lineage fields (sha256, bytes, duration/frame count).
-- RLS: Admin/Superadmin manage; Reader read if linked to assigned orders; public = none.
-Endpoints: POST /admin/ar/assets, GET /admin/ar/assets, POST /admin/ar/assets/link.
-Deliverables: minimal handlers; tests (`test_m26_ar.py`); docs (`AR_README.md`).
+Scope: `ar_assets`, `ar_links`, private buckets + Signed URLs; RLS; endpoints upload/list/link; validation.
+Deliverables: handlers, storage policies, tests `test_m26_ar.py`, docs `AR_README.md`.
 Acceptance: secure storage; RLS parity; zero theme changes.”
+
 
 ---
 
@@ -213,16 +128,12 @@ C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTE
 Do not proceed unless alignment is confirmed.
 
 Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
+Goal (M27): Admin-only AR/EN parity with **ICU MessageFormat**, optional auto-translate + human review.
 
-Goal (M27): Deepen **i18n** coverage for Admin flows only (no theme changes): ensure AR/EN parity, with optional **auto-translate toggle** for admin-edited fields.
+Scope: translation tables, glossary protection, APIs `/admin/i18n/*`, RLS admin-only.
+Deliverables: endpoints, tests `test_m27_i18n.py`, docs `I18N_README.md`.
+Acceptance: parity preserved; ICU-compliant; zero theme changes.”
 
-Scope:
-- Data: extend translation tables; flag translatable fields; store `source_lang` + `auto_translated` markers.
-- APIs: POST /admin/i18n/translate (batch), GET /admin/i18n/status.
-- Quality: glossary and protected terms; admin review pipeline; do-not-translate rules.
-- RLS: Admin/Superadmin only.
-Deliverables: endpoints + docs (`I18N_README.md`); tests (`test_m27_i18n.py`).
-Acceptance: AR/EN parity preserved; no theme changes.”
 
 ---
 
@@ -234,17 +145,13 @@ C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTE
 Do not proceed unless alignment is confirmed.
 
 Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
+Goal (M28): Harden **secrets & providers ops**: rotation, health checks, **circuit breakers**, safe toggles, auditable changes.
 
-Goal (M28): Harden **Secrets management & Providers ops**: rotation, health checks, circuit breakers, and configuration hygiene.
+Scope: secrets rotation, providers liveness/readiness + retry/backoff + breakers, single config surface, audit events, RLS (admin manage/monitor read).
+Endpoints: `/admin/providers/health`, `/admin/providers/toggle`, `/admin/secrets/rotate`.
+Deliverables: handlers, adapters, tests `test_m28_ops.py`, docs `OPS_README.md`.
+Acceptance: rotation works; health reliable; toggles effective; zero theme changes.”
 
-Scope:
-- Secrets: rotation schedule; versioned keys; least-privilege env scoping; no secrets in logs.
-- Providers: liveness/readiness checks; backoff/retry; circuit breaker for repeated failures.
-- Config: one place for provider toggles; safe defaults; immutable builds.
-- Audit: record key rotations and provider state changes.
-Endpoints: GET /admin/providers/health, POST /admin/providers/toggle, POST /admin/secrets/rotate (admin-gated).
-Deliverables: ops scripts; tests (`test_m28_ops.py`); docs (`OPS_README.md`).
-Acceptance: rotation works; health checks reliable; toggles effective; zero theme changes.”
 
 ---
 
@@ -256,20 +163,43 @@ C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTE
 Do not proceed unless alignment is confirmed.
 
 Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
+Goal (M29): **SRE & Cost guards**: golden signals, rate limits/quotas (**429 + Retry-After**), budgets & alerts, incident runbooks.
 
-Goal (M29): Establish **SRE & Cost guards**: rate limits, quotas, budgets, alerting, and incident runbooks.
+Scope: limits/quotas (token bucket), breakers on providers, budgets (FinOps), observability & tracing hooks, backups/DR snapshot policies.
+Endpoints: `/admin/health/overview`, `/admin/budget`, `/admin/incident/declare`.
+Deliverables: configs, handlers, tests `test_m29_sre_cost.py`, docs `SRE_COST_README.md`.
+Acceptance: limits enforced; budgets alert; DR drill documented; zero theme changes.”
 
-Scope:
-- Rate limiting/Quotas: per IP/user/route; burst + sustained; safe error responses.
-- Budgets: provider usage & storage/egress budget alarms; fallback to degraded modes.
-- Observability: golden signals (latency, errors, saturation, traffic); tracing hooks.
-- Incident: on-call rotation metadata, escalation matrix, runbooks (paginated), post-mortems.
-- Backups/DR: snapshot policies; restore drills.
-Endpoints: GET /admin/health/overview, GET /admin/budget, POST /admin/incident/declare.
-Deliverables: configs & jobs; tests (`test_m29_sre_cost.py`); docs (`SRE_COST_README.md`).
-Acceptance: protective limits enforced; budgets alert; DR drill documented; zero theme changes.”
 
 ---
 
-**Notes**
-- Every deliverable must preserve: **No theme/UX edits**, **short & maintainable code**, **idempotency where applicable**, **RLS first** with exact route-guard parity.
+## M30 (Go-Live Readiness & Compliance Pack)
+“Before doing anything, first read and strictly comply with:
+C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTEXT-ENGINEERING.md
+and
+C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTEXT-ENGINEERING-2.md
+Do not proceed unless alignment is confirmed.
+
+Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
+Goal (M30): Deliver a production-ready **Go-Live & Compliance pack**: formal **DPIA**, **Data Map & Retention**, **Backup/DR** runbooks & drills, **OWASP WSTG**-aligned tests, and **Release/Rollback** checklist — backend-only with RLS parity.
+
+Scope: DPIA, Data Map, retention & purge jobs, DR/BCP drills, WSTG security smoke, SRE gates (golden signals, 429 semantics), release engineering artifacts.
+Deliverables: DPIA/DATA_MAP/RETENTION_MATRIX; DR_RUNBOOK + drills; test_m30_security_readiness.py; RELEASE_CHECKLIST/ROLLBACK_PLAN/POST_RELEASE_MONITORING.
+Acceptance: DPIA approved; restore drill passes; tests green; alerts active; zero theme changes.”
+
+
+---
+
+## M31 (Production Cutover & D0–D7 Monitoring)
+“Before doing anything, first read and strictly comply with:
+C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTEXT-ENGINEERING.md
+and
+C:\Users\saeee\OneDrive\Documents\project\samia-tarot-refactor\SAMIA-TAROT-CONTEXT-ENGINEERING-2.md
+Do not proceed unless alignment is confirmed.
+
+Global reminder: Do **NOT** touch or change the global theme/UX. Build backend/DB only. Keep the code **maintainable & short**.
+Goal (M31): Execute **production cutover** safely and run **D0–D7 monitoring**: pre-flight gates, staged flags, golden-signals alerts, budget guards, rollback — backend-only with strict RLS/route-guard parity.
+
+Scope: gates (WSTG, RLS parity, DPIA sign-off, restore drill), staged rollout (cohorts 1–5%), rate limits (429 + Retry-After), breakers + degraded modes, budgets.
+Deliverables: release ticket + tag `v1.0.0`, cutover checklist artifacts, D0–D7 notes, verification report.
+Acceptance: dashboards live, alerts firing, staged rollout enforced, rollback ready; zero theme changes.”

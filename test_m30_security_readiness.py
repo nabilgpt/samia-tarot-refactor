@@ -1,28 +1,52 @@
+#!/usr/bin/env python3
 """
-M30: Security Readiness Testing - OWASP WSTG Aligned
-
-Comprehensive security testing aligned with OWASP Web Security Testing Guide
-covering authentication, authorization, input validation, session management,
-and API security.
-
-Run: python test_m30_security_readiness.py
+M30 Security Readiness Testing
+OWASP WSTG-based security validation for production cutover pre-flight gates
 """
-
-import unittest
-import requests
+import os
+import sys
 import json
-import time
 import hashlib
-import hmac
-import base64
-import jwt
-from datetime import datetime, timedelta
-from urllib.parse import urlencode, quote_plus
 import psycopg2
-from unittest.mock import patch, MagicMock
+from psycopg2.pool import SimpleConnectionPool
+from datetime import datetime, timedelta
+
+# Configuration
+DSN = os.getenv("DB_DSN") or "postgresql://postgres.ciwddvprfhlqidfzklaq:SisI2009@aws-1-eu-north-1.pooler.supabase.com:5432/postgres"
+POOL = SimpleConnectionPool(minconn=1, maxconn=3, dsn=DSN)
 
 
-class TestM30AuthenticationSecurity(unittest.TestCase):
+class SecurityTestResults:
+    def __init__(self):
+        self.tests_run = 0
+        self.tests_passed = 0
+        self.tests_failed = 0
+        self.critical_failures = []
+        self.warnings = []
+        
+    def add_test(self, test_name: str, passed: bool, critical: bool = False, details: str = ""):
+        self.tests_run += 1
+        if passed:
+            self.tests_passed += 1
+            print(f"[PASS] {test_name}")
+        else:
+            self.tests_failed += 1
+            if critical:
+                self.critical_failures.append(f"{test_name}: {details}")
+                print(f"[CRITICAL] {test_name} - {details}")
+            else:
+                self.warnings.append(f"{test_name}: {details}")
+                print(f"[FAIL] {test_name} - {details}")
+        
+    def get_pass_rate(self) -> float:
+        if self.tests_run == 0:
+            return 0.0
+        return (self.tests_passed / self.tests_run) * 100
+    
+    def is_ready_for_production(self) -> bool:
+        return len(self.critical_failures) == 0 and self.get_pass_rate() >= 95.0
+
+def test_authentication_security() -> SecurityTestResults:
     """OWASP WSTG-ATHN - Authentication Testing"""
     
     def setUp(self):

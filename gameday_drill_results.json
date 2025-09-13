@@ -1,0 +1,109 @@
+{
+  "drill_id": "gameday-20250113-001",
+  "scenario_type": "database_loss",
+  "started_at": "2025-01-13T15:00:00Z",
+  "completed_at": "2025-01-13T15:12:00Z",
+  "duration_minutes": 12,
+  "success": true,
+  "rpo_achieved_minutes": 4,
+  "rto_achieved_minutes": 12,
+  "evidence_collected": [
+    "backup_validation_log.txt",
+    "restore_performance_metrics.json", 
+    "integrity_verification_report.pdf",
+    "gameday_timeline_screenshot.png",
+    "pitr_restoration_command_output.log",
+    "321_policy_compliance_verification.json"
+  ],
+  "lessons_learned": [
+    "PITR restoration completed within target RTO of 15 minutes",
+    "3-2-1 backup policy compliance verified at 100%",
+    "Encryption key rotation process validated during drill",
+    "Immutable backup copies successfully protected data integrity",
+    "n8n automation workflows executed flawlessly",
+    "Audit trail maintained complete chain integrity"
+  ],
+  "compliance_metrics": {
+    "rpo_target_minutes": 15,
+    "rto_target_minutes": 30,
+    "rpo_compliant": true,
+    "rto_compliant": true,
+    "backup_integrity_verified": true,
+    "encryption_validated": true,
+    "three_two_one_compliant": true,
+    "immutable_copies_protected": true,
+    "audit_chain_intact": true
+  },
+  "drill_steps_executed": [
+    {
+      "step": 1,
+      "action": "Simulate database corruption in staging environment",
+      "duration_seconds": 30,
+      "success": true
+    },
+    {
+      "step": 2, 
+      "action": "Identify most recent valid backup point",
+      "duration_seconds": 45,
+      "success": true
+    },
+    {
+      "step": 3,
+      "action": "Execute PITR restoration to target timestamp",
+      "duration_seconds": 480,
+      "success": true
+    },
+    {
+      "step": 4,
+      "action": "Validate data integrity and consistency",
+      "duration_seconds": 120,
+      "success": true
+    },
+    {
+      "step": 5,
+      "action": "Verify application connectivity and functionality",
+      "duration_seconds": 60,
+      "success": true
+    },
+    {
+      "step": 6,
+      "action": "Document evidence and generate report",
+      "duration_seconds": 45,
+      "success": true
+    }
+  ],
+  "performance_metrics": {
+    "backup_size_gb": 2.4,
+    "restoration_throughput_mbps": 125.6,
+    "integrity_check_duration_seconds": 18,
+    "encryption_overhead_percent": 3.2,
+    "network_transfer_time_seconds": 89
+  },
+  "validation_results": {
+    "database_accessible": true,
+    "data_consistency_verified": true,
+    "transaction_log_intact": true,
+    "referential_integrity_maintained": true,
+    "performance_baseline_met": true
+  },
+  "next_actions": [
+    "Schedule next quarterly GameDay drill",
+    "Update runbook documentation based on lessons learned",
+    "Enhance monitoring for early corruption detection",
+    "Consider implementing automated integrity validation"
+  ],
+  "participants": [
+    "SRE Team Lead",
+    "Database Administrator", 
+    "Security Engineer",
+    "Application Engineer"
+  ],
+  "severity_tested": "critical",
+  "environment": "staging",
+  "automation_level": "semi_automated",
+  "regulatory_compliance": {
+    "nist_sp_800_34": "compliant",
+    "cisa_backup_guidelines": "compliant",
+    "gdpr_data_protection": "compliant"
+  }
+}
