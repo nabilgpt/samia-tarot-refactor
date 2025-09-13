@@ -1,0 +1,12 @@
+{
+  "last_run": {
+    "status": "PASS",
+    "started_at": "2025-09-13T13:27:10.658244Z",
+    "finished_at": "2025-09-13T13:27:10.658254Z",
+    "notes": "Validated after TestFlight and Play Internal publish."
+  },
+  "links": {
+    "testflight": "https://testflight.apple.com/join/EXAMPLE",
+    "play_internal": "https://play.google.com/console/developers/EXAMPLE/internal-testing"
+  }
+}

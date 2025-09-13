@@ -210,6 +210,8 @@ _Last updated: 2025-09-13 10:53:58 (UTC+3)_
 - **M38 Legal/Compliance 18+** — Delivered (service & policies).
 - **M39 Mobile Packaging** — **Verified**.
 - **M40 Emergency & Availability** — **ADDED** (siren, on‑call, escalation).
+- **M41 Performance & Resilience** — **DELIVERED** (circuit breakers, load testing, metrics, runbook).
+- **M45 Admin Links-Only Validation Panel** — **DELIVERED** (store validation summary endpoints).
 
 ## 15) Acceptance Criteria & E2E Tests (high‑level)
 - **RLS parity**: unauthorized DB reads fail even if routes are mis‑configured.
@@ -245,6 +247,9 @@ Implement `008_notifications.sql` and endpoints for templates, prefs, and sendin
 ```
 
 ## 17) Change Log
+- 2025-09-13 — **M41 Performance & Resilience → DELIVERED**. Circuit breaker module, k6 load testing, performance metrics (p50/p95/p99 per route), enhanced rate limiting with Retry-After, RUNBOOK_PERF.md. All tests passed.
+- 2025-09-13 — **M45 Admin Links-Only Validation Panel → DELIVERED**. Endpoints: `GET/POST /api/admin/store-validation/summary` (Admin-only, audited, with metrics counters). Database tests passed.
+- 2025-09-13 — **M40 Emergency & Availability → ADDED**. Siren escalation service, reader availability windows, call termination, database schema with RLS policies applied.
 - 2025-09-13 — **M39 Mobile Packaging → Verified**. Screenshots Uploaded + Synthetics PASS (store deployment simulation + evidence artifacts)
 - 2025-09-13 — **M39 Mobile Packaging updated to READY FOR SUBMISSION**. Completed: TikTok legacy removal + security hardening validation + store readiness framework + synthetic probes. Evidence linked in verification report.
 - 2025-09-13 — Added/updated sections for **M14 Payments, M15 Notifications, M23 Analytics, M24 Community (flag), M25 Personalization (internal), Daily Horoscopes hard policy (Admin-only + RLS + 60d retention), M38 Compliance, M39 Mobile Packaging, M40 Emergency/Siren, Observability & Alerts, Acceptance Criteria, Engineering Prompts**. Created automatic backup: `SAMIA-TAROT-CONTEXT-ENGINEERING-MASTER-M1-M46.backup-20250913-105358.md`.

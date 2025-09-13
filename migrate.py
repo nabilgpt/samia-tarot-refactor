@@ -28,6 +28,7 @@ MIGRATIONS = [
     ("008_notifications.sql", load_migration_file("008_notifications.sql")),
     ("009_privacy.sql", load_migration_file("009_privacy.sql")),
     ("009_remove_tiktok.sql", load_migration_file("009_remove_tiktok.sql")),
+    ("010_availability_siren.sql", load_migration_file("010_availability_siren.sql")),
     ("010_rls.sql", load_migration_file("010_rls.sql")),
     ("002_dsr_compliance.sql", load_migration_file("002_dsr_compliance.sql")),
 ]

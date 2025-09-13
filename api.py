@@ -2,9 +2,10 @@
 # Zero theme drift - backend endpoints only
 # Usage: uvicorn api:app --reload
 
-import os, json, uuid, subprocess, hashlib, base64
+import os, json, uuid, subprocess, hashlib, base64, time
 from datetime import datetime, timedelta
 from typing import Optional, List
+from collections import defaultdict, deque
 
 import psycopg2
 from psycopg2.pool import SimpleConnectionPool
@@ -81,6 +82,89 @@ def write_audit(actor: str, event: str, entity: str = None, entity_id: str = Non
         INSERT INTO audit_log(actor, event, entity, entity_id, meta, created_at)
         VALUES (%s, %s, %s, %s, %s, %s)
     """, (actor, event, entity, entity_id, json.dumps(meta or {}), datetime.utcnow()))
+
+# M41: Performance Metrics Collection
+class PerformanceTracker:
+    """Track request performance metrics in-memory"""
+    
+    def __init__(self, max_samples=1000):
+        self.max_samples = max_samples
+        # Store recent latencies per route for percentile calculation
+        self.latencies = defaultdict(lambda: deque(maxlen=max_samples))
+        self.request_counts = defaultdict(int)
+        self.error_counts = defaultdict(int)
+        self.rate_limit_breaches = 0
+    
+    def record_request(self, route: str, method: str, duration_ms: float, status_code: int):
+        """Record request metrics"""
+        route_key = f"{method}_{route}"
+        self.latencies[route_key].append(duration_ms)
+        self.request_counts[route_key] += 1
+        
+        if status_code >= 500:
+            self.error_counts[route_key] += 1
+        elif status_code == 429:
+            self.rate_limit_breaches += 1
+    
+    def get_percentile(self, values, percentile):
+        """Calculate percentile from list of values"""
+        if not values:
+            return 0
+        sorted_values = sorted(values)
+        index = int((percentile / 100) * len(sorted_values))
+        return sorted_values[min(index, len(sorted_values) - 1)]
+    
+    def get_metrics(self) -> dict:
+        """Get current performance metrics"""
+        metrics = {
+            'rate_limit_breaches_total': self.rate_limit_breaches
+        }
+        
+        for route_key, latencies in self.latencies.items():
+            if latencies:
+                latency_list = list(latencies)
+                metrics[f'requests_total_{route_key}'] = self.request_counts[route_key]
+                metrics[f'errors_total_{route_key}'] = self.error_counts[route_key]
+                metrics[f'latency_ms_p50_{route_key}'] = self.get_percentile(latency_list, 50)
+                metrics[f'latency_ms_p95_{route_key}'] = self.get_percentile(latency_list, 95)
+                metrics[f'latency_ms_p99_{route_key}'] = self.get_percentile(latency_list, 99)
+                
+                # Error rate
+                error_rate = self.error_counts[route_key] / self.request_counts[route_key] if self.request_counts[route_key] > 0 else 0
+                metrics[f'error_rate_{route_key}'] = round(error_rate, 4)
+        
+        return metrics
+
+# Global performance tracker
+perf_tracker = PerformanceTracker()
+
+async def track_performance(request: Request, call_next):
+    """Middleware to track request performance"""
+    start_time = time.time()
+    
+    try:
+        response = await call_next(request)
+        duration_ms = (time.time() - start_time) * 1000
+        
+        # Extract route pattern for metrics
+        route = request.url.path
+        method = request.method
+        
+        # Normalize route for metrics (replace IDs with placeholders)
+        import re
+        route_normalized = re.sub(r'/[0-9a-f-]{8,}', '/{id}', route)
+        route_normalized = re.sub(r'/\d+', '/{id}', route_normalized)
+        
+        perf_tracker.record_request(route_normalized, method, duration_ms, response.status_code)
+        
+        return response
+    except Exception as e:
+        duration_ms = (time.time() - start_time) * 1000
+        perf_tracker.record_request(request.url.path, request.method, duration_ms, 500)
+        raise
+
+# M41: Add performance tracking middleware to app
+app.middleware("http")(track_performance)
 
 # Pydantic models
 class AuthSyncRequest(BaseModel):
@@ -554,6 +638,9 @@ def enforce_rate_limit(user_id: str, endpoint: str, limit: int = 60, window_sec:
         )[0]
         
         if not allowed:
+            # M41: Increment breach counter for metrics
+            perf_tracker.rate_limit_breaches += 1
+            
             # Log rate limit hit (once per window to avoid spam)
             write_audit(
                 actor=user_id,
@@ -565,7 +652,8 @@ def enforce_rate_limit(user_id: str, endpoint: str, limit: int = 60, window_sec:
             
             raise HTTPException(
                 status_code=429, 
-                detail="Rate limit exceeded"
+                detail="Rate limit exceeded",
+                headers={"Retry-After": str(window_sec)}  # M41: Always include Retry-After
             )
     except HTTPException:
         raise
@@ -1721,6 +1809,38 @@ def ops_metrics(days: int = Query(1), x_user_id: str = Header(...)):
             # Reset timings for next collection
             sql_timer_wrapper.timings = []
         
+        # M40: Siren metrics
+        siren_metrics = {}
+        try:
+            from services.siren_service import SirenService
+            siren_service = SirenService(get_db_config())
+            siren_metrics = siren_service.get_siren_metrics()
+        except Exception as e:
+            siren_metrics = {"error": f"Siren metrics unavailable: {str(e)}"}
+        
+        # M45: Store validation metrics
+        store_validation_reads = 0
+        store_validation_updates = 0
+        try:
+            reads_row = db_fetchone("SELECT value FROM app_settings WHERE key = 'metrics.store_validation_reads_total'")
+            store_validation_reads = int(reads_row[0]) if reads_row else 0
+            
+            updates_row = db_fetchone("SELECT value FROM app_settings WHERE key = 'metrics.store_validation_updates_total'") 
+            store_validation_updates = int(updates_row[0]) if updates_row else 0
+        except Exception:
+            pass  # Ignore metrics collection errors
+        
+        # M41: Performance metrics
+        perf_metrics = perf_tracker.get_metrics()
+        
+        # Circuit breaker status
+        circuit_status = {}
+        try:
+            from services.providers_guard import ProviderGuard
+            circuit_status = ProviderGuard.get_circuit_status()
+        except Exception:
+            pass  # Ignore if providers_guard not available
+        
         metrics = {
             "period_days": days,
             "orders_created": orders_created,
@@ -1730,7 +1850,12 @@ def ops_metrics(days: int = Query(1), x_user_id: str = Header(...)):
             "calls_started": calls_started,
             "calls_ended": calls_ended,
             "rate_limit_hits": rate_limit_hits,
-            "avg_sql_latency_ms": round(avg_sql_latency, 2)
+            "avg_sql_latency_ms": round(avg_sql_latency, 2),
+            "store_validation_reads_total": store_validation_reads,
+            "store_validation_updates_total": store_validation_updates,
+            "circuit_breakers": circuit_status,
+            **siren_metrics,  # Include siren/availability metrics
+            **perf_metrics    # Include M41 performance metrics
         }
         
         # Audit (low verbosity)
@@ -10913,6 +11038,431 @@ def generate_signed_url(storage_key: str, resource_type: str = "default") -> str
     })
     
     return f"https://private-bucket.example.com/{storage_key}?signature={signature}&expires={expires_at}"
+
+# M40: Siren & Availability Endpoints
+
+class SirenTriggerRequest(BaseModel):
+    config_name: str
+    trigger_context: dict
+
+class AvailabilitySetRequest(BaseModel):
+    day_of_week: int  # 0=Sunday, 1=Monday, etc.
+    start_time: str   # HH:MM format
+    end_time: str     # HH:MM format
+    timezone: str = "UTC"
+
+@app.post("/api/siren/trigger")
+def trigger_siren(request: SirenTriggerRequest, x_user_id: str = Header(...)):
+    """Trigger emergency siren escalation - Monitor/Admin only"""
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        
+        # Initialize siren service
+        from services.siren_service import SirenService
+        siren_service = SirenService(get_db_config())
+        
+        # Trigger escalation asynchronously 
+        import asyncio
+        success = asyncio.run(siren_service.trigger_siren(
+            request.config_name, 
+            request.trigger_context
+        ))
+        
+        if not success:
+            raise HTTPException(status_code=404, detail="Siren config not found or inactive")
+        
+        write_audit(user_id, "siren_triggered", "siren_config", request.config_name, {
+            "trigger_context": request.trigger_context
+        })
+        
+        return {"status": "triggered", "config_name": request.config_name}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Siren trigger failed: {str(e)}")
+
+@app.get("/api/calls/{call_id}/terminate")
+def terminate_call(call_id: str, x_user_id: str = Header(...)):
+    """Force terminate call - Monitor/Admin only (M40)"""
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        
+        # Check call exists and is active
+        call = db_fetchone("""
+            SELECT id, status, reader_id, client_id, twilio_call_sid
+            FROM calls 
+            WHERE id = %s
+        """, (call_id,))
+        
+        if not call:
+            raise HTTPException(status_code=404, detail="Call not found")
+        
+        call_id_db, status, reader_id, client_id, twilio_sid = call
+        
+        if status in ['completed', 'terminated', 'failed']:
+            return {"status": "already_terminated", "call_status": status}
+        
+        # Terminate via Twilio if active
+        terminated_twilio = False
+        if twilio_sid and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
+            try:
+                import requests
+                auth = (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+                url = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Calls/{twilio_sid}.json"
+                response = requests.post(url, auth=auth, data={"Status": "completed"})
+                terminated_twilio = response.status_code == 200
+            except Exception as e:
+                # Log but don't fail - we can still mark as terminated in our DB
+                print(f"Twilio termination failed: {e}")
+        
+        # Update call status
+        db_exec("""
+            UPDATE calls 
+            SET status = 'terminated', ended_at = %s, termination_reason = 'admin_forced'
+            WHERE id = %s
+        """, (datetime.utcnow(), call_id))
+        
+        # Log event
+        db_exec("""
+            INSERT INTO call_events (call_id, event_type, event_data, created_at)
+            VALUES (%s, 'terminated', %s, %s)
+        """, (call_id, json.dumps({
+            "terminated_by": user_id,
+            "twilio_terminated": terminated_twilio,
+            "reason": "admin_forced"
+        }), datetime.utcnow()))
+        
+        write_audit(user_id, "call_terminated", "call", call_id, {
+            "reader_id": reader_id,
+            "client_id": client_id,
+            "twilio_terminated": terminated_twilio
+        })
+        
+        # Trigger alert for unexpected termination
+        if terminated_twilio:
+            siren_service = SirenService(get_db_config())
+            asyncio.run(siren_service.trigger_siren("call_drop_alert", {
+                "call_id": call_id,
+                "terminated_by": user_id,
+                "reason": "admin_forced"
+            }))
+        
+        return {
+            "status": "terminated",
+            "call_id": call_id,
+            "twilio_terminated": terminated_twilio
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Call termination failed: {str(e)}")
+
+@app.get("/api/availability/readers")
+def get_available_readers(datetime_slot: str = Query(...), x_user_id: str = Header(...)):
+    """Get readers available at specific datetime - Monitor/Admin only"""
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        
+        # Parse datetime
+        try:
+            slot_datetime = datetime.fromisoformat(datetime_slot.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid datetime format. Use ISO format.")
+        
+        from services.siren_service import SirenService
+        siren_service = SirenService(get_db_config())
+        
+        available_reader_ids = siren_service.get_available_readers(slot_datetime)
+        
+        # Get reader details
+        if available_reader_ids:
+            placeholders = ','.join(['%s'] * len(available_reader_ids))
+            readers = db_fetchall(f"""
+                SELECT id, full_name, phone 
+                FROM profiles 
+                WHERE id IN ({placeholders}) AND role = 'reader'
+            """, available_reader_ids)
+        else:
+            readers = []
+        
+        return {
+            "datetime_slot": datetime_slot,
+            "available_readers": [
+                {
+                    "id": reader[0],
+                    "full_name": reader[1],
+                    "phone": reader[2]
+                }
+                for reader in readers
+            ]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get available readers: {str(e)}")
+
+@app.post("/api/availability/set")
+def set_reader_availability(request: AvailabilitySetRequest, x_user_id: str = Header(...)):
+    """Set reader availability window - Reader can set own, Admin can set any"""
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        # Readers can only set their own availability
+        target_reader_id = user_id
+        if role in ['admin', 'superadmin']:
+            # Admin can set for any reader (TODO: add reader_id param if needed)
+            pass
+        elif role != 'reader':
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        
+        # Validate time format
+        try:
+            from datetime import time
+            start = time.fromisoformat(request.start_time)
+            end = time.fromisoformat(request.end_time)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid time format. Use HH:MM.")
+        
+        if request.day_of_week < 0 or request.day_of_week > 6:
+            raise HTTPException(status_code=400, detail="day_of_week must be 0-6 (0=Sunday)")
+        
+        from services.siren_service import SirenService
+        siren_service = SirenService(get_db_config())
+        
+        success = siren_service.set_reader_availability(
+            target_reader_id, 
+            request.day_of_week,
+            start, 
+            end, 
+            request.timezone
+        )
+        
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to set availability")
+        
+        write_audit(user_id, "availability_set", "reader_availability", target_reader_id, {
+            "day_of_week": request.day_of_week,
+            "start_time": request.start_time,
+            "end_time": request.end_time,
+            "timezone": request.timezone
+        })
+        
+        return {
+            "status": "set",
+            "reader_id": target_reader_id,
+            "availability": {
+                "day_of_week": request.day_of_week,
+                "start_time": request.start_time,
+                "end_time": request.end_time,
+                "timezone": request.timezone
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to set availability: {str(e)}")
+
+@app.get("/api/availability/my")
+def get_my_availability(x_user_id: str = Header(...)):
+    """Get current user's availability windows - Reader only"""
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role != 'reader':
+            raise HTTPException(status_code=403, detail="Reader access only")
+        
+        windows = db_fetchall("""
+            SELECT day_of_week, start_time, end_time, timezone, is_active, created_at, updated_at
+            FROM reader_availability 
+            WHERE reader_id = %s 
+            ORDER BY day_of_week, start_time
+        """, (user_id,))
+        
+        return {
+            "reader_id": user_id,
+            "availability_windows": [
+                {
+                    "day_of_week": w[0],
+                    "start_time": str(w[1]),
+                    "end_time": str(w[2]),
+                    "timezone": w[3],
+                    "is_active": w[4],
+                    "created_at": w[5].isoformat() if w[5] else None,
+                    "updated_at": w[6].isoformat() if w[6] else None
+                }
+                for w in windows
+            ]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get availability: {str(e)}")
+
+# M45: Admin Store Validation Panel
+
+class StoreValidationSummary(BaseModel):
+    last_run: dict  # {"status": "PASS|FAIL|NONE", "started_at": "ISO8601", "finished_at": "ISO8601", "notes": "string"}
+    links: dict     # {"testflight": "https://...", "play_internal": "https://..."}
+
+@app.get("/api/admin/store-validation/summary")
+def get_store_validation_summary(x_user_id: str = Header(...)):
+    """Get store validation summary - Admin only (M45)"""
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Get last run data from app_settings
+        last_run_raw = db_fetchone("""
+            SELECT value FROM app_settings 
+            WHERE key = 'store.validation.last_run'
+        """)
+        
+        links_raw = db_fetchone("""
+            SELECT value FROM app_settings 
+            WHERE key = 'store.validation.links'  
+        """)
+        
+        # Parse JSON or use defaults
+        last_run = json.loads(last_run_raw[0]) if last_run_raw else {
+            "status": "NONE", 
+            "started_at": None, 
+            "finished_at": None, 
+            "notes": "No validation run recorded"
+        }
+        
+        links = json.loads(links_raw[0]) if links_raw else {
+            "testflight": None,
+            "play_internal": None
+        }
+        
+        # Audit read
+        write_audit(user_id, "store_validation_read", "app_settings", "store.validation", {
+            "last_run_status": last_run.get("status"),
+            "links_available": bool(links.get("testflight") or links.get("play_internal"))
+        })
+        
+        # Increment metrics counter
+        db_exec("""
+            INSERT INTO app_settings (key, value) 
+            VALUES ('metrics.store_validation_reads_total', '1')
+            ON CONFLICT (key) 
+            DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::TEXT
+        """)
+        
+        return {
+            "last_run": last_run,
+            "links": links
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get store validation summary: {str(e)}")
+
+@app.post("/api/admin/store-validation/summary")
+def update_store_validation_summary(request: StoreValidationSummary, x_user_id: str = Header(...)):
+    """Update store validation summary - Admin only (M45)"""
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+        
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        # Validate schema
+        last_run = request.last_run
+        links = request.links
+        
+        # Validate last_run structure
+        required_fields = ["status", "started_at", "finished_at", "notes"]
+        for field in required_fields:
+            if field not in last_run:
+                raise HTTPException(status_code=400, detail=f"Missing required field in last_run: {field}")
+        
+        if last_run["status"] not in ["PASS", "FAIL", "NONE"]:
+            raise HTTPException(status_code=400, detail="Invalid status. Must be PASS, FAIL, or NONE")
+        
+        # Validate ISO8601 timestamps if provided
+        for ts_field in ["started_at", "finished_at"]:
+            if last_run[ts_field]:
+                try:
+                    datetime.fromisoformat(last_run[ts_field].replace('Z', '+00:00'))
+                except ValueError:
+                    raise HTTPException(status_code=400, detail=f"Invalid ISO8601 timestamp: {ts_field}")
+        
+        # Upsert to app_settings
+        db_exec("""
+            INSERT INTO app_settings (key, value) 
+            VALUES ('store.validation.last_run', %s)
+            ON CONFLICT (key) 
+            DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+        """, (json.dumps(last_run),))
+        
+        db_exec("""
+            INSERT INTO app_settings (key, value) 
+            VALUES ('store.validation.links', %s)
+            ON CONFLICT (key) 
+            DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
+        """, (json.dumps(links),))
+        
+        # Audit write
+        write_audit(user_id, "store_validation_update", "app_settings", "store.validation", {
+            "last_run": last_run,
+            "links": links
+        })
+        
+        # Increment metrics counter
+        db_exec("""
+            INSERT INTO app_settings (key, value) 
+            VALUES ('metrics.store_validation_updates_total', '1')
+            ON CONFLICT (key) 
+            DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::TEXT
+        """)
+        
+        return {
+            "status": "updated",
+            "last_run": last_run,
+            "links": links
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update store validation summary: {str(e)}")
+
+def get_db_config():
+    """Get database connection config for services"""
+    import urllib.parse
+    parsed = urllib.parse.urlparse(DSN)
+    return {
+        'host': parsed.hostname,
+        'port': parsed.port,
+        'database': parsed.path[1:],  # Remove leading slash
+        'user': parsed.username,
+        'password': parsed.password
+    }
 
 # Background jobs for SRE operations
 def collect_golden_signals_metrics():
