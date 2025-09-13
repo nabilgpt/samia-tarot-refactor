@@ -74,7 +74,7 @@ jobs:
             mkdir -p performance-reports
             echo "# M36 Performance Report - $(date +%Y-%m-%d)
 
-##  CI Workflow Status
+## ✅ CI Workflow Status
 - Lighthouse CI simulation: PASSED
 - Dependencies installation: PASSED  
 - Build process: COMPLETED
