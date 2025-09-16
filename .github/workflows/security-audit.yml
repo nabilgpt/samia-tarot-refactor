@@ -1,0 +1,185 @@
+name: M38 Security Audit - Nightly
+
+on:
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    # Allow manual runs
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install psycopg2-binary
+
+      - name: Run Security Audit
+        run: |
+          python security_audit.py
+        env:
+          DB_DSN: ${{ secrets.DB_DSN }}
+
+      - name: Run Security Check
+        run: |
+          python simple_security_check.py
+        env:
+          DB_DSN: ${{ secrets.DB_DSN }}
+
+      - name: Create Security Report
+        run: |
+          # Create timestamped report
+          mkdir -p security-reports
+          timestamp=$(date +%Y-%m-%d_%H-%M-%S)
+
+          {
+            echo "# Nightly Security Audit Report"
+            echo "Generated: $(date)"
+            echo ""
+            echo "## Quick Security Check"
+            python simple_security_check.py
+            echo ""
+            echo "## Detailed Security Audit"
+            python security_audit.py
+          } > security-reports/audit-$timestamp.md
+        env:
+          DB_DSN: ${{ secrets.DB_DSN }}
+
+      - name: Upload Security Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-audit-report
+          path: security-reports/
+          retention-days: 30
+
+      - name: Check for Critical Issues
+        run: |
+          # If security_audit.py exits with non-zero, create an issue
+          if ! python security_audit.py > /dev/null 2>&1; then
+            echo "CRITICAL: Security audit detected failures"
+            exit 1
+          fi
+          echo "Security audit passed - no critical issues detected"
+        env:
+          DB_DSN: ${{ secrets.DB_DSN }}
+
+      - name: Create GitHub Issue on Failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // Create issue for security failures
+            const title = `🚨 Security Audit Failure - ${new Date().toISOString().split('T')[0]}`;
+            const body = `## Security Audit Alert
+
+            The nightly security audit has detected critical issues that require immediate attention.
+
+            **Timestamp:** ${new Date().toISOString()}
+            **Workflow:** ${{ github.workflow }}
+            **Run ID:** ${{ github.run_id }}
+
+            ### Next Steps
+            1. Check the workflow logs for detailed error information
+            2. Download the security audit artifacts
+            3. Run \`python security_audit.py\` locally to diagnose issues
+            4. Address any RLS, FORCE RLS, or SECURITY DEFINER vulnerabilities
+
+            ### Quick Commands
+            \`\`\`bash
+            # Run local audit
+            python security_audit.py
+            python simple_security_check.py
+
+            # Fix common issues
+            python apply_force_rls_and_fixes.py
+            \`\`\`
+
+            **Priority:** Critical
+            **Labels:** security, urgent
+            `;
+
+            // Check if issue already exists
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'security,urgent'
+            });
+
+            const existingIssue = issues.find(issue =>
+              issue.title.includes('Security Audit Failure') &&
+              issue.created_at > new Date(Date.now() - 24*60*60*1000).toISOString()
+            );
+
+            if (!existingIssue) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['security', 'urgent', 'automated']
+              });
+            }
+
+  security-summary:
+    runs-on: ubuntu-latest
+    needs: security-audit
+    if: always()
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install psycopg2-binary
+
+      - name: Generate Security Status Summary
+        run: |
+          python security_status_summary.py
+        env:
+          DB_DSN: ${{ secrets.DB_DSN }}
+
+      - name: Update Security Badge
+        run: |
+          # Create security status badge data
+          if python simple_security_check.py > /dev/null 2>&1; then
+            echo "SECURE" > security-status.txt
+            echo "brightgreen" > security-color.txt
+          else
+            echo "VULNERABLE" > security-status.txt
+            echo "red" > security-color.txt
+          fi
+        env:
+          DB_DSN: ${{ secrets.DB_DSN }}
+
+      - name: Commit Security Status
+        run: |
+          # Only commit if there are changes
+          if [ -f security-status.txt ]; then
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+
+            # Only commit if status changed
+            if ! git diff --quiet security-status.txt 2>/dev/null; then
+              git add security-status.txt security-color.txt
+              git commit -m "chore: Update security audit status [skip ci]" || exit 0
+              git push || exit 0
+            fi
+          fi
