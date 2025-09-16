@@ -1,0 +1,68 @@
+{
+  "timestamp": "2025-09-16T11:25:57.069922",
+  "tests": {
+    "Database Connection": {
+      "status": "PASS",
+      "timestamp": "2025-09-16T11:25:57.968541",
+      "details": {
+        "connectivity": true,
+        "inventory_records": 13,
+        "rls_policies": 81
+      }
+    },
+    "Supabase Auth": {
+      "status": "SKIPPED",
+      "timestamp": "2025-09-16T11:25:58.058730",
+      "details": {
+        "reason": "Missing Supabase credentials"
+      }
+    },
+    "Stripe Integration": {
+      "status": "SKIPPED",
+      "timestamp": "2025-09-16T11:25:58.058753",
+      "details": {
+        "reason": "Missing Stripe secret key"
+      }
+    },
+    "Webhook Signature": {
+      "status": "SKIPPED",
+      "timestamp": "2025-09-16T11:25:58.058759",
+      "details": {
+        "reason": "Missing webhook secret"
+      }
+    },
+    "API Health": {
+      "status": "PASS",
+      "timestamp": "2025-09-16T11:26:02.150525",
+      "details": {
+        "health_status": 422,
+        "health_working": false,
+        "auth_protected": false
+      }
+    },
+    "Job Token Rotation": {
+      "status": "PASS",
+      "timestamp": "2025-09-16T11:26:02.938603",
+      "details": {
+        "recent_rotations": 0,
+        "rotation_recorded": false
+      }
+    },
+    "Secrets Inventory": {
+      "status": "PASS",
+      "timestamp": "2025-09-16T11:26:03.812067",
+      "details": {
+        "active_secrets": 13,
+        "overdue_rotations": 0,
+        "inventory_healthy": true
+      }
+    }
+  },
+  "summary": {
+    "total": 7,
+    "passed": 4,
+    "failed": 0,
+    "skipped": 3
+  },
+  "overall_status": "PASS"
+}
