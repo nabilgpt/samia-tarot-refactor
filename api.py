@@ -8637,6 +8637,139 @@ def get_payments_metrics(from_date: str = Query(None), to_date: str = Query(None
                        {"error": str(e)}, request_id)
         raise HTTPException(status_code=500, detail=f"Payment metrics failed: {str(e)}")
 
+@app.get("/api/metrics/invoices")
+def get_invoice_metrics(from_date: str = Query(None), to_date: str = Query(None),
+                       x_user_id: str = Header(...)):
+    """Get M37 invoice service metrics - admin only"""
+    request_id = generate_request_id()
+
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+
+        # Access control: Admin/Superadmin only
+        if role not in ['admin', 'superadmin']:
+            write_audit_m23(user_id, "invoice_metrics_denied", "analytics", None,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin access required for invoice metrics")
+
+        start_date, end_date = parse_date_range(from_date, to_date, 30)
+
+        # Invoice generation metrics
+        generation_metrics = db_fetchone("""
+            SELECT
+                COUNT(*) FILTER (WHERE pdf_generated_at IS NOT NULL) as pdfs_generated,
+                COUNT(*) FILTER (WHERE pdf_storage_path IS NOT NULL) as pdfs_stored,
+                COUNT(*) as total_invoices,
+                AVG(total_cents) as avg_amount_cents,
+                SUM(total_cents) as total_revenue_cents
+            FROM invoices i
+            WHERE i.created_at BETWEEN %s AND %s
+        """, (start_date, end_date))
+
+        # Signed URL issuance metrics
+        signed_url_metrics = db_fetchone("""
+            SELECT
+                COUNT(*) FILTER (WHERE access_type = 'signed_url_issued') as urls_issued,
+                COUNT(DISTINCT invoice_id) FILTER (WHERE access_type = 'signed_url_issued') as unique_invoices_accessed,
+                COUNT(*) FILTER (WHERE access_type = 'pdf_downloaded') as downloads,
+                COUNT(*) FILTER (WHERE success = false) as failed_accesses
+            FROM invoice_access_audit
+            WHERE created_at BETWEEN %s AND %s
+        """, (start_date, end_date))
+
+        # Access patterns by day
+        daily_access = db_fetchall("""
+            SELECT
+                DATE(created_at) as access_date,
+                COUNT(*) FILTER (WHERE access_type = 'signed_url_issued') as urls_issued,
+                COUNT(DISTINCT accessed_by) as unique_users
+            FROM invoice_access_audit
+            WHERE created_at BETWEEN %s AND %s
+            GROUP BY DATE(created_at)
+            ORDER BY access_date DESC
+            LIMIT 30
+        """, (start_date, end_date))
+
+        # Storage efficiency metrics
+        storage_metrics = db_fetchone("""
+            SELECT
+                COUNT(DISTINCT pdf_hash) as unique_pdfs,
+                COUNT(*) FILTER (WHERE pdf_hash IS NOT NULL) as total_pdf_records,
+                AVG(signed_url_issued_count) as avg_url_reissuances
+            FROM invoices
+            WHERE created_at BETWEEN %s AND %s
+              AND pdf_hash IS NOT NULL
+        """, (start_date, end_date))
+
+        # Recent error patterns
+        error_patterns = db_fetchall("""
+            SELECT
+                error_message,
+                COUNT(*) as error_count,
+                MAX(created_at) as last_occurrence
+            FROM invoice_access_audit
+            WHERE created_at BETWEEN %s AND %s
+              AND success = false
+              AND error_message IS NOT NULL
+            GROUP BY error_message
+            ORDER BY error_count DESC
+            LIMIT 10
+        """, (start_date, end_date))
+
+        write_audit_m23(user_id, "invoice_metrics_retrieved", "analytics", None,
+                       {"date_range": f"{start_date} to {end_date}"}, request_id)
+
+        return {
+            "date_range": {
+                "start": start_date.isoformat(),
+                "end": end_date.isoformat()
+            },
+            "generation": {
+                "pdfs_generated": generation_metrics[0] or 0,
+                "pdfs_stored": generation_metrics[1] or 0,
+                "total_invoices": generation_metrics[2] or 0,
+                "avg_amount_cents": float(generation_metrics[3] or 0),
+                "total_revenue_cents": generation_metrics[4] or 0
+            },
+            "access": {
+                "signed_urls_issued": signed_url_metrics[0] or 0,
+                "unique_invoices_accessed": signed_url_metrics[1] or 0,
+                "downloads": signed_url_metrics[2] or 0,
+                "failed_accesses": signed_url_metrics[3] or 0
+            },
+            "storage": {
+                "unique_pdfs": storage_metrics[0] or 0,
+                "total_pdf_records": storage_metrics[1] or 0,
+                "avg_url_reissuances": float(storage_metrics[2] or 0),
+                "deduplication_ratio": round((storage_metrics[0] or 0) / max(storage_metrics[1] or 1, 1), 3)
+            },
+            "daily_access": [
+                {
+                    "date": row[0].isoformat(),
+                    "urls_issued": row[1],
+                    "unique_users": row[2]
+                }
+                for row in daily_access
+            ],
+            "error_patterns": [
+                {
+                    "error": row[0],
+                    "count": row[1],
+                    "last_occurrence": row[2].isoformat()
+                }
+                for row in error_patterns
+            ],
+            "request_id": request_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m23(user_id, "invoice_metrics_failed", "analytics", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Invoice metrics failed: {str(e)}")
+
 @app.get("/api/metrics/calls")
 def get_calls_metrics(from_date: str = Query(None), to_date: str = Query(None),
                      service_code: str = Query(None), country_code: str = Query(None),
@@ -10595,15 +10728,95 @@ def _handle_stripe_webhook(event: dict, event_type: str):
     if event_type in ["payment_intent.succeeded", "payment_intent.payment_failed"]:
         intent_data = event.get("data", {}).get("object", {})
         external_id = intent_data.get("id")
-        
+
         if external_id:
             new_status = "succeeded" if event_type == "payment_intent.succeeded" else "failed"
-            
+
+            # Update payment intent status
             db_exec("""
-                UPDATE payment_intents 
+                UPDATE payment_intents
                 SET status = %s, provider_response = %s, updated_at = NOW()
                 WHERE external_id = %s
             """, (new_status, json.dumps(intent_data), external_id))
+
+            # M37: Auto-generate invoice for successful payments
+            if new_status == "succeeded":
+                try:
+                    # Get payment intent details
+                    payment_info = db_fetchone("""
+                        SELECT pi.order_id, pi.user_id, pi.amount_cents, pi.currency,
+                               o.service_id, o.question_text
+                        FROM payment_intents pi
+                        JOIN orders o ON o.id = pi.order_id
+                        WHERE pi.external_id = %s
+                    """, (external_id,))
+
+                    if payment_info:
+                        order_id, user_id, amount_cents, currency, service_id, question_text = payment_info
+
+                        # Check if invoice already exists
+                        existing_invoice = db_fetchone("""
+                            SELECT id FROM invoices WHERE order_id = %s
+                        """, (order_id,))
+
+                        if not existing_invoice:
+                            # Get service details for invoice
+                            service_info = db_fetchone("""
+                                SELECT name, description FROM services WHERE id = %s
+                            """, (service_id,))
+
+                            service_name = service_info[0] if service_info else "Tarot Service"
+                            service_desc = service_info[1] if service_info else "Professional Tarot Reading"
+
+                            # Get user billing info
+                            user_info = db_fetchone("""
+                                SELECT email, CONCAT(first_name, ' ', last_name) as full_name, country FROM profiles WHERE id = %s
+                            """, (user_id,))
+
+                            billing_email = user_info[0] if user_info else "unknown@example.com"
+                            billing_name = user_info[1] if user_info else "Customer"
+                            billing_country = user_info[2] if user_info else "United States"
+
+                            # Create invoice
+                            invoice_number = f"INV-{order_id}-{int(datetime.now().timestamp())}"
+
+                            invoice_id = db_fetchone("""
+                                INSERT INTO invoices (
+                                    number, order_id, total_cents, currency,
+                                    subtotal_cents, vat_cents, billing_name,
+                                    billing_email, billing_country
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                RETURNING id
+                            """, (
+                                invoice_number, order_id, amount_cents, currency,
+                                amount_cents, 0, billing_name, billing_email, billing_country
+                            ))[0]
+
+                            # Create invoice item
+                            db_exec("""
+                                INSERT INTO invoice_items (
+                                    invoice_id, order_id, service_name, description,
+                                    quantity, unit_price_cents, total_cents, currency
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            """, (
+                                invoice_id, order_id, service_name, service_desc,
+                                1, amount_cents, amount_cents, currency
+                            ))
+
+                            # Log invoice auto-generation
+                            write_audit("system", "invoice_auto_generated", "invoice", str(invoice_id), {
+                                "order_id": order_id,
+                                "payment_intent_id": external_id,
+                                "amount_cents": amount_cents,
+                                "trigger": "payment_intent.succeeded"
+                            })
+
+                except Exception as e:
+                    # Don't fail webhook processing if invoice generation fails
+                    write_audit("system", "invoice_auto_generation_failed", "payment_event", external_id, {
+                        "error": str(e),
+                        "event_type": event_type
+                    })
 
 def _handle_square_webhook(event: dict, event_type: str):
     """Handle Square-specific webhook events"""
@@ -10617,10 +10830,174 @@ def _handle_square_webhook(event: dict, event_type: str):
             new_status = "succeeded" if status == "COMPLETED" else "failed"
             
             db_exec("""
-                UPDATE payment_intents 
+                UPDATE payment_intents
                 SET status = %s, provider_response = %s, updated_at = NOW()
                 WHERE external_id = %s
             """, (new_status, json.dumps(payment_data), external_id))
+
+# ========================================
+# M37 Invoice Service API - Private storage with Signed URLs
+# ========================================
+
+@app.get("/api/payments/invoice/{order_id}")
+def get_invoice_signed_url(order_id: int, x_user_id: str = Header(...)):
+    """Generate short-lived Signed URL for invoice PDF access - M37"""
+    try:
+        user_id = x_user_id
+
+        # Import services
+        import importlib.util
+
+        # Import M37 modules
+        generator_spec = importlib.util.spec_from_file_location("generator", "m37_invoice_pdf_generator.py")
+        generator_module = importlib.util.module_from_spec(generator_spec)
+        generator_spec.loader.exec_module(generator_module)
+
+        storage_spec = importlib.util.spec_from_file_location("storage", "m37_invoice_storage.py")
+        storage_module = importlib.util.module_from_spec(storage_spec)
+        storage_spec.loader.exec_module(storage_module)
+
+        # Get invoice ID for order
+        invoice = db_fetchone("""
+            SELECT id, pdf_storage_path, pdf_generated_at, total_cents
+            FROM invoices
+            WHERE order_id = %s
+        """, (order_id,))
+
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found for this order")
+
+        invoice_id, pdf_path, pdf_generated_at, total_cents = invoice
+
+        # Generate PDF if not exists
+        if not pdf_generated_at or not pdf_path:
+            generator = generator_module.DeterministicInvoicePDF()
+
+            try:
+                result = generator.generate_invoice_pdf(invoice_id)
+                pdf_bytes = result['pdf_bytes']
+                content_hash = result['content_hash']
+
+                # Store in private storage
+                storage = storage_module.InvoiceStorageService()
+                storage_result = storage.store_invoice_pdf(invoice_id, pdf_bytes, content_hash)
+
+                if not storage_result['success']:
+                    raise HTTPException(status_code=500, detail="Invoice storage failed")
+
+                # Refresh invoice data after generation
+                invoice = db_fetchone("""
+                    SELECT id, pdf_storage_path, pdf_generated_at, total_cents
+                    FROM invoices
+                    WHERE id = %s
+                """, (invoice_id,))
+
+                if not invoice:
+                    raise HTTPException(status_code=500, detail="Invoice disappeared after generation")
+
+                invoice_id, pdf_path, pdf_generated_at, total_cents = invoice
+
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Invoice generation failed: {str(e)}")
+
+        # Generate signed URL with extended TTL for invoices (60 minutes)
+        storage = storage_module.InvoiceStorageService()
+
+        try:
+            # Get client IP for audit logging
+            from fastapi import Request
+            import inspect
+            frame = inspect.currentframe()
+            request = None
+            for var_name, var_value in frame.f_locals.items():
+                if isinstance(var_value, Request):
+                    request = var_value
+                    break
+
+            client_ip = None
+            user_agent = None
+            if request:
+                client_ip = request.client.host if request.client else None
+                user_agent = request.headers.get("User-Agent")
+
+            signed_result = storage.create_signed_url(
+                invoice_id=invoice_id,
+                user_id=user_id,
+                expires_in_minutes=60,  # Extended TTL for invoices
+                client_ip=client_ip,
+                user_agent=user_agent
+            )
+
+            # Audit log
+            write_audit(user_id, "invoice_accessed", "invoice", str(invoice_id), {
+                "order_id": order_id,
+                "signed_url_expires_at": signed_result['expires_at'],
+                "total_cents": total_cents,
+                "access_method": "signed_url"
+            })
+
+            return {
+                "invoice_id": invoice_id,
+                "order_id": order_id,
+                "signed_url": signed_result['signed_url'],
+                "expires_at": signed_result['expires_at'],
+                "expires_in_minutes": signed_result['expires_in_minutes'],
+                "mock_mode": signed_result.get('mock_mode', False)
+            }
+
+        except PermissionError:
+            raise HTTPException(status_code=403, detail="Access denied to invoice")
+        except ValueError as e:
+            if "not found" in str(e):
+                raise HTTPException(status_code=404, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Signed URL generation failed: {str(e)}")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Invoice access failed: {str(e)}")
+
+@app.get("/api/payments/invoice/{order_id}/stats")
+def get_invoice_access_stats(order_id: int, x_user_id: str = Header(...)):
+    """Get invoice access statistics (admin/superadmin only) - M37"""
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+
+        if role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Admin access required")
+
+        # Get invoice ID for order
+        invoice = db_fetchone("""
+            SELECT id FROM invoices WHERE order_id = %s
+        """, (order_id,))
+
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found for this order")
+
+        invoice_id = invoice[0]
+
+        # Import storage module
+        import importlib.util
+        storage_spec = importlib.util.spec_from_file_location("storage", "m37_invoice_storage.py")
+        storage_module = importlib.util.module_from_spec(storage_spec)
+        storage_spec.loader.exec_module(storage_module)
+
+        storage = storage_module.InvoiceStorageService()
+        stats = storage.get_invoice_access_stats(invoice_id)
+
+        return {
+            "invoice_id": invoice_id,
+            "order_id": order_id,
+            "stats": stats
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
 
 # ========================================
 # M15 Notifications API (Rate Limited)
