@@ -13,6 +13,20 @@ from fastapi import FastAPI, HTTPException, Header, Query, Response, Request
 from pydantic import BaseModel
 import requests
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # python-dotenv not installed - will use system environment variables
+    pass
+
+# Twilio Verify Service import
+from twilio_verify_service import TwilioVerifyService
+# M40 Siren Escalation Service import
+from siren_service import siren_service
+from siren_notification_processor import notification_processor
+
 # Database connection pool
 DSN = os.getenv("DB_DSN") or "postgresql://postgres.ciwddvprfhlqidfzklaq:SisI2009@aws-1-eu-north-1.pooler.supabase.com:5432/postgres"
 POOL = SimpleConnectionPool(minconn=1, maxconn=5, dsn=DSN)
@@ -36,6 +50,14 @@ SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "audio")  # default bucket name
 VOICE_PROVIDER = os.getenv("VOICE_PROVIDER")  # e.g. 'elevenlabs', 'azure'
 VOICE_API_KEY = os.getenv("VOICE_API_KEY")
 
+# WhatsApp Business API Compliance Configuration
+# IMPORTANT: WhatsApp has a 24-hour customer service window
+# - Within 24h of customer message: Can send any message
+# - Outside 24h window: Only approved template messages allowed
+# - All promotional/transactional messages outside 24h must use approved templates
+WHATSAPP_24H_WINDOW_ENABLED = os.getenv("WHATSAPP_24H_WINDOW_ENABLED", "true").lower() == "true"
+WHATSAPP_TEMPLATE_NAMESPACE = os.getenv("WHATSAPP_TEMPLATE_NAMESPACE", "samia_tarot")  # Template namespace
+
 # M10 - DeepConf and Semantic Galaxy (internal only)
 DEEPCONF_API_URL = os.getenv("DEEPCONF_API_URL")
 DEEPCONF_API_KEY = os.getenv("DEEPCONF_API_KEY")
@@ -43,6 +65,13 @@ SEMANTIC_API_URL = os.getenv("SEMANTIC_API_URL")
 SEMANTIC_API_KEY = os.getenv("SEMANTIC_API_KEY")
 
 app = FastAPI(title="SAMIA-TAROT API", version="1.0.0")
+
+# Initialize Twilio Verify Service
+try:
+    twilio_verify = TwilioVerifyService()
+except Exception as e:
+    print(f"Warning: Twilio Verify Service initialization failed: {e}")
+    twilio_verify = None
 
 # Database helpers
 def db_exec(sql: str, params=None):
@@ -179,6 +208,16 @@ class PhoneCheckRequest(BaseModel):
     user_id: str
     phone: str
     code: str
+
+# Twilio Verify V2 Models
+class VerifyStartRequest(BaseModel):
+    to: str  # Phone number in E.164 format or email address
+    channel: str = "sms"  # sms, voice, whatsapp, email
+    locale: str = "en"  # Language for verification messages
+
+class VerifyCheckRequest(BaseModel):
+    to: str  # Phone number in E.164 format or email address
+    code: str  # Verification code entered by user
 
 class OrderCreateRequest(BaseModel):
     service_code: str
@@ -317,6 +356,25 @@ class SirenAlertRequest(BaseModel):
 class SirenResponseRequest(BaseModel):
     action: str  # acknowledge, resolve, false_alarm
     notes: Optional[str] = None
+
+# M40 - Emergency Siren Escalation models
+class SirenTriggerRequest(BaseModel):
+    incident_type: str
+    severity: int  # 1-5 (1=Critical, 5=Info)
+    source: str
+    policy_name: str
+    context: dict
+    variables: dict
+    force: bool = False  # Bypass dedup/cooldown
+
+class SirenAckRequest(BaseModel):
+    incident_id: int
+
+class SirenResolveRequest(BaseModel):
+    incident_id: int
+
+class SirenTestRequest(BaseModel):
+    policy_name: str
 
 class HoroscopeScheduleRequest(BaseModel):
     ref_date: str  # YYYY-MM-DD format
@@ -838,12 +896,22 @@ def auth_sync(request: AuthSyncRequest):
 
 @app.post("/api/verify/phone/start")
 def phone_start(request: PhoneStartRequest):
-    """Start phone verification via Twilio"""
+    """Start phone verification via Twilio (LEGACY - use /api/auth/verify/start instead)"""
     try:
         user_id = request.user_id
         phone = request.phone
         channel = request.channel
-        
+
+        # Enforce E.164 format for phone numbers
+        if twilio_verify:
+            normalized_phone = twilio_verify.normalize_phone_e164(phone)
+            if not normalized_phone:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Phone number must be in valid E.164 format (e.g. +1234567890)"
+                )
+            phone = normalized_phone
+
         # Rate limiting: 5 phone verifications per hour per user
         enforce_rate_limit(user_id, "phone_verify_start", limit=5, window_sec=3600)
         
@@ -908,11 +976,21 @@ def phone_start(request: PhoneStartRequest):
 
 @app.post("/api/verify/phone/check")
 def phone_check(request: PhoneCheckRequest):
-    """Check phone verification code via Twilio"""
+    """Check phone verification code via Twilio (LEGACY - use /api/auth/verify/check instead)"""
     try:
         user_id = request.user_id
         phone = request.phone
         code = request.code
+
+        # Enforce E.164 format for phone numbers
+        if twilio_verify:
+            normalized_phone = twilio_verify.normalize_phone_e164(phone)
+            if not normalized_phone:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Phone number must be in valid E.164 format (e.g. +1234567890)"
+                )
+            phone = normalized_phone
         
         # Get latest verification record
         verification = db_fetchone("""
@@ -8770,6 +8848,141 @@ def get_invoice_metrics(from_date: str = Query(None), to_date: str = Query(None)
                        {"error": str(e)}, request_id)
         raise HTTPException(status_code=500, detail=f"Invoice metrics failed: {str(e)}")
 
+@app.get("/api/metrics/compliance")
+def get_compliance_metrics(from_date: str = Query(None), to_date: str = Query(None),
+                          x_user_id: str = Header(...)):
+    """Get M38 legal compliance metrics - admin only"""
+    request_id = generate_request_id()
+
+    try:
+        user_id = x_user_id
+        role = get_user_role(user_id)
+
+        # Access control: Admin/Superadmin only
+        if role not in ['admin', 'superadmin']:
+            write_audit_m23(user_id, "compliance_metrics_denied", "analytics", None,
+                           {"role": role}, request_id)
+            raise HTTPException(status_code=403, detail="Admin access required for compliance metrics")
+
+        start_date, end_date = parse_date_range(from_date, to_date, 30)
+
+        # Age verification metrics
+        age_metrics = db_fetchone("""
+            SELECT
+                COUNT(*) as total_verifications,
+                COUNT(*) FILTER (WHERE over18 = true) as verified_18plus,
+                COUNT(*) FILTER (WHERE over18 = false) as denied_under18,
+                COUNT(DISTINCT user_id) as unique_users_verified,
+                AVG(EXTRACT(YEAR FROM NOW()) - dob_year) as avg_age
+            FROM age_verifications
+            WHERE verified_at BETWEEN %s AND %s
+              AND dob_year IS NOT NULL
+        """, (start_date, end_date))
+
+        # Consent tracking metrics
+        consent_metrics = db_fetchall("""
+            SELECT
+                policy_type,
+                COUNT(*) as total_consents,
+                COUNT(DISTINCT user_id) as unique_users,
+                MAX(policy_version) as latest_version
+            FROM user_consents
+            WHERE consent_timestamp BETWEEN %s AND %s
+            GROUP BY policy_type
+        """, (start_date, end_date))
+
+        # Compliance violations (gate denials)
+        violation_metrics = db_fetchone("""
+            SELECT
+                COUNT(*) FILTER (WHERE action_type = 'age_verification_denied') as age_denials,
+                COUNT(*) FILTER (WHERE success = false AND action_type LIKE '%consent%') as consent_failures,
+                COUNT(DISTINCT user_id) as users_with_violations
+            FROM legal_compliance_audit
+            WHERE created_at BETWEEN %s AND %s
+        """, (start_date, end_date))
+
+        # Daily compliance events
+        daily_events = db_fetchall("""
+            SELECT
+                DATE(created_at) as event_date,
+                action_type,
+                COUNT(*) as event_count
+            FROM legal_compliance_audit
+            WHERE created_at BETWEEN %s AND %s
+            GROUP BY DATE(created_at), action_type
+            ORDER BY event_date DESC, action_type
+            LIMIT 100
+        """, (start_date, end_date))
+
+        # Current compliance status
+        current_status = db_fetchone("""
+            SELECT
+                COUNT(*) FILTER (WHERE av.over18 = true) as users_age_verified,
+                COUNT(*) FILTER (WHERE uc_tos.user_id IS NOT NULL) as users_tos_consented,
+                COUNT(*) FILTER (WHERE uc_pp.user_id IS NOT NULL) as users_privacy_consented,
+                COUNT(*) FILTER (WHERE uc_age.user_id IS NOT NULL) as users_age_consented
+            FROM age_verifications av
+            FULL OUTER JOIN user_consents uc_tos ON av.user_id = uc_tos.user_id AND uc_tos.policy_type = 'terms_of_service'
+            FULL OUTER JOIN user_consents uc_pp ON av.user_id = uc_pp.user_id AND uc_pp.policy_type = 'privacy_policy'
+            FULL OUTER JOIN user_consents uc_age ON av.user_id = uc_age.user_id AND uc_age.policy_type = 'age_policy'
+            WHERE av.verified_at >= %s OR uc_tos.consent_timestamp >= %s
+               OR uc_pp.consent_timestamp >= %s OR uc_age.consent_timestamp >= %s
+        """, (start_date, start_date, start_date, start_date))
+
+        write_audit_m23(user_id, "compliance_metrics_retrieved", "analytics", None,
+                       {"date_range": f"{start_date} to {end_date}"}, request_id)
+
+        return {
+            "date_range": {
+                "start": start_date.isoformat(),
+                "end": end_date.isoformat()
+            },
+            "age_verification": {
+                "total_attempts": age_metrics[0] or 0,
+                "verified_18plus": age_metrics[1] or 0,
+                "denied_under18": age_metrics[2] or 0,
+                "unique_users": age_metrics[3] or 0,
+                "average_age": float(age_metrics[4] or 0),
+                "success_rate": round((age_metrics[1] or 0) / max(age_metrics[0] or 1, 1), 3)
+            },
+            "consent_tracking": [
+                {
+                    "policy_type": row[0],
+                    "total_consents": row[1],
+                    "unique_users": row[2],
+                    "latest_version": row[3]
+                }
+                for row in consent_metrics
+            ],
+            "violations": {
+                "age_denials": violation_metrics[0] or 0,
+                "consent_failures": violation_metrics[1] or 0,
+                "users_with_violations": violation_metrics[2] or 0
+            },
+            "current_status": {
+                "age_verified_users": current_status[0] or 0,
+                "tos_consented_users": current_status[1] or 0,
+                "privacy_consented_users": current_status[2] or 0,
+                "age_policy_consented_users": current_status[3] or 0
+            },
+            "daily_events": [
+                {
+                    "date": row[0].isoformat(),
+                    "action_type": row[1],
+                    "count": row[2]
+                }
+                for row in daily_events
+            ],
+            "request_id": request_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        write_audit_m23(user_id, "compliance_metrics_failed", "analytics", None,
+                       {"error": str(e)}, request_id)
+        raise HTTPException(status_code=500, detail=f"Compliance metrics failed: {str(e)}")
+
 @app.get("/api/metrics/calls")
 def get_calls_metrics(from_date: str = Query(None), to_date: str = Query(None),
                      service_code: str = Query(None), country_code: str = Query(None),
@@ -11000,6 +11213,600 @@ def get_invoice_access_stats(order_id: int, x_user_id: str = Header(...)):
         raise HTTPException(status_code=500, detail=f"Stats retrieval failed: {str(e)}")
 
 # ========================================
+# M38 Legal Compliance & 18+ Gating API - Backend only, no UI changes
+# ========================================
+
+class LegalConsentRequest(BaseModel):
+    policy_type: str = "terms_of_service"  # terms_of_service, privacy_policy, age_policy
+    policy_version: int
+    ip_address: Optional[str] = None
+
+class AgeVerificationRequest(BaseModel):
+    dob_year: Optional[int] = None
+    over18_attestation: bool
+    verification_method: str = "self_attestation"
+
+def hash_ip_address(ip: str) -> str:
+    """Hash IP address for audit trail without storing raw IP"""
+    import hashlib
+    import os
+    salt = os.getenv("IP_SALT", "samia-tarot-default-salt")
+    return hashlib.sha256(f"{salt}:{ip}".encode()).hexdigest()
+
+def check_whatsapp_24h_window(user_id: str) -> Dict[str, Any]:
+    """
+    Check if user is within 24-hour WhatsApp customer service window.
+
+    WhatsApp Business API Compliance:
+    - Within 24h of customer message: Can send any message
+    - Outside 24h window: Only approved template messages allowed
+
+    Returns:
+        Dict with 'within_window': bool and 'last_message_time': datetime or None
+    """
+    if not WHATSAPP_24H_WINDOW_ENABLED:
+        return {"within_window": True, "last_message_time": None}
+
+    try:
+        # Look for last inbound WhatsApp message from user
+        # This would typically check your WhatsApp webhook message log
+        # For now, return placeholder implementation
+
+        last_message = db_fetchone("""
+            SELECT created_at FROM audit_log
+            WHERE actor = %s
+            AND event = 'whatsapp_message_received'
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, (user_id,))
+
+        if not last_message:
+            # No previous messages - outside window
+            return {"within_window": False, "last_message_time": None}
+
+        last_message_time = last_message[0]
+        window_cutoff = datetime.utcnow() - timedelta(hours=24)
+        within_window = last_message_time > window_cutoff
+
+        return {
+            "within_window": within_window,
+            "last_message_time": last_message_time.isoformat()
+        }
+
+    except Exception:
+        # On error, assume outside window for compliance safety
+        return {"within_window": False, "last_message_time": None}
+
+def check_18plus_gate(user_id: str, require_consent: bool = True) -> dict:
+    """Check if user passes 18+ gate and consent requirements"""
+    try:
+        # Check age verification
+        age_verified = db_fetchone("""
+            SELECT check_age_verification(%s)
+        """, (user_id,))[0]
+
+        if not age_verified:
+            return {"allowed": False, "reason": "age_verification_required"}
+
+        if require_consent:
+            # Check consent for all required policies
+            for policy_type in ['terms_of_service', 'privacy_policy', 'age_policy']:
+                consent_valid = db_fetchone("""
+                    SELECT check_user_consent(%s, %s)
+                """, (user_id, policy_type))[0]
+
+                if not consent_valid:
+                    return {"allowed": False, "reason": "consent_required", "policy_type": policy_type}
+
+        return {"allowed": True, "reason": "verified"}
+
+    except Exception as e:
+        write_audit(user_id, "age_gate_check_failed", "compliance", None, {
+            "error": str(e),
+            "require_consent": require_consent
+        })
+        return {"allowed": False, "reason": "system_error"}
+
+@app.get("/api/legal/policy")
+def get_legal_policy(policy_type: str = Query("terms_of_service"), lang: str = Query("en")):
+    """Get current legal policy text - M38"""
+    try:
+        # Get latest version for policy type and language
+        policy = db_fetchone("""
+            SELECT id, version, title, body, effective_date
+            FROM legal_texts
+            WHERE policy_type = %s
+              AND lang = %s
+              AND effective_date <= CURRENT_DATE
+            ORDER BY version DESC
+            LIMIT 1
+        """, (policy_type, lang))
+
+        if not policy:
+            # Fallback to English if requested language not available
+            if lang != 'en':
+                policy = db_fetchone("""
+                    SELECT id, version, title, body, effective_date
+                    FROM legal_texts
+                    WHERE policy_type = %s
+                      AND lang = 'en'
+                      AND effective_date <= CURRENT_DATE
+                    ORDER BY version DESC
+                    LIMIT 1
+                """, (policy_type,))
+
+        if not policy:
+            raise HTTPException(status_code=404, detail=f"Policy {policy_type} not found")
+
+        return {
+            "policy_type": policy_type,
+            "version": policy[1],
+            "title": policy[2],
+            "body": policy[3],
+            "effective_date": policy[4].isoformat(),
+            "lang": lang
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Policy retrieval failed: {str(e)}")
+
+@app.post("/api/legal/consent")
+def record_legal_consent(request: LegalConsentRequest, x_user_id: str = Header(...)):
+    """Record user consent for legal policy - M38"""
+    try:
+        user_id = x_user_id
+
+        # Get client IP for audit (hash it immediately)
+        ip_hash = None
+        if request.ip_address:
+            ip_hash = hash_ip_address(request.ip_address)
+
+        # Verify the policy version exists
+        policy_exists = db_fetchone("""
+            SELECT id FROM legal_texts
+            WHERE policy_type = %s
+              AND version = %s
+              AND effective_date <= CURRENT_DATE
+        """, (request.policy_type, request.policy_version))
+
+        if not policy_exists:
+            raise HTTPException(status_code=400, detail="Invalid policy version")
+
+        # Record consent (UPSERT)
+        db_exec("""
+            INSERT INTO user_consents (user_id, policy_type, policy_version, ip_hash)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (user_id, policy_type, policy_version)
+            DO UPDATE SET
+                ip_hash = EXCLUDED.ip_hash,
+                consent_timestamp = NOW()
+        """, (user_id, request.policy_type, request.policy_version, ip_hash))
+
+        # Log compliance event
+        db_exec("""
+            SELECT log_legal_compliance(%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            user_id, 'consent_given', request.policy_type, request.policy_version,
+            True, ip_hash, None, json.dumps({"method": "api_consent"})
+        ))
+
+        # Audit log
+        write_audit(user_id, "legal_consent_recorded", "compliance", None, {
+            "policy_type": request.policy_type,
+            "policy_version": request.policy_version
+        })
+
+        return {
+            "success": True,
+            "policy_type": request.policy_type,
+            "policy_version": request.policy_version,
+            "recorded_at": datetime.now().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log failed consent attempt
+        try:
+            db_exec("""
+                SELECT log_legal_compliance(%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                user_id, 'consent_failed', request.policy_type, request.policy_version,
+                False, ip_hash if 'ip_hash' in locals() else None, None,
+                json.dumps({"error": str(e)})
+            ))
+        except:
+            pass
+
+        raise HTTPException(status_code=500, detail=f"Consent recording failed: {str(e)}")
+
+@app.post("/api/auth/age-verify")
+def verify_age(request: AgeVerificationRequest, x_user_id: str = Header(...)):
+    """Verify user age for 18+ compliance - M38"""
+    try:
+        user_id = x_user_id
+
+        # Validate input
+        if not request.over18_attestation:
+            raise HTTPException(status_code=400, detail="Must attest to being 18+ to use this service")
+
+        # If birth year provided, validate it
+        over18_calculated = True
+        if request.dob_year:
+            current_year = datetime.now().year
+            if request.dob_year > current_year - 18:
+                over18_calculated = False
+
+        # Final determination
+        over18_final = request.over18_attestation and over18_calculated
+
+        if not over18_final:
+            # Log denied verification
+            db_exec("""
+                SELECT log_legal_compliance(%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                user_id, 'age_verification_denied', None, None,
+                False, None, None, json.dumps({
+                    "reason": "under_18",
+                    "dob_year": request.dob_year,
+                    "attestation": request.over18_attestation
+                })
+            ))
+
+            raise HTTPException(status_code=403, detail="Service requires users to be 18 years or older")
+
+        # Record age verification (UPSERT)
+        db_exec("""
+            INSERT INTO age_verifications (user_id, dob_year, over18, verification_method)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (user_id)
+            DO UPDATE SET
+                dob_year = EXCLUDED.dob_year,
+                over18 = EXCLUDED.over18,
+                verification_method = EXCLUDED.verification_method,
+                verified_at = NOW()
+        """, (user_id, request.dob_year, over18_final, request.verification_method))
+
+        # Log successful verification
+        db_exec("""
+            SELECT log_legal_compliance(%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            user_id, 'age_verified', None, None,
+            True, None, None, json.dumps({
+                "method": request.verification_method,
+                "dob_year_provided": request.dob_year is not None
+            })
+        ))
+
+        # Update user role/claims would happen here in JWT refresh
+        # For now, just audit log
+        write_audit(user_id, "age_verification_completed", "compliance", None, {
+            "over18": over18_final,
+            "verification_method": request.verification_method
+        })
+
+        return {
+            "success": True,
+            "over18": over18_final,
+            "verified_at": datetime.now().isoformat(),
+            "verification_method": request.verification_method
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Log failed verification
+        try:
+            db_exec("""
+                SELECT log_legal_compliance(%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                user_id, 'age_verification_failed', None, None,
+                False, None, None, json.dumps({"error": str(e)})
+            ))
+        except:
+            pass
+
+        raise HTTPException(status_code=500, detail=f"Age verification failed: {str(e)}")
+
+@app.get("/api/auth/compliance-status")
+def get_compliance_status(x_user_id: str = Header(...)):
+    """Get user's legal compliance status - M38"""
+    try:
+        user_id = x_user_id
+        gate_check = check_18plus_gate(user_id, require_consent=True)
+
+        # Get detailed status
+        age_status = db_fetchone("""
+            SELECT over18, verified_at, verification_method
+            FROM age_verifications
+            WHERE user_id = %s
+        """, (user_id,))
+
+        consent_status = db_fetchall("""
+            SELECT uc.policy_type, uc.policy_version, uc.consent_timestamp,
+                   lt.version as latest_version
+            FROM user_consents uc
+            JOIN (
+                SELECT policy_type, MAX(version) as version
+                FROM legal_texts
+                WHERE effective_date <= CURRENT_DATE
+                GROUP BY policy_type
+            ) lt ON lt.policy_type = uc.policy_type
+            WHERE uc.user_id = %s
+        """, (user_id,))
+
+        return {
+            "user_id": user_id,
+            "compliance_check": gate_check,
+            "age_verification": {
+                "verified": age_status[0] if age_status else False,
+                "verified_at": age_status[1].isoformat() if age_status and age_status[1] else None,
+                "method": age_status[2] if age_status else None
+            },
+            "consents": [
+                {
+                    "policy_type": row[0],
+                    "user_version": row[1],
+                    "latest_version": row[3],
+                    "current": row[1] == row[3],
+                    "consented_at": row[2].isoformat()
+                }
+                for row in consent_status
+            ]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Compliance status check failed: {str(e)}")
+
+# Twilio Verify V2 Endpoints - SMS/Voice/WhatsApp/Email OTP
+@app.post("/api/auth/verify/start")
+def start_verification(request: VerifyStartRequest, request_obj: Request, x_user_id: str = Header(...)):
+    """Start Twilio Verify V2 verification (SMS/Voice/WhatsApp/Email)"""
+    if not twilio_verify:
+        raise HTTPException(
+            status_code=503,
+            detail="Twilio Verify service unavailable"
+        )
+
+    try:
+        user_id = x_user_id
+
+        # Gateway rate limiting: 5 verification attempts per 15 minutes per user
+        enforce_rate_limit(user_id, "twilio_verify_start", limit=5, window_sec=900)
+
+        # Extract client IP for rate limiting
+        client_ip = None
+        if hasattr(request_obj, 'client') and hasattr(request_obj.client, 'host'):
+            client_ip = request_obj.client.host
+        elif 'x-forwarded-for' in request_obj.headers:
+            client_ip = request_obj.headers['x-forwarded-for'].split(',')[0].strip()
+        elif 'x-real-ip' in request_obj.headers:
+            client_ip = request_obj.headers['x-real-ip']
+
+        # Normalize phone number to E.164 format if it's a phone channel
+        normalized_to = request.to
+        if request.channel in ["sms", "voice", "whatsapp"]:
+            normalized_to = twilio_verify.normalize_phone_e164(request.to)
+            if not normalized_to:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Phone number must be in valid E.164 format (e.g. +1234567890)"
+                )
+
+        result = twilio_verify.start_verification(
+            to=normalized_to,
+            channel=request.channel,
+            locale=request.locale,
+            ip_address=client_ip
+        )
+
+        if result["success"]:
+            return {
+                "success": True,
+                "verification_sid": result["sid"],
+                "status": result["status"],
+                "to": result["to"],
+                "channel": result["channel"],
+                "date_created": result["date_created"]
+            }
+        else:
+            # Map error codes to appropriate HTTP status
+            if result.get("error") == "rate_limited":
+                raise HTTPException(
+                    status_code=429,
+                    detail=result["message"],
+                    headers={"Retry-After": str(result.get("retry_after", 900))}
+                )
+            elif result.get("error") in ["invalid_phone", "invalid_email"]:
+                raise HTTPException(status_code=400, detail=result["message"])
+            else:
+                raise HTTPException(status_code=503, detail=result["message"])
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Verification start failed"
+        )
+
+@app.post("/api/auth/verify/check")
+def check_verification(request: VerifyCheckRequest, request_obj: Request, x_user_id: str = Header(...)):
+    """Check Twilio Verify V2 verification code and update phone_verified claim"""
+    if not twilio_verify:
+        raise HTTPException(
+            status_code=503,
+            detail="Twilio Verify service unavailable"
+        )
+
+    try:
+        user_id = x_user_id
+
+        # Gateway rate limiting: 10 verification checks per 15 minutes per user
+        enforce_rate_limit(user_id, "twilio_verify_check", limit=10, window_sec=900)
+
+        # Extract client IP for audit logging
+        client_ip = None
+        if hasattr(request_obj, 'client') and hasattr(request_obj.client, 'host'):
+            client_ip = request_obj.client.host
+        elif 'x-forwarded-for' in request_obj.headers:
+            client_ip = request_obj.headers['x-forwarded-for'].split(',')[0].strip()
+        elif 'x-real-ip' in request_obj.headers:
+            client_ip = request_obj.headers['x-real-ip']
+
+        result = twilio_verify.check_verification(
+            to=request.to,
+            code=request.code,
+            ip_address=client_ip
+        )
+
+        if result["success"] and result["valid"]:
+            # Successful verification - update phone_verified claim
+            # Only update if this is the user's phone (match request.to with profile phone)
+            profile = db_fetchone("""
+                SELECT phone FROM profiles WHERE id = %s
+            """, (user_id,))
+
+            if not profile:
+                raise HTTPException(status_code=404, detail="Profile not found")
+
+            profile_phone = profile[0]
+
+            # Normalize both phones to E.164 for comparison
+            normalized_request_phone = twilio_verify.normalize_phone_e164(request.to)
+            normalized_profile_phone = twilio_verify.normalize_phone_e164(profile_phone) if profile_phone else None
+
+            if normalized_request_phone and normalized_request_phone == normalized_profile_phone:
+                # Update phone_verified claim and ensure phone is stored in E.164 format
+                db_exec("""
+                    UPDATE profiles
+                    SET phone = %s, phone_verified = true, updated_at = %s
+                    WHERE id = %s
+                """, (normalized_request_phone, datetime.utcnow(), user_id))
+
+                # Write audit log for successful verification
+                write_audit(
+                    actor=user_id,
+                    event="phone_verification_success",
+                    entity="profile",
+                    entity_id=user_id,
+                    meta={
+                        "phone_verified": True,
+                        "verification_sid": result["sid"],
+                        "channel": result.get("channel"),
+                        "method": "twilio_verify_v2"
+                    }
+                )
+
+                return {
+                    "success": True,
+                    "valid": True,
+                    "phone_verified": True,
+                    "status": result["status"],
+                    "verification_sid": result["sid"],
+                    "to": normalized_request_phone,
+                    "date_updated": result["date_updated"]
+                }
+            else:
+                # Phone doesn't match user's profile phone
+                return {
+                    "success": True,
+                    "valid": True,
+                    "phone_verified": False,
+                    "status": result["status"],
+                    "verification_sid": result["sid"],
+                    "to": request.to,
+                    "date_updated": result["date_updated"],
+                    "message": "Verification successful but phone doesn't match profile"
+                }
+        else:
+            # Verification failed or invalid
+            return {
+                "success": result["success"],
+                "valid": result.get("valid", False),
+                "phone_verified": False,
+                "status": result.get("status", "failed"),
+                "verification_sid": result.get("sid"),
+                "to": request.to,
+                "message": result.get("message", "Verification failed")
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Verification check failed"
+        )
+
+# Phone verification gate decorator
+def require_phone_verified():
+    """Decorator to enforce phone verification on sensitive endpoints"""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            # Extract user_id from headers
+            x_user_id = kwargs.get('x_user_id') or (
+                args[1] if len(args) > 1 else None
+            )
+
+            if not x_user_id:
+                raise HTTPException(status_code=401, detail="User authentication required")
+
+            # Check phone verification status
+            profile = db_fetchone("""
+                SELECT phone_verified FROM profiles WHERE id = %s
+            """, (x_user_id,))
+
+            if not profile:
+                raise HTTPException(status_code=404, detail="Profile not found")
+
+            phone_verified = profile[0]
+            if not phone_verified:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Phone verification required. Please verify your phone number first."
+                )
+
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# Age gate decorator for sensitive endpoints
+def require_18plus(require_consent: bool = True):
+    """Decorator to enforce 18+ gate on sensitive endpoints"""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            # Extract user_id from headers
+            x_user_id = kwargs.get('x_user_id') or (
+                args[1] if len(args) > 1 else None
+            )
+
+            if not x_user_id:
+                raise HTTPException(status_code=401, detail="User authentication required")
+
+            gate_check = check_18plus_gate(x_user_id, require_consent)
+
+            if not gate_check["allowed"]:
+                # Log access denial
+                write_audit(x_user_id, "age_gate_denied", "compliance", func.__name__, {
+                    "reason": gate_check["reason"],
+                    "endpoint": func.__name__
+                })
+
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Access denied: {gate_check['reason']}"
+                )
+
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# ========================================
 # M15 Notifications API (Rate Limited)
 # ========================================
 
@@ -11872,6 +12679,303 @@ def collect_golden_signals_metrics():
                     ))
     except Exception as e:
         print(f"Golden signals collection failed: {e}")
+
+# =============================================================================
+# M40 SIREN ESCALATION ENDPOINTS - Backend-only incident management
+# =============================================================================
+
+@app.post("/api/siren/trigger")
+def trigger_siren_incident(request: SirenTriggerRequest, x_user_id: str = Header(...)):
+    """
+    Trigger a new siren incident with deduplication and cooldown checks
+    Requires admin/superadmin/monitor role for creation
+    """
+    try:
+        # Check permissions - monitors can trigger, admins can manage
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        # Validate severity
+        if request.severity not in range(1, 6):
+            raise HTTPException(status_code=400, detail="Severity must be 1-5")
+
+        # Trigger incident
+        success, message, incident_id = siren_service.trigger_incident(
+            incident_type=request.incident_type,
+            severity=request.severity,
+            source=request.source,
+            policy_name=request.policy_name,
+            context=request.context,
+            variables=request.variables,
+            created_by=x_user_id,
+            force=request.force
+        )
+
+        if success:
+            # Update metrics
+            db_exec("""
+                INSERT INTO app_settings (key, value)
+                VALUES ('metrics.siren_incidents_total', '1')
+                ON CONFLICT (key)
+                DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::TEXT
+            """)
+
+            return {
+                "success": True,
+                "message": message,
+                "incident_id": incident_id
+            }
+        else:
+            return {
+                "success": False,
+                "message": message,
+                "incident_id": incident_id
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+@app.post("/api/siren/acknowledge/{incident_id}")
+def acknowledge_siren_incident(incident_id: int, x_user_id: str = Header(...)):
+    """
+    Acknowledge a siren incident - cancels pending notifications
+    Requires admin/superadmin role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        success, message = siren_service.acknowledge_incident(incident_id, x_user_id)
+
+        if success:
+            # Update metrics
+            db_exec("""
+                INSERT INTO app_settings (key, value)
+                VALUES ('metrics.siren_acks_total', '1')
+                ON CONFLICT (key)
+                DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::TEXT
+            """)
+
+        return {
+            "success": success,
+            "message": message
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+@app.post("/api/siren/resolve/{incident_id}")
+def resolve_siren_incident(incident_id: int, x_user_id: str = Header(...)):
+    """
+    Resolve a siren incident - cancels all pending notifications
+    Requires admin/superadmin role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        success, message = siren_service.resolve_incident(incident_id, x_user_id)
+
+        if success:
+            # Update metrics
+            db_exec("""
+                INSERT INTO app_settings (key, value)
+                VALUES ('metrics.siren_resolves_total', '1')
+                ON CONFLICT (key)
+                DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::TEXT
+            """)
+
+        return {
+            "success": success,
+            "message": message
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+@app.post("/api/siren/test")
+def test_siren_policy(request: SirenTestRequest, x_user_id: str = Header(...)):
+    """
+    Test an escalation policy with a dummy incident
+    Requires admin/superadmin role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        success, message = siren_service.test_escalation_policy(request.policy_name, x_user_id)
+
+        if success:
+            # Update metrics
+            db_exec("""
+                INSERT INTO app_settings (key, value)
+                VALUES ('metrics.siren_tests_total', '1')
+                ON CONFLICT (key)
+                DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::TEXT
+            """)
+
+        return {
+            "success": success,
+            "message": message
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+@app.get("/api/siren/incidents")
+def get_siren_incidents(status: Optional[str] = Query(None), limit: int = Query(50), x_user_id: str = Header(...)):
+    """
+    Get siren incidents with optional status filter
+    Requires admin/superadmin role for full access, monitor for read-only
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        # Validate status if provided
+        if status and status not in ['open', 'acknowledged', 'resolved']:
+            raise HTTPException(status_code=400, detail="Invalid status")
+
+        incidents = siren_service.get_incidents(status=status, limit=limit)
+
+        return {
+            "incidents": incidents,
+            "count": len(incidents)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+@app.get("/api/siren/incidents/{incident_id}/events")
+def get_siren_incident_events(incident_id: int, x_user_id: str = Header(...)):
+    """
+    Get all escalation events for a specific incident
+    Requires admin/superadmin/monitor role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        events = siren_service.get_incident_events(incident_id)
+
+        return {
+            "incident_id": incident_id,
+            "events": events,
+            "count": len(events)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+@app.get("/api/siren/events/pending")
+def get_pending_siren_events(limit: int = Query(100), x_user_id: str = Header(...)):
+    """
+    Get pending notification events ready to be sent
+    Internal endpoint for notification processor
+    Requires admin/superadmin role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        events = siren_service.get_pending_events(limit=limit)
+
+        return {
+            "events": events,
+            "count": len(events)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+@app.post("/api/siren/process")
+def process_siren_notifications(batch_size: int = Query(10), x_user_id: str = Header(...)):
+    """
+    Process pending siren notifications
+    Internal endpoint for manual processing trigger
+    Requires admin/superadmin role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        # Process notifications
+        result = notification_processor.process_pending_events(batch_size=batch_size)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+@app.get("/api/siren/metrics")
+def get_siren_metrics(x_user_id: str = Header(...)):
+    """
+    Get siren system metrics and performance data
+    Requires admin/superadmin/monitor role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        # Get processor metrics
+        metrics = notification_processor.get_processor_metrics()
+
+        # Get system metrics from app_settings
+        system_metrics = {}
+        metric_keys = [
+            'metrics.siren_incidents_total',
+            'metrics.siren_acks_total',
+            'metrics.siren_resolves_total',
+            'metrics.siren_tests_total'
+        ]
+
+        for key in metric_keys:
+            result = db_fetchone("SELECT value FROM app_settings WHERE key = %s", (key,))
+            system_metrics[key.replace('metrics.', '')] = int(result[0]) if result else 0
+
+        return {
+            "processor_metrics": metrics,
+            "system_metrics": system_metrics,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
