@@ -51,7 +51,15 @@
     "performance:budget": "node scripts/performance-budget-check.js",
     "performance:cwv": "python cwv_synthetic_monitors.py",
     "performance:validate": "python validate_cwv_targets.py",
-    "performance:full": "npm run performance:cwv && npm run lighthouse:ci && npm run performance:budget && npm run performance:report && npm run performance:validate"
+    "performance:full": "npm run performance:cwv && npm run lighthouse:ci && npm run performance:budget && npm run performance:report && npm run performance:validate",
+    "mobile:init": "npx cap init",
+    "mobile:add:android": "npx cap add android",
+    "mobile:add:ios": "npx cap add ios",
+    "mobile:build": "npm run build && npx cap sync",
+    "mobile:android:build": "npx cap build android",
+    "mobile:ios:build": "npx cap build ios",
+    "mobile:android:run": "npx cap run android",
+    "mobile:ios:run": "npx cap run ios"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -114,6 +122,10 @@
     "winston": "^3.11.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/cli": "^6.1.0",
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/ios": "^6.1.0",
     "@babel/core": "^7.26.0",
     "@babel/preset-env": "^7.26.0",
     "@babel/preset-react": "^7.25.9",

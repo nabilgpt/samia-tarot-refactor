@@ -1,0 +1,44 @@
+# Multi-stage build for SAMIA-TAROT API
+FROM python:3.11-slim AS base
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Create non-root user
+RUN groupadd -r samia && useradd -r -g samia samia
+
+# Copy application code
+COPY *.py ./
+COPY *.sql ./
+COPY migrations/ ./migrations/
+COPY services/ ./services/
+COPY src/ ./src/
+
+# Create logs directory
+RUN mkdir -p /app/logs && chown -R samia:samia /app/logs
+
+# Change ownership
+RUN chown -R samia:samia /app
+
+USER samia
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/api/ops/health || exit 1
+
+# Expose port
+EXPOSE 8000
+
+# Start command
+CMD ["python", "-m", "uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

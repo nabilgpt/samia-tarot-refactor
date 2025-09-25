@@ -1,0 +1,271 @@
+{
+  "name": "M41 WhatsApp → Supabase Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/whatsapp-webhook",
+        "authentication": "headerAuth",
+        "headerAuth": {
+          "name": "X-Hub-Signature-256",
+          "value": "={{ $headers['x-hub-signature-256'] }}"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "url": "https://samiatarot.com/api/whatsapp/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Hub-Signature-256",
+              "value": "={{ $node['WhatsApp Webhook'].json.headers['x-hub-signature-256'] }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "jsonParameters": "={{ $node['WhatsApp Webhook'].json.body }}",
+        "options": {}
+      },
+      "id": "forward-to-api",
+      "name": "Forward to SAMIA API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "message-has-media",
+              "leftValue": "={{ $node['WhatsApp Webhook'].json.body.entry[0].changes[0].value.messages[0].type }}",
+              "rightValue": "text",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-for-media",
+      "name": "Check for Media",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://samiatarot.com/api/whatsapp/process-flows",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-User-ID",
+              "value": "system"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "batch_size",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "trigger-automation",
+      "name": "Trigger Automation Flows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 100]
+    },
+    {
+      "parameters": {
+        "url": "https://samiatarot.com/api/whatsapp/process-flows",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-User-ID",
+              "value": "system"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "batch_size",
+              "value": "20"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "process-scheduled-flows",
+      "name": "Process Scheduled Flows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 100]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "url": "https://samiatarot.com/api/whatsapp/stripe-webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Stripe-Signature",
+              "value": "={{ $headers['stripe-signature'] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "jsonParameters": "={{ $json }}",
+        "options": {}
+      },
+      "id": "stripe-webhook-handler",
+      "name": "Handle Stripe Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 500]
+    },
+    {
+      "parameters": {
+        "path": "/stripe-webhook",
+        "authentication": "headerAuth",
+        "headerAuth": {
+          "name": "Stripe-Signature",
+          "value": "={{ $headers['stripe-signature'] }}"
+        }
+      },
+      "id": "stripe-webhook-trigger",
+      "name": "Stripe Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 500]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Forward to SAMIA API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forward to SAMIA API": {
+      "main": [
+        [
+          {
+            "node": "Check for Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Media": {
+      "main": [
+        [
+          {
+            "node": "Trigger Automation Flows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Process Scheduled Flows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stripe Webhook": {
+      "main": [
+        [
+          {
+            "node": "Handle Stripe Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-15T10:00:00.000Z",
+      "updatedAt": "2024-01-15T10:00:00.000Z",
+      "id": "whatsapp-automation",
+      "name": "WhatsApp Automation"
+    }
+  ],
+  "triggerCount": 3,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1"
+}

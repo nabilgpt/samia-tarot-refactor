@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDisplayName</key>
+    <string>SAMIA TAROT</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.samia.tarot</string>
+    <key>CFBundleName</key>
+    <string>SAMIA TAROT</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+
+    <!-- URL Schemes for Deep Links -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.samia.tarot</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>samiatarot</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Associated Domains for Universal Links -->
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+        <string>applinks:samiatarot.com</string>
+        <string>applinks:www.samiatarot.com</string>
+    </array>
+
+    <!-- App Transport Security -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>samiatarot.com</key>
+            <dict>
+                <key>NSExceptionRequiresForwardSecrecy</key>
+                <false/>
+                <key>NSExceptionMinimumTLSVersion</key>
+                <string>TLSv1.2</string>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+
+    <!-- Privacy Manifest - iOS 17+ -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Privacy Nutrition Labels -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeEmailAddress</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Minimal data collection statement -->
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+
+</dict>
+</plist>

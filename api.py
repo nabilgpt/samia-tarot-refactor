@@ -26,6 +26,9 @@ from twilio_verify_service import TwilioVerifyService
 # M40 Siren Escalation Service import
 from siren_service import siren_service
 from siren_notification_processor import notification_processor
+# M41 WhatsApp + n8n Automations imports
+from whatsapp_service import whatsapp_service
+from whatsapp_payment_automation import payment_automation, PaymentLinkData
 
 # Database connection pool
 DSN = os.getenv("DB_DSN") or "postgresql://postgres.ciwddvprfhlqidfzklaq:SisI2009@aws-1-eu-north-1.pooler.supabase.com:5432/postgres"
@@ -375,6 +378,26 @@ class SirenResolveRequest(BaseModel):
 
 class SirenTestRequest(BaseModel):
     policy_name: str
+
+# M41 - WhatsApp + n8n Automation models
+class WhatsAppWebhookRequest(BaseModel):
+    entry: List[dict]
+    object: str
+
+class WhatsAppSendRequest(BaseModel):
+    phone: str
+    message: str
+    template_name: Optional[str] = None
+    template_params: Optional[List[str]] = None
+
+class PaymentLinkCreateRequest(BaseModel):
+    amount: int  # in cents
+    currency: str = "USD"
+    description: str
+    customer_name: str
+    customer_phone: str
+    customer_email: Optional[str] = None
+    order_id: Optional[str] = None
 
 class HoroscopeScheduleRequest(BaseModel):
     ref_date: str  # YYYY-MM-DD format
@@ -12976,6 +12999,328 @@ def get_siren_metrics(x_user_id: str = Header(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+# =============================================================================
+# M41 WHATSAPP + N8N AUTOMATIONS ENDPOINTS - Backend-only messaging
+# =============================================================================
+
+@app.post("/api/whatsapp/webhook")
+def whatsapp_webhook(request: Request, x_hub_signature_256: str = Header(None)):
+    """
+    WhatsApp Cloud API webhook endpoint
+    Handles inbound messages, media, and status updates
+    """
+    try:
+        # Get raw payload for signature verification
+        payload = request.body()
+
+        # Verify webhook signature
+        if x_hub_signature_256:
+            if not whatsapp_service.verify_webhook_signature(payload.decode(), x_hub_signature_256):
+                raise HTTPException(status_code=403, detail="Invalid webhook signature")
+
+        # Parse webhook data
+        webhook_data = json.loads(payload)
+
+        # Process webhook
+        success, message = whatsapp_service.process_webhook(webhook_data)
+
+        if success:
+            # Update metrics
+            db_exec("""
+                INSERT INTO app_settings (key, value)
+                VALUES ('metrics.whatsapp_webhooks_total', '1')
+                ON CONFLICT (key)
+                DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::TEXT
+            """)
+
+        return {"success": success, "message": message}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Webhook processing error: {str(e)}")
+
+@app.get("/api/whatsapp/webhook")
+def whatsapp_webhook_verify(request: Request):
+    """
+    WhatsApp webhook verification endpoint
+    Required for webhook setup
+    """
+    try:
+        mode = request.query_params.get("hub.mode")
+        token = request.query_params.get("hub.verify_token")
+        challenge = request.query_params.get("hub.challenge")
+
+        # Verify the webhook
+        if mode == "subscribe" and token == whatsapp_service.verify_token:
+            return int(challenge)
+        else:
+            raise HTTPException(status_code=403, detail="Verification failed")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Verification error: {str(e)}")
+
+@app.post("/api/whatsapp/send")
+def send_whatsapp_message(request: WhatsAppSendRequest, x_user_id: str = Header(...)):
+    """
+    Send WhatsApp message (respects 24h rule)
+    Requires admin/superadmin role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        # Normalize phone number
+        phone_e164 = whatsapp_service.normalize_phone_e164(request.phone)
+        if not phone_e164:
+            raise HTTPException(status_code=400, detail="Invalid phone number format")
+
+        # Send message based on type
+        if request.template_name and request.template_params:
+            # Send template message
+            success, message = whatsapp_service.send_template_message(
+                phone_e164=phone_e164,
+                template_name=request.template_name,
+                parameters=request.template_params
+            )
+        else:
+            # Send free-form message
+            success, message = whatsapp_service.send_freeform_message(
+                phone_e164=phone_e164,
+                text=request.message
+            )
+
+        if success:
+            # Update metrics
+            db_exec("""
+                INSERT INTO app_settings (key, value)
+                VALUES ('metrics.whatsapp_outbound_total', '1')
+                ON CONFLICT (key)
+                DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::TEXT
+            """)
+
+        return {"success": success, "message": message}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Send message error: {str(e)}")
+
+@app.post("/api/whatsapp/payment-link")
+def create_whatsapp_payment_link(request: PaymentLinkCreateRequest, x_user_id: str = Header(...)):
+    """
+    Create Stripe Payment Link with WhatsApp automation
+    Requires admin/superadmin role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        # Create payment link data
+        payment_data = PaymentLinkData(
+            amount=request.amount,
+            currency=request.currency,
+            description=request.description,
+            customer_name=request.customer_name,
+            customer_phone=request.customer_phone,
+            customer_email=request.customer_email,
+            order_id=request.order_id
+        )
+
+        # Create payment link with automation
+        success, message, payment_url = payment_automation.create_payment_link(payment_data)
+
+        if success:
+            # Update metrics
+            db_exec("""
+                INSERT INTO app_settings (key, value)
+                VALUES ('metrics.payment_links_created_total', '1')
+                ON CONFLICT (key)
+                DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::TEXT
+            """)
+
+        return {
+            "success": success,
+            "message": message,
+            "payment_url": payment_url
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Payment link creation error: {str(e)}")
+
+@app.post("/api/whatsapp/stripe-webhook")
+def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
+    """
+    Stripe webhook for payment automation
+    Handles payment success/failure events
+    """
+    try:
+        # Get raw payload
+        payload = request.body()
+
+        # Verify Stripe signature (if configured)
+        # This would use stripe.Webhook.construct_event() in production
+
+        # Parse event
+        event = json.loads(payload)
+
+        # Process Stripe webhook
+        success, message = payment_automation.process_stripe_webhook(event)
+
+        if success:
+            # Update metrics
+            db_exec("""
+                INSERT INTO app_settings (key, value)
+                VALUES ('metrics.stripe_webhooks_processed_total', '1')
+                ON CONFLICT (key)
+                DO UPDATE SET value = (CAST(app_settings.value AS INTEGER) + 1)::TEXT
+            """)
+
+        return {"success": success, "message": message}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Stripe webhook error: {str(e)}")
+
+@app.get("/api/whatsapp/media/{signature_uuid}")
+def get_whatsapp_media(signature_uuid: str, token: str = Query(...)):
+    """
+    Serve WhatsApp media via signed URL
+    Secure media delivery with TTL and access limits
+    """
+    try:
+        # Verify signature
+        valid, file_path = whatsapp_service.verify_media_signature(signature_uuid, token)
+
+        if not valid:
+            raise HTTPException(status_code=403, detail="Invalid or expired media signature")
+
+        if not file_path:
+            raise HTTPException(status_code=404, detail="Media file not found")
+
+        # In production, this would serve the actual file
+        # For now, return file info
+        return {
+            "success": True,
+            "message": "Media access granted",
+            "file_path": file_path,
+            "download_url": f"/storage/{file_path}"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Media access error: {str(e)}")
+
+@app.get("/api/whatsapp/conversations/{phone}")
+def get_whatsapp_conversation(phone: str, limit: int = Query(50), x_user_id: str = Header(...)):
+    """
+    Get WhatsApp conversation history
+    Requires admin/superadmin role or own verified phone
+    """
+    try:
+        # Normalize phone
+        phone_e164 = whatsapp_service.normalize_phone_e164(phone)
+        if not phone_e164:
+            raise HTTPException(status_code=400, detail="Invalid phone number format")
+
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            # Check if user owns this phone number
+            profile = whatsapp_service.get_profile_by_phone(phone_e164)
+            if not profile or profile['id'] != x_user_id:
+                raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        # Get conversation history
+        messages = whatsapp_service.get_conversation_history(phone_e164, limit)
+
+        return {
+            "phone_e164": phone_e164,
+            "messages": messages,
+            "count": len(messages)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Conversation retrieval error: {str(e)}")
+
+@app.get("/api/whatsapp/metrics")
+def get_whatsapp_metrics(x_user_id: str = Header(...)):
+    """
+    Get WhatsApp automation metrics
+    Requires admin/superadmin/monitor role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['monitor', 'admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        # Get WhatsApp metrics
+        wa_metrics = whatsapp_service.get_metrics()
+
+        # Get automation flow metrics
+        flow_metrics = payment_automation.get_flow_metrics()
+
+        # Get system metrics from app_settings
+        system_metrics = {}
+        metric_keys = [
+            'metrics.whatsapp_webhooks_total',
+            'metrics.whatsapp_outbound_total',
+            'metrics.payment_links_created_total',
+            'metrics.stripe_webhooks_processed_total'
+        ]
+
+        for key in metric_keys:
+            result = db_fetchone("SELECT value FROM app_settings WHERE key = %s", (key,))
+            system_metrics[key.replace('metrics.', '')] = int(result[0]) if result else 0
+
+        return {
+            "whatsapp_metrics": wa_metrics,
+            "automation_metrics": flow_metrics,
+            "system_metrics": system_metrics,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Metrics error: {str(e)}")
+
+@app.post("/api/whatsapp/process-flows")
+def process_whatsapp_flows(batch_size: int = Query(20), x_user_id: str = Header(...)):
+    """
+    Process pending WhatsApp automation flows
+    Internal endpoint for manual processing trigger
+    Requires admin/superadmin role
+    """
+    try:
+        # Check permissions
+        user_role = get_user_role(x_user_id)
+        if user_role not in ['admin', 'superadmin']:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+        # Process flows
+        result = payment_automation.process_pending_flows(batch_size=batch_size)
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Flow processing error: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

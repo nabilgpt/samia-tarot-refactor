@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SAMIA TAROT</string>
+    <string name="title_activity_main">SAMIA TAROT</string>
+    <string name="package_name">com.samia.tarot</string>
+    <string name="custom_url_scheme">samiatarot</string>
+</resources>
