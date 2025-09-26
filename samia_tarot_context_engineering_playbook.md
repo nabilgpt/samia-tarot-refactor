@@ -1,6 +1,7 @@
 # SAMIA TAROT — Context Engineering Playbook
 
 > **Golden rule:** Do **not** change the existing Theme/UX. Any **new** page must exactly match the current **cosmic/neon** theme. Copy the theme **as-is** from the Windows project: `C:\Users\saeee\OneDrive\Documents\project\samia-tarot - Copy`. Keep all code **maintainable & short**.
+> **Repository hygiene (MANDATORY):** Don’t flood the repo — **no 1000 files**. Keep the number of code files **as low as possible**. Prefer a single service, flat structure, and **small, clear, maintainable** modules/components. Avoid over‑scaffolding, deep nesting, and unnecessary abstractions.
 
 ---
 
@@ -194,7 +195,7 @@
 ---
 
 ## 16) Ready‑to‑Use Prompts (for internal agents)
-> **Reminder:** Do **not** touch the global Theme/UX. If you create a **new page**, it must **copy** the theme exactly from `C:\Users\saeee\OneDrive\Documents\project\samia-tarot - Copy`. Keep code **maintainable & short**.
+> **Reminder:** Do **not** touch the global Theme/UX. If you create a **new page**, it must **copy** the theme exactly from `C:\Users\saeee\OneDrive\Documents\project\samia-tarot - Copy`. Keep code **maintainable & short**., and keep the repository lean: **no 1000 files** — minimize file count and prefer small, clear, maintainable modules.
 
 **P1 — Lock Daily Horoscope RLS & Signed URLs**
 "Before doing anything, first read and strictly comply with all SAMIA‑TAROT master context files. Do NOT touch the global theme. Keep the code maintainable & short.
@@ -309,7 +310,7 @@ Task: Implement `008_notifications.sql` and endpoints for templates, prefs, and 
 ---
 
 ## 23) Copy‑Paste Prompts (execution)
-> Do NOT change the theme/UX. If creating a new page, **copy** the theme from `C:\Users\saeee\OneDrive\Documents\project\samia-tarot - Copy`. Keep code **maintainable & short**. Read all master context files before coding.
+> Do NOT change the theme/UX. If creating a new page, **copy** the theme from `C:\Users\saeee\OneDrive\Documents\project\samia-tarot - Copy`. Keep code **maintainable & short**. Read all master context files before coding. Keep the repository lean (**no 1000 files**): minimize file count; avoid over‑scaffolding; keep modules small and clear.
 
 ### Prompt A — RLS Lock + Signed URLs (Daily Horoscopes)
 "Before doing anything, first read and strictly comply with all SAMIA‑TAROT master context files. Do NOT touch the global theme. Keep the code maintainable & short.

@@ -357,7 +357,7 @@ const E2ESyntheticsDashboard = () => {
               </div>
               <div>
                 <p className="text-gray-400">Page Load Latency</p>
-                <p className="text-green-400">95% < 2s ✓</p>
+                <p className="text-green-400">95% &lt; 2s ✓</p>
               </div>
               <div>
                 <p className="text-gray-400">Booking Success</p>

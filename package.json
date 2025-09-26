@@ -97,6 +97,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.3.8",
+    "react-error-boundary": "^6.0.0",
     "react-google-recaptcha": "^3.1.0",
     "react-hot-toast": "^2.5.2",
     "react-i18next": "^15.5.2",
@@ -112,7 +113,7 @@
     "socket.io-client": "^4.8.1",
     "square": "^43.0.0",
     "stripe": "^13.11.0",
-    "tailwind-merge": "^3.3.0",
+    "tailwind-merge": "^3.3.1",
     "tsparticles-slim": "^2.12.0",
     "twilio": "^4.19.0",
     "uuid": "^9.0.1",
@@ -122,14 +123,15 @@
     "winston": "^3.11.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-react": "^7.25.9",
     "@capacitor/android": "^6.1.0",
     "@capacitor/cli": "^6.1.0",
     "@capacitor/core": "^6.1.0",
     "@capacitor/ios": "^6.1.0",
-    "@babel/core": "^7.26.0",
-    "@babel/preset-env": "^7.26.0",
-    "@babel/preset-react": "^7.25.9",
     "@eslint/js": "^9.13.0",
+    "@lhci/cli": "^0.13.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
@@ -158,8 +160,7 @@
     "swagger-ui-express": "^5.0.0",
     "tailwindcss": "^3.4.17",
     "vitest": "^3.2.2",
-    "webpack-bundle-analyzer": "^4.9.0",
-    "@lhci/cli": "^0.13.0"
+    "webpack-bundle-analyzer": "^4.9.0"
   },
   "keywords": [
     "tarot",
