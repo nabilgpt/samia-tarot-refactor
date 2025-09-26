@@ -838,4 +838,184 @@ div[style*="backgroundColor: #0f172a"] {
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
   -ms-user-select: none !important;
-} 
+}
+
+/* -----------------------------------------------------------------------------
+   Accessibility - Reduced Motion Support
+   ----------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Disable specific animations that may cause discomfort */
+  .animate-pulse,
+  .animate-spin,
+  .animate-bounce {
+    animation: none !important;
+  }
+
+  /* Disable floating orbs and particles */
+  .floating,
+  .parallax,
+  .orb {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+
+  /* Keep hover states but remove transitions */
+  button:hover,
+  a:hover,
+  .group:hover {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Focus States for Better Accessibility
+   ----------------------------------------------------------------------------- */
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--gold-primary) !important;
+  outline-offset: 2px !important;
+  border-radius: 4px;
+}
+
+/* High contrast focus for interactive elements */
+.bg-cosmic-gradient:focus-visible,
+.bg-gold-gradient-theme:focus-visible {
+  outline: 3px solid var(--theme-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* Ensure text is readable with proper contrast */
+.gradient-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(135deg, var(--cosmic-primary), var(--gold-primary));
+}
+
+@media (prefers-contrast: high) {
+  .gradient-text {
+    -webkit-text-fill-color: var(--theme-primary);
+    color: var(--theme-primary);
+    background: none;
+  }
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   Layout Container & Rhythm (CLS Prevention)
+   ----------------------------------------------------------------------------- */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding: 0 2rem;
+  }
+}
+
+/* Consistent section spacing to prevent CLS */
+.section-spacing {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+.section-spacing-lg {
+  padding-top: 6rem;
+  padding-bottom: 6rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Unified CTA Components
+   ----------------------------------------------------------------------------- */
+.cta-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  background: var(--cosmic-gradient);
+  color: var(--theme-inverse);
+  font-weight: 700;
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+  transform: scale(1);
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  min-height: 3.5rem;
+  gap: 0.5rem;
+}
+
+.cta-primary:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-theme-cosmic);
+}
+
+.cta-primary:focus-visible {
+  outline: 3px solid var(--theme-primary) !important;
+  outline-offset: 2px !important;
+  transform: scale(1.02);
+}
+
+.cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  background: transparent;
+  color: var(--gold-primary);
+  font-weight: 700;
+  border: 2px solid var(--gold-primary);
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+  transform: scale(1);
+  text-decoration: none;
+  cursor: pointer;
+  min-height: 3.5rem;
+  gap: 0.5rem;
+}
+
+.cta-secondary:hover {
+  background: var(--gold-primary);
+  color: var(--theme-inverse);
+  transform: scale(1.05);
+}
+
+.cta-secondary:focus-visible {
+  outline: 3px solid var(--theme-primary) !important;
+  outline-offset: 2px !important;
+  transform: scale(1.02);
+}

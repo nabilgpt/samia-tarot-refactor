@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import Particles from 'react-tsparticles';
-import { loadSlim } from 'tsparticles-slim';
+import { motion, useReducedMotion } from 'framer-motion';
+import { api } from '../lib/api';
 import {
   Star,
   Sparkles,
@@ -19,6 +18,7 @@ import {
 const Home = () => {
   const [dailyHoroscopes, setDailyHoroscopes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const shouldReduceMotion = useReducedMotion();
 
   // Simulated values for missing contexts
   const language = 'en';
@@ -31,11 +31,8 @@ const Home = () => {
 
   const fetchDailyHoroscopes = async () => {
     try {
-      const response = await fetch('/api/horoscopes/daily');
-      if (response.ok) {
-        const data = await response.json();
-        setDailyHoroscopes(data.horoscopes || []);
-      }
+      const horoscopes = await api.dailyHoroscopes();
+      setDailyHoroscopes(horoscopes);
     } catch (error) {
       console.error('Error fetching daily horoscopes:', error);
       setDailyHoroscopes([]);
@@ -44,90 +41,13 @@ const Home = () => {
     }
   };
 
-  // Particle configuration for cosmic background
-  const particlesInit = useCallback(async engine => {
-    await loadSlim(engine);
-  }, []);
 
-  const particlesConfig = useMemo(() => ({
-    background: {
-      color: {
-        value: "transparent",
-      },
-    },
-    fpsLimit: 120,
-    interactivity: {
-      events: {
-        onClick: {
-          enable: true,
-          mode: "push",
-        },
-        onHover: {
-          enable: true,
-          mode: "repulse",
-        },
-        resize: true,
-      },
-      modes: {
-        push: {
-          quantity: 4,
-        },
-        repulse: {
-          distance: 200,
-          duration: 0.4,
-        },
-      },
-    },
-    particles: {
-      color: {
-        value: ["#fbbf24", "#d946ef", "#06b6d4", "#ffffff"],
-      },
-      links: {
-        color: "#fbbf24",
-        distance: 150,
-        enable: true,
-        opacity: 0.2,
-        width: 1,
-      },
-      collisions: {
-        enable: true,
-      },
-      move: {
-        direction: "none",
-        enable: true,
-        outModes: {
-          default: "bounce",
-        },
-        random: false,
-        speed: 1,
-        straight: false,
-      },
-      number: {
-        density: {
-          enable: true,
-          area: 800,
-        },
-        value: 80,
-      },
-      opacity: {
-        value: 0.3,
-      },
-      shape: {
-        type: "circle",
-      },
-      size: {
-        value: { min: 1, max: 3 },
-      },
-    },
-    detectRetina: true,
-  }), []);
-
-  // Animation variants
+  // Animation variants with reduced motion support
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
+      transition: shouldReduceMotion ? { duration: 0.3 } : {
         delayChildren: 0.3,
         staggerChildren: 0.2
       }
@@ -135,11 +55,11 @@ const Home = () => {
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: shouldReduceMotion ? { opacity: 0 } : { y: 20, opacity: 0 },
     visible: {
       y: 0,
       opacity: 1,
-      transition: {
+      transition: shouldReduceMotion ? { duration: 0.3 } : {
         type: "spring",
         stiffness: 100,
         damping: 12
@@ -148,7 +68,7 @@ const Home = () => {
   };
 
   const floatVariants = {
-    animate: {
+    animate: shouldReduceMotion ? { y: 0 } : {
       y: [-10, 10, -10],
       transition: {
         duration: 4,
@@ -215,72 +135,44 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-primary-gradient relative overflow-hidden">
-      {/* Cosmic Particles Background */}
-      <div className="absolute inset-0 z-0">
-        <Particles
-          id="tsparticles"
-          init={particlesInit}
-          options={particlesConfig}
-          className="absolute inset-0"
-        />
-      </div>
-
-      {/* Cosmic Orbs - Floating Background Elements */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <motion.div
-          className="absolute top-20 left-20 w-32 h-32 rounded-full opacity-20 blur-xl"
-          style={{ background: 'var(--orb-gradient-primary)' }}
-          variants={floatVariants}
-          animate="animate"
-        />
-        <motion.div
-          className="absolute top-40 right-32 w-24 h-24 rounded-full opacity-15 blur-xl"
-          style={{ background: 'var(--orb-gradient-secondary)' }}
-          variants={floatVariants}
-          animate="animate"
-          transition={{ delay: 1 }}
-        />
-        <motion.div
-          className="absolute bottom-32 left-40 w-40 h-40 rounded-full opacity-10 blur-xl"
-          style={{ background: 'var(--orb-gradient-tertiary)' }}
-          variants={floatVariants}
-          animate="animate"
-          transition={{ delay: 2 }}
-        />
-        <motion.div
-          className="absolute bottom-20 right-20 w-28 h-28 rounded-full opacity-25 blur-xl"
-          style={{ background: 'var(--orb-gradient-primary)' }}
-          variants={floatVariants}
-          animate="animate"
-          transition={{ delay: 0.5 }}
-        />
-      </div>
+    <div>
 
       {/* Navigation */}
-      <nav className="relative z-10 p-6">
+      <nav className="sticky top-0 z-50 bg-theme-card/80 backdrop-blur-lg border-b border-theme-cosmic/20 p-4">
         <div className="container mx-auto flex justify-between items-center">
-          <div className="text-2xl font-bold gradient-text flex items-center">
-            <Sparkles className="w-8 h-8 mr-2 text-gold-primary animate-pulse" />
+          <Link to="/" className="text-2xl font-bold gradient-text flex items-center group">
+            <Sparkles className="w-8 h-8 mr-2 text-gold-primary animate-pulse group-hover:rotate-12 transition-transform duration-300" />
             SAMIA TAROT
-          </div>
-          <div className="hidden md:flex space-x-8">
-            <Link to="/services" className="text-theme-secondary hover:text-gold-primary transition-colors duration-300">
+          </Link>
+          <div className="hidden md:flex items-center space-x-8">
+            <Link
+              to="/services"
+              className="relative text-theme-secondary hover:text-gold-primary transition-colors duration-300 py-2 group"
+            >
               Services
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gold-primary rounded-full group-hover:w-full transition-all duration-300"></span>
             </Link>
-            <Link to="/about" className="text-theme-secondary hover:text-gold-primary transition-colors duration-300">
-              About
-            </Link>
-            <Link to="/contact" className="text-theme-secondary hover:text-gold-primary transition-colors duration-300">
-              Contact
+            <Link
+              to="/horoscopes"
+              className="relative text-theme-secondary hover:text-gold-primary transition-colors duration-300 py-2 group"
+            >
+              Horoscopes
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gold-primary rounded-full group-hover:w-full transition-all duration-300"></span>
             </Link>
             {!isAuthenticated ? (
-              <Link to="/login" className="text-theme-secondary hover:text-gold-primary transition-colors duration-300">
+              <Link
+                to="/login"
+                className="px-4 py-2 bg-cosmic-gradient hover:shadow-theme-cosmic text-theme-inverse font-medium rounded-lg transition-all duration-300 transform hover:scale-105"
+              >
                 Login
               </Link>
             ) : (
-              <Link to="/dashboard" className="text-theme-secondary hover:text-gold-primary transition-colors duration-300">
+              <Link
+                to="/dashboard"
+                className="relative text-theme-secondary hover:text-gold-primary transition-colors duration-300 py-2 group"
+              >
                 Dashboard
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gold-primary rounded-full group-hover:w-full transition-all duration-300"></span>
               </Link>
             )}
           </div>
@@ -294,203 +186,235 @@ const Home = () => {
         className="relative z-10"
       >
         {/* Hero Section */}
-        <motion.section variants={itemVariants} className="pt-12 pb-20">
-          <div className="container mx-auto px-4">
-            <div className="text-center max-w-6xl mx-auto">
+        <motion.section variants={itemVariants} className="section-spacing-lg">
+          <div className="container">
+            <div className="text-center max-w-5xl mx-auto">
               <motion.div
                 variants={itemVariants}
-                className="mb-8"
+                className="mb-12"
               >
-                <div className="flex justify-center mb-6">
+                <div className="flex justify-center mb-8">
                   <motion.div
-                    animate={{
+                    animate={shouldReduceMotion ? {} : {
                       rotate: 360,
-                      scale: [1, 1.1, 1],
+                      scale: [1, 1.05, 1],
                     }}
-                    transition={{
+                    transition={shouldReduceMotion ? {} : {
                       rotate: { duration: 20, repeat: Infinity, ease: "linear" },
-                      scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                      scale: { duration: 3, repeat: Infinity, ease: "easeInOut" }
                     }}
                     className="relative"
                   >
-                    <Eye className="w-24 h-24 text-gold-primary drop-shadow-lg" />
-                    <div className="absolute inset-0 w-24 h-24 rounded-full bg-gold-primary opacity-20 blur-xl animate-pulse" />
+                    <Eye className="w-20 h-20 text-gold-primary drop-shadow-2xl" />
+                    <div className="absolute inset-0 w-20 h-20 rounded-full bg-gold-primary opacity-30 blur-xl animate-pulse" />
                   </motion.div>
                 </div>
-                <h1 className="text-6xl md:text-8xl font-bold mb-6 gradient-text leading-tight">
-                  SAMIA TAROT
-                </h1>
-                <div className="w-32 h-1 bg-gold-gradient-theme mx-auto mb-8 rounded-full shadow-theme-gold" />
-              </motion.div>
 
-              <motion.p
-                variants={itemVariants}
-                className="text-xl md:text-2xl text-theme-secondary mb-12 leading-relaxed max-w-4xl mx-auto"
-              >
-                Discover your cosmic destiny through ancient mystical arts.
-                Professional tarot readings, astrology insights, and spiritual guidance await you.
-              </motion.p>
+                <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 gradient-text leading-tight tracking-tight">
+                  Unlock Your Cosmic Destiny
+                </h1>
+
+                <div className="w-24 h-1 bg-cosmic-gradient mx-auto mb-8 rounded-full shadow-theme-cosmic" />
+              </motion.div>
 
               <motion.div
                 variants={itemVariants}
-                className="flex flex-col sm:flex-row gap-6 justify-center items-center"
+                className="mb-16 max-w-3xl mx-auto"
+              >
+                <p className="text-xl md:text-2xl text-theme-secondary mb-6 leading-relaxed font-light">
+                  Professional spiritual guidance through ancient mystical arts
+                </p>
+                <p className="text-lg text-theme-muted leading-relaxed">
+                  Discover personalized tarot readings, astrology insights, and cosmic wisdom tailored to your unique journey
+                </p>
+              </motion.div>
+
+              <motion.div
+                variants={itemVariants}
+                className="flex flex-col sm:flex-row gap-6 justify-center items-center max-w-lg mx-auto"
               >
                 <Link
                   to="/services"
-                  className="group px-10 py-5 bg-gold-gradient-theme hover:shadow-theme-gold text-theme-inverse font-bold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-theme-card relative overflow-hidden"
+                  className="w-full sm:w-auto cta-primary"
                 >
-                  <span className="relative z-10 flex items-center">
-                    Get Your Reading
-                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                  Get Your Reading
+                  <ArrowRight className="ml-2 w-5 h-5" />
                 </Link>
 
                 <Link
                   to="/horoscopes"
-                  className="group px-10 py-5 bg-transparent border-2 border-theme-cosmic text-theme-primary hover:bg-cosmic-gradient hover:text-theme-inverse font-bold rounded-xl transition-all duration-300 transform hover:scale-105 backdrop-blur-sm"
+                  className="w-full sm:w-auto cta-secondary"
                 >
-                  <span className="flex items-center">
-                    Daily Horoscopes
-                    <Sparkles className="ml-2 w-5 h-5 group-hover:rotate-180 transition-transform duration-300" />
-                  </span>
+                  Daily Horoscopes
+                  <Sparkles className="ml-2 w-5 h-5" />
                 </Link>
               </motion.div>
             </div>
           </div>
         </motion.section>
 
-        {/* Services Section */}
-        <motion.section variants={itemVariants} className="py-20 relative">
-          <div className="container mx-auto px-4">
+        {/* Services Preview */}
+        <motion.section variants={itemVariants} className="section-spacing relative">
+          <div className="container">
             <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold gradient-text mb-4">
-                Mystical Services
+              <h2 className="text-3xl md:text-4xl font-bold gradient-text mb-4">
+                Our Mystical Services
               </h2>
-              <div className="w-24 h-1 bg-cosmic-gradient mx-auto rounded-full shadow-theme-cosmic" />
-              <p className="text-theme-secondary text-lg mt-6 max-w-2xl mx-auto">
-                Explore the ancient arts of divination and spiritual guidance
+              <div className="w-20 h-1 bg-cosmic-gradient mx-auto rounded-full shadow-theme-cosmic mb-6" />
+              <p className="text-theme-secondary text-lg max-w-2xl mx-auto leading-relaxed">
+                Discover ancient wisdom through personalized spiritual guidance and professional readings
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {services.map((service, index) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {services.slice(0, 4).map((service, index) => (
                 <motion.div
                   key={service.id}
                   variants={itemVariants}
                   whileHover={{
-                    y: -10,
-                    transition: { type: "spring", stiffness: 300, damping: 15 }
+                    y: -8,
+                    transition: { type: "spring", stiffness: 400, damping: 25 }
                   }}
                   className="group relative"
                 >
-                  <div className="bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-2xl p-8 text-center hover:border-gold-primary transition-all duration-500 shadow-theme-card hover:shadow-theme-gold relative overflow-hidden">
+                  <div className="bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-2xl p-6 text-center hover:border-gold-primary transition-all duration-300 shadow-theme-card hover:shadow-theme-gold relative overflow-hidden h-full">
                     {/* Background gradient */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-2xl`} />
 
                     {/* Icon */}
                     <div className="relative z-10 mb-6">
-                      <div className={`inline-flex p-4 rounded-full bg-gradient-to-br ${service.gradient} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                        {React.cloneElement(service.icon, { className: "w-8 h-8 text-white" })}
+                      <div className={`inline-flex p-3 rounded-full bg-gradient-to-br ${service.gradient} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                        {React.cloneElement(service.icon, { className: "w-6 h-6 text-white" })}
                       </div>
                     </div>
 
                     {/* Content */}
                     <div className="relative z-10">
-                      <h3 className="text-xl font-bold text-theme-primary mb-3 group-hover:text-gold-primary transition-colors duration-300">
+                      <h3 className="text-lg font-bold text-theme-primary mb-3 group-hover:text-gold-primary transition-colors duration-300">
                         {service.title}
                       </h3>
-                      <p className="text-theme-secondary text-sm leading-relaxed">
+                      <p className="text-theme-secondary text-sm leading-relaxed mb-4 line-clamp-2">
                         {service.description}
                       </p>
+                      <span className="inline-block text-xs text-theme-muted bg-theme-tertiary/20 px-3 py-1 rounded-full">
+                        Available 24/7
+                      </span>
                     </div>
 
                     {/* Hover effect overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-transparent via-gold-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-transparent via-gold-primary/3 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
                   </div>
                 </motion.div>
               ))}
             </div>
+
+            {/* CTA to full services */}
+            <motion.div variants={itemVariants} className="text-center mt-12">
+              <Link
+                to="/services"
+                className="cta-secondary"
+              >
+                View All Services
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Link>
+            </motion.div>
           </div>
         </motion.section>
 
-        {/* Daily Horoscopes Section */}
-        <motion.section variants={itemVariants} className="py-20 relative">
-          <div className="container mx-auto px-4">
+        {/* Daily Horoscopes Preview */}
+        <motion.section variants={itemVariants} className="section-spacing relative bg-theme-secondary/5">
+          <div className="container">
             <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold gradient-text mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold gradient-text mb-4">
                 Today's Cosmic Messages
               </h2>
-              <div className="w-24 h-1 bg-cosmic-gradient mx-auto rounded-full shadow-theme-cosmic" />
-              <p className="text-theme-secondary text-lg mt-6">
-                {dailyHoroscopes.length > 0 ? 'Your personalized daily horoscopes await' : 'The stars are aligning for today\'s revelations'}
+              <div className="w-20 h-1 bg-cosmic-gradient mx-auto rounded-full shadow-theme-cosmic mb-6" />
+              <p className="text-theme-secondary text-lg max-w-2xl mx-auto leading-relaxed">
+                {dailyHoroscopes.length > 0
+                  ? `${dailyHoroscopes.length} cosmic insights reveal your destiny today`
+                  : 'The celestial energies are gathering for today\'s revelations'
+                }
               </p>
             </div>
 
             {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {zodiacSigns.slice(0, 8).map((sign) => (
-                  <div key={sign} className="bg-theme-card backdrop-blur-sm border border-theme-cosmic rounded-xl p-6 animate-pulse">
-                    <div className="h-16 w-16 bg-theme-tertiary rounded-full mx-auto mb-4"></div>
-                    <div className="h-6 bg-theme-tertiary rounded mb-4"></div>
-                    <div className="h-4 bg-theme-tertiary rounded"></div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-4xl mx-auto">
+                {zodiacSigns.slice(0, 6).map((sign) => (
+                  <div key={sign} className="bg-theme-card backdrop-blur-sm border border-theme-cosmic rounded-xl p-4 animate-pulse">
+                    <div className="h-12 w-12 bg-theme-tertiary rounded-full mx-auto mb-3"></div>
+                    <div className="h-4 bg-theme-tertiary rounded mb-2"></div>
+                    <div className="h-3 bg-theme-tertiary rounded w-3/4 mx-auto"></div>
                   </div>
                 ))}
               </div>
             ) : dailyHoroscopes.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {zodiacSigns.map((sign) => {
-                  const horoscope = dailyHoroscopes.find(h => h.zodiac === sign);
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-4xl mx-auto mb-12">
+                  {zodiacSigns.slice(0, 6).map((sign) => {
+                    const horoscope = dailyHoroscopes.find(h => h.zodiac === sign);
 
-                  return (
-                    <motion.div
-                      key={sign}
-                      variants={itemVariants}
-                      whileHover={{
-                        y: -5,
-                        transition: { type: "spring", stiffness: 300, damping: 15 }
-                      }}
-                      className="bg-theme-card backdrop-blur-sm border border-theme-cosmic rounded-xl p-6 hover:border-gold-primary transition-all duration-300 transform hover:scale-105 shadow-theme-card hover:shadow-theme-gold"
-                    >
-                      <div className="text-center">
-                        <div className="text-4xl mb-3">✨</div>
-                        <h3 className="text-xl font-semibold text-theme-primary mb-3">{sign}</h3>
-                        {horoscope ? (
-                          <p className="text-theme-secondary text-sm leading-relaxed">
-                            {horoscope.text_content || 'Your cosmic message awaits...'}
-                          </p>
-                        ) : (
-                          <p className="text-theme-muted text-sm italic">
-                            Cosmic energies gathering...
-                          </p>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                    return (
+                      <motion.div
+                        key={sign}
+                        variants={itemVariants}
+                        whileHover={{
+                          y: -5,
+                          transition: { type: "spring", stiffness: 400, damping: 25 }
+                        }}
+                        className="group bg-theme-card backdrop-blur-sm border border-theme-cosmic rounded-xl p-4 hover:border-gold-primary transition-all duration-300 shadow-theme-card hover:shadow-theme-gold cursor-pointer"
+                      >
+                        <div className="text-center">
+                          <div className="text-2xl mb-2">✨</div>
+                          <h3 className="text-sm font-semibold text-theme-primary mb-2 group-hover:text-gold-primary transition-colors">
+                            {sign}
+                          </h3>
+                          {horoscope ? (
+                            <p className="text-theme-muted text-xs leading-relaxed line-clamp-3">
+                              {horoscope.text_content?.slice(0, 60)}...
+                            </p>
+                          ) : (
+                            <p className="text-theme-muted text-xs italic">
+                              Coming soon...
+                            </p>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                <motion.div variants={itemVariants} className="text-center">
+                  <Link
+                    to="/horoscopes"
+                    className="cta-primary"
+                  >
+                    Read All Horoscopes
+                    <Sparkles className="ml-2 w-4 h-4" />
+                  </Link>
+                </motion.div>
+              </>
             ) : (
-              <div className="text-center py-20">
+              <div className="text-center py-16 max-w-2xl mx-auto">
                 <motion.div
                   variants={floatVariants}
                   animate="animate"
-                  className="text-8xl mb-8 inline-block"
+                  className="text-6xl mb-6 inline-block"
                 >
                   🔮
                 </motion.div>
-                <h3 className="text-3xl font-bold gradient-text mb-6">
-                  The Stars Are Aligning
+                <h3 className="text-2xl font-bold gradient-text mb-4">
+                  Cosmic Energies Gathering
                 </h3>
-                <p className="text-theme-secondary text-lg mb-12 max-w-2xl mx-auto leading-relaxed">
-                  Our cosmic readers are channeling today's celestial energies.
-                  Return soon for your personalized horoscopes and mystical insights.
+                <p className="text-theme-secondary mb-8 leading-relaxed">
+                  Our mystical readers are channeling today's celestial insights.
+                  Return soon for personalized cosmic guidance.
                 </p>
                 <Link
                   to="/services"
-                  className="inline-flex items-center px-10 py-5 bg-cosmic-gradient hover:shadow-theme-cosmic text-theme-inverse font-bold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-theme-card"
+                  className="cta-primary"
                 >
                   Get Personal Reading
-                  <Star className="ml-2 w-5 h-5" />
+                  <Star className="ml-2 w-4 h-4" />
                 </Link>
               </div>
             )}
@@ -498,8 +422,8 @@ const Home = () => {
         </motion.section>
 
         {/* Features Section */}
-        <motion.section variants={itemVariants} className="py-20 relative">
-          <div className="container mx-auto px-4">
+        <motion.section variants={itemVariants} className="section-spacing relative">
+          <div className="container">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {features.map((feature, index) => (
                 <motion.div

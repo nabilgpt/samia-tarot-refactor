@@ -6,9 +6,11 @@ A working demonstration of the core API functionality
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import uvicorn
 import os
-from datetime import datetime
+import uuid
+from datetime import datetime, timedelta
 from db import db_fetch_all, db_fetch_one, db_exec
 
 # Initialize FastAPI app
@@ -172,6 +174,110 @@ async def get_zodiacs():
         {"sign": "Pisces", "element": "Water", "dates": "February 19 - March 20", "symbol": "♓"},
     ]
     return {"zodiacs": zodiacs}
+
+# Pydantic models
+class OrderCreate(BaseModel):
+    service_id: str
+    service_name: str
+    amount: float
+    question: str = None
+    metadata: dict = None
+
+class Order(BaseModel):
+    order_id: str
+    service_id: str
+    service_name: str
+    amount: float
+    status: str
+    created_at: datetime
+    question: str = None
+
+# In-memory storage for demo (replace with database in production)
+orders_db = {}
+
+# Create order endpoint
+@app.post("/api/orders")
+async def create_order(order_data: OrderCreate):
+    """Create a new order"""
+    try:
+        order_id = str(uuid.uuid4())[:8]  # Short ID for demo
+
+        order = {
+            "order_id": order_id,
+            "service_id": order_data.service_id,
+            "service_name": order_data.service_name,
+            "amount": order_data.amount,
+            "status": "pending",
+            "created_at": datetime.now(),
+            "question": order_data.question,
+            "metadata": order_data.metadata or {}
+        }
+
+        orders_db[order_id] = order
+
+        return {
+            "order_id": order_id,
+            "status": "created",
+            "message": "Order created successfully"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create order: {str(e)}")
+
+# Get order details
+@app.get("/api/orders/{order_id}")
+async def get_order(order_id: str):
+    """Get order details by ID"""
+    if order_id not in orders_db:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order = orders_db[order_id]
+
+    # Simulate order processing over time
+    elapsed = datetime.now() - order["created_at"]
+    if elapsed.total_seconds() > 30 and order["status"] == "pending":
+        order["status"] = "processing"
+    if elapsed.total_seconds() > 60 and order["status"] == "processing":
+        order["status"] = "completed"
+
+    return order
+
+# Payment intent endpoint
+@app.post("/api/payments/intent")
+async def create_payment_intent(data: dict):
+    """Create payment intent for order"""
+    order_id = data.get("order_id")
+    if not order_id or order_id not in orders_db:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    return {
+        "client_secret": f"pi_{order_id}_secret_demo",
+        "order_id": order_id,
+        "status": "requires_payment_method",
+        "amount": orders_db[order_id]["amount"]
+    }
+
+# Invoice URL endpoint (returns signed URL)
+@app.get("/api/payments/invoice/{order_id}")
+async def get_invoice_url(order_id: str):
+    """Get signed URL for invoice download"""
+    if order_id not in orders_db:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order = orders_db[order_id]
+    if order["status"] != "completed":
+        raise HTTPException(status_code=400, detail="Invoice not available - order not completed")
+
+    # Generate signed URL (demo - expires in 15 minutes)
+    expiry = datetime.now() + timedelta(minutes=15)
+    signed_url = f"https://storage.example.com/invoices/{order_id}.pdf?expires={int(expiry.timestamp())}&signature=demo_signature"
+
+    return {
+        "signed_url": signed_url,
+        "expires_at": expiry.isoformat(),
+        "order_id": order_id,
+        "message": "Invoice ready for download"
+    }
 
 # Root endpoint
 @app.get("/")

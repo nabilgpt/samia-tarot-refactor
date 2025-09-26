@@ -1,22 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash",
-      "Bash(*)",
-      "Read",
-      "Write", 
-      "Edit",
-      "Glob",
-      "Grep",
-      "MultiEdit",
-      "TodoWrite",
-      "Task",
-      "ExitPlanMode",
-      "WebFetch",
-      "WebSearch",
-      "BashOutput",
-      "KillBash",
-      "NotebookEdit"
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": [],

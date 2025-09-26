@@ -43,7 +43,11 @@ create table if not exists services (
 );
 
 -- Orders / Bookings
-create type order_status as enum ('new','assigned','in_progress','awaiting_approval','approved','rejected','delivered','cancelled');
+do $$ begin
+  create type order_status as enum ('new','assigned','in_progress','awaiting_approval','approved','rejected','delivered','cancelled');
+exception
+  when duplicate_object then null;
+end $$;
 
 create table if not exists orders (
   id bigserial primary key,

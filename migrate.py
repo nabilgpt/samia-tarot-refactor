@@ -32,6 +32,7 @@ MIGRATIONS = [
     ("010_rls.sql", load_migration_file("010_rls.sql")),
     ("002_dsr_compliance.sql", load_migration_file("002_dsr_compliance.sql")),
     ("017_rls_security_hardening_complete.sql", load_migration_file("017_rls_security_hardening_complete.sql")),
+    ("999_seed_test_accounts.sql", load_migration_file("999_seed_test_accounts.sql")),
 ]
 
 def exec_sql(sql: str):
