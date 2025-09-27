@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Sparkles, ArrowLeft, ArrowRight, Star, Gem, Zap, Heart } from 'lucide-react';
-import { api } from '../lib/api';
+import api from '../lib/api';
 
 const Services = () => {
   const [loading, setLoading] = useState(false);
@@ -55,11 +55,43 @@ const Services = () => {
     }
   ];
 
+  // Function to add default icons and gradients to API services
+  const enrichApiServices = (apiServices) => {
+    const defaultIcons = [<Sparkles />, <Star />, <Gem />, <Zap />, <Heart />];
+    const defaultGradients = [
+      'from-purple-500 via-purple-600 to-blue-600',
+      'from-yellow-500 via-orange-500 to-red-500',
+      'from-cyan-500 via-blue-500 to-purple-500',
+      'from-pink-500 via-rose-500 to-red-500',
+      'from-green-500 via-teal-500 to-blue-500'
+    ];
+
+    // Default prices for services (when base_price is 0)
+    const defaultPrices = {
+      'tarot': 25.00,
+      'coffee': 35.00,
+      'astro': 45.00,
+      'healing': 75.00,
+      'direct_call': 150.00
+    };
+
+    return apiServices.map((service, index) => ({
+      ...service,
+      // Map API fields to frontend expected fields
+      id: service.code || service.id.toString(), // Use code as string ID, fallback to numeric id
+      title: service.name, // Map name to title
+      price: service.base_price > 0 ? service.base_price : (defaultPrices[service.code] || 25.00), // Use base_price or default
+      icon: service.icon || defaultIcons[index % defaultIcons.length],
+      gradient: service.gradient || defaultGradients[index % defaultGradients.length]
+    }));
+  };
+
   useEffect(() => {
     const loadServices = async () => {
       try {
         const apiServices = await api.getServices();
-        setServicesFromApi(apiServices);
+        const enrichedServices = enrichApiServices(apiServices);
+        setServicesFromApi(enrichedServices);
       } catch (error) {
         console.error('Error loading services:', error);
       } finally {
@@ -74,23 +106,44 @@ const Services = () => {
     setLoading(true);
     setError(null);
     try {
-      const order = await api.createOrder({
-        service_id: service.id,
-        service_name: service.title,
-        amount: service.price,
+      const orderData = {
+        service_id: service.id, // Now correctly mapped from API
+        service_name: service.title, // Now correctly mapped from API
+        amount: service.price, // Now correctly mapped from API
         metadata: {
           service_type: service.id,
+          service_code: service.code, // Store original code for reference
           requested_at: new Date().toISOString()
         }
-      });
+      };
 
-      navigate(`/orders/${order.order_id}`);
+      // Only include question if we have one (avoid sending null)
+      // For now, we'll omit it entirely since we don't have a question input field
+
+      const order = await api.createOrder(orderData);
+
+      if (order.order_id) {
+        navigate(`/orders/${order.order_id}`);
+      } else {
+        throw new Error('Order creation failed - no order ID returned');
+      }
     } catch (error) {
       console.error('Error creating order:', error);
-      // Use a more user-friendly error message
-      const errorMsg = error.message.includes('404')
-        ? 'Service temporarily unavailable. Please try again later.'
-        : 'Unable to create order. Please check your connection and try again.';
+      // Provide specific user-friendly error messages
+      let errorMsg = 'Unable to create order. Please try again.';
+
+      if (error.message.includes('422')) {
+        errorMsg = 'Invalid order data. Please refresh the page and try again.';
+      } else if (error.message.includes('404')) {
+        errorMsg = 'Service temporarily unavailable. Please try again later.';
+      } else if (error.message.includes('401') || error.message.includes('403')) {
+        errorMsg = 'Please log in to place an order.';
+      } else if (error.message.includes('500')) {
+        errorMsg = 'Server error. Please try again in a few minutes.';
+      } else if (error.message.toLowerCase().includes('network') || error.message.toLowerCase().includes('fetch')) {
+        errorMsg = 'Connection error. Please check your internet and try again.';
+      }
+
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -123,51 +176,23 @@ const Services = () => {
   };
 
   return (
-    <div>
-
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-theme-card/80 backdrop-blur-lg border-b border-theme-cosmic/20 p-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <Link to="/" className="text-2xl font-bold gradient-text flex items-center group">
-            <Sparkles className="w-8 h-8 mr-2 text-gold-primary animate-pulse group-hover:rotate-12 transition-transform duration-300" />
-            SAMIA TAROT
-          </Link>
-          <div className="flex items-center space-x-6">
-            <Link
-              to="/horoscopes"
-              className="relative text-theme-secondary hover:text-gold-primary transition-colors duration-300 py-2 group hidden md:block"
-            >
-              Horoscopes
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gold-primary rounded-full group-hover:w-full transition-all duration-300"></span>
-            </Link>
-            <Link
-              to="/"
-              className="flex items-center px-4 py-2 bg-cosmic-gradient hover:shadow-theme-cosmic text-theme-inverse font-medium rounded-lg transition-all duration-300 transform hover:scale-105"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Home
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="relative z-10 pt-12 pb-20"
-      >
-        <div className="container mx-auto px-4">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="relative z-10 py-12 md:py-20"
+    >
+      <div className="container">
           {/* Header */}
-          <motion.div variants={itemVariants} className="text-center mb-16">
-            <h1 className="text-5xl md:text-6xl font-bold gradient-text mb-6">
-              Mystical Services
-            </h1>
-            <div className="w-32 h-1 bg-cosmic-gradient mx-auto mb-8 rounded-full shadow-theme-cosmic" />
-            <p className="text-theme-secondary text-lg max-w-2xl mx-auto">
-              Choose your spiritual journey and unlock the mysteries of the universe
-            </p>
-          </motion.div>
+        <motion.div variants={itemVariants} className="text-center mb-12 md:mb-16">
+          <h1 className="fluid-heading-xl font-bold gradient-text mb-6">
+            Mystical Services
+          </h1>
+          <div className="w-32 h-1 bg-cosmic-gradient mx-auto mb-8 rounded-full shadow-theme-cosmic" />
+          <p className="fluid-text-lg text-theme-secondary content-readable">
+            Choose your spiritual journey and unlock the mysteries of the universe
+          </p>
+        </motion.div>
 
           {/* Inline Error Display */}
           {error && (
@@ -185,8 +210,8 @@ const Services = () => {
             </motion.div>
           )}
 
-          {/* Services Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        {/* Services Grid */}
+        <div className="grid-services">
             {servicesLoading ? (
               // Loading skeletons
               Array(6).fill(0).map((_, index) => (
@@ -218,19 +243,19 @@ const Services = () => {
                 }}
                 className="group relative h-full"
               >
-                <div className="bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-2xl p-8 hover:border-gold-primary transition-all duration-300 shadow-theme-card hover:shadow-theme-gold relative overflow-hidden h-full flex flex-col">
+                <div className="card-equal-height bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-2xl p-6 md:p-8 hover:border-gold-primary transition-all duration-300 shadow-theme-card hover:shadow-theme-gold relative overflow-hidden">
                   {/* Background gradient */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-2xl`} />
+                  <div className={`absolute inset-0 bg-gradient-to-br ${service.gradient || 'from-purple-500 to-blue-600'} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-2xl`} />
 
                   {/* Icon */}
                   <div className="relative z-10 mb-6 text-center">
-                    <div className={`inline-flex p-4 rounded-full bg-gradient-to-br ${service.gradient} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                      {React.cloneElement(service.icon, { className: "w-8 h-8 text-white" })}
+                    <div className={`inline-flex p-4 rounded-full bg-gradient-to-br ${service.gradient || 'from-purple-500 to-blue-600'} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                      {service.icon ? React.cloneElement(service.icon, { className: "w-8 h-8 text-white" }) : <Sparkles className="w-8 h-8 text-white" />}
                     </div>
                   </div>
 
                   {/* Content */}
-                  <div className="relative z-10 flex-grow text-center mb-8">
+                  <div className="relative z-10 text-center mb-6 md:mb-8">
                     <h3 className="text-2xl font-bold text-theme-primary mb-4 group-hover:text-gold-primary transition-colors duration-300">
                       {service.title}
                     </h3>
@@ -269,7 +294,7 @@ const Services = () => {
                     <button
                       onClick={() => handleOrderService(service)}
                       disabled={loading}
-                      className="w-full px-6 py-4 bg-cosmic-gradient hover:shadow-theme-cosmic text-theme-inverse font-bold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-theme-card disabled:opacity-50 disabled:cursor-not-allowed group-hover:bg-gold-gradient-theme"
+                      className="touch-target w-full px-6 py-4 bg-cosmic-gradient hover:shadow-theme-cosmic text-theme-inverse font-bold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-theme-card disabled:opacity-50 disabled:cursor-not-allowed group-hover:bg-gold-gradient-theme"
                     >
                       <span className="flex items-center justify-center">
                         {loading ? 'Creating Order...' : 'Order Reading'}
@@ -284,11 +309,9 @@ const Services = () => {
               </motion.div>
             ))
             )}
-          </div>
-
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 };
 

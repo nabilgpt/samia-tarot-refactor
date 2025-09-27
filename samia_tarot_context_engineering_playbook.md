@@ -471,10 +471,13 @@ export const api = {
 ---
 
 ## 27) UI/UX Polish & API Binding — Action Plan (Pro‑level, Minimal Files)
+
 **Context:** Theme/background are correct. Next we need professional UI/UX and robust API binding without increasing file count.
 
 ### 27.1 Fix 404 on POST /api/orders (proxy canonicalization)
+
 - **Vite proxy (no rewrite):**
+
 ```ts
 // vite.config.ts
 export default defineConfig({
@@ -485,23 +488,27 @@ export default defineConfig({
   },
 });
 ```
+
 - **Frontend base:** keep `const BASE = '/api'` and call `${BASE}/orders`.
 - **Acceptance:** `curl -i http://localhost:5173/api/horoscopes/daily` → `200` via proxy; `curl -i -X POST http://localhost:5173/api/orders` → route exists (not 404). If backend expects `/orders` (no prefix), add `rewrite: (p)=>p.replace(/^\/api/, '')` and keep frontend calls unchanged. Verify in `http://localhost:8001/docs` which path exists.
 
 ### 27.2 Page structure (polish without altering theme)
+
 - **Navbar (sticky, slim):** brand at left; minimal links at right; active state under‑glow.
 - **Hero:** 2‑line headline, subcopy ≤ 80ch, two CTAs (primary solid, secondary outline) aligned to grid; subtle `motion` fade/slide.
 - **Services (/services):** grid cards (2–3 cols) with consistent spacing, price badge, icon, and one clear CTA; small skeletons while loading; error inline, not alert box.
 - **Horoscopes (/horoscopes):** if empty → show 12 zodiac placeholders dimmed; otherwise responsive grid; keep "Back to Home" anchor compact.
-- **Order detail (/orders/:id):** timeline (Created → Assigned → In Progress → Delivered); polling with backoff; invoice button opens **Signed URL** (≤15m) without caching.
+- **Order detail (/orders/****:id****):** timeline (Created → Assigned → In Progress → Delivered); polling with backoff; invoice button opens **Signed URL** (≤15m) without caching.
 - **Login (/login):** minimal form, client‑side validation; reuse cosmic inputs/buttons.
 
 ### 27.3 Accessibility & performance (must‑do, theme‑safe)
+
 - Respect `prefers-reduced-motion` (CSS `@media (prefers-reduced-motion: reduce)` + `useReducedMotion()` in Motion).
 - tsParticles tuning: `fpsLimit: 45–60`, `pauseOnBlur: true`, `pauseOnOutsideViewport: true`, adjust `number.value` & `move.speed` for weaker GPUs.
 - Focus states visible; headings hierarchy consistent; buttons have `aria-busy` during API calls.
 
 ### 27.4 Minimal code snippets (keep tiny & clear)
+
 ```ts
 // src/lib/api.ts
 const j = async (r: Response) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); };
@@ -513,6 +520,7 @@ export const api = {
   invoiceUrl: (id: string) => fetch(`${BASE}/payments/invoice/${id}`).then(j),
 };
 ```
+
 ```jsx
 // Respect reduced motion (example)
 import { useReducedMotion, m } from 'framer-motion';
@@ -522,18 +530,21 @@ export function Hero() {
   return <m.h1 animate={anim} transition={{ duration: .6 }}>{/* ... */}</m.h1>;
 }
 ```
+
 ```css
 /* Accessibility: reduce motion */
 @media (prefers-reduced-motion: reduce) {
   .floating, .parallax, .orb { animation: none !important; transition: none !important; }
 }
 ```
+
 ```js
 // tsParticles options (excerpt)
 const options = { fpsLimit: 60, pauseOnBlur: true, pauseOnOutsideViewport: true, detectRetina: true };
 ```
 
 ### 27.5 Acceptance (visual + functional)
+
 - No 404 from `/api/orders`; router free of warnings; network calls show `200/201`.
 - Home/Services/Horoscopes/Orders pages render with consistent spacing, typography, and CTAs—all reusing the **exact** theme.
 - Reduced‑motion users see simplified animations; particles pause on blur.
@@ -546,18 +557,21 @@ const options = { fpsLimit: 60, pauseOnBlur: true, pauseOnOutsideViewport: true,
 ---
 
 ## 28) Homepage Review — Pro Polish Checklist (Theme-Pure)
+
 **Status (from screenshots):** Theme/background correct; layout/spacing/hierarchy need pro pass. API binding OK.
 
 ### Actions (Keep files minimal)
-1) Container width & rhythm: apply a single `.container` with max‑width and section vertical rhythm (top/bottom padding tokens) for Hero/Services.
-2) CTAs: primary/secondary sizes unified; consistent icon/label spacing; keyboard focus visible.
-3) Services grid: 3‑col on desktop, equal card heights, price badge fixed position; skeletons on load; inline error (no alerts).
-4) Horoscopes: 12 placeholders when empty; responsive grid when data exists; compact “Back to Home”.
-5) A11y: `@media (prefers-reduced-motion: reduce)` and Motion `useReducedMotion()` in animated components; visible `:focus-visible` styles.
-6) Particles perf: `fpsLimit 45–60`, `pauseOnBlur`, `pauseOnOutsideViewport`.
-7) Router: v7 future flags enabled to eliminate warnings.
+
+1. Container width & rhythm: apply a single `.container` with max‑width and section vertical rhythm (top/bottom padding tokens) for Hero/Services.
+2. CTAs: primary/secondary sizes unified; consistent icon/label spacing; keyboard focus visible.
+3. Services grid: 3‑col on desktop, equal card heights, price badge fixed position; skeletons on load; inline error (no alerts).
+4. Horoscopes: 12 placeholders when empty; responsive grid when data exists; compact “Back to Home”.
+5. A11y: `@media (prefers-reduced-motion: reduce)` and Motion `useReducedMotion()` in animated components; visible `:focus-visible` styles.
+6. Particles perf: `fpsLimit 45–60`, `pauseOnBlur`, `pauseOnOutsideViewport`.
+7. Router: v7 future flags enabled to eliminate warnings.
 
 ### Acceptance
+
 - No console warnings; no 404 on `/api/orders`.
 - Clear typographic hierarchy; section spacing consistent; CTAs aligned to grid.
 - Keyboard navigation shows proper focus rings; reduced‑motion paths respected.
@@ -570,9 +584,11 @@ const options = { fpsLimit: 60, pauseOnBlur: true, pauseOnOutsideViewport: true,
 ---
 
 ## 29) Theme Consistency Enforcement — One Layout, One Background
+
 **Non‑negotiable:** Every page must use the **exact same theme, colors, styles, and background** as the source project. Do **not** introduce page‑specific overrides.
 
 ### 29.1 Global Layout wrapper (mount once)
+
 - Create a tiny `AppLayout` that imports the cosmic theme CSS and mounts the **single** background/particles/orbs.
 - Router uses nested **layout route** so all pages render inside this wrapper.
 
@@ -591,6 +607,7 @@ export default function AppLayout(){
   );
 }
 ```
+
 ```jsx
 // router (minimal)
 <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -607,6 +624,7 @@ export default function AppLayout(){
 ```
 
 ### 29.2 Tokens & rules (CSS variables only)
+
 - Colors/spacing/typography/borders must come **only** from existing CSS variables in `:root`.
 - Pages/components may **not** hard‑code colors or shadows; use `var(--*)` values from the theme.
 
@@ -617,10 +635,12 @@ export default function AppLayout(){
 ```
 
 ### 29.3 One background policy
+
 - Background starfield/particles/orbs mounted **once** in `AppLayout`. Pages must **not** duplicate or override.
 - Respect reduced motion in background (pause or simplify when `prefers-reduced-motion`).
 
 ### 29.4 Acceptance
+
 - Visual diff across Home/Services/Horoscopes/Orders/Login shows **identical background** and typography scale.
 - No inline styles overriding tokens; computed styles show `var(--*)` usage.
 - Router free of warnings; all pages render within `AppLayout`.
@@ -628,12 +648,15 @@ export default function AppLayout(){
 > Keep repository lean: add only `AppLayout.jsx` if missing; otherwise reuse existing layout file. Do not add extra folders. Do not change the theme.
 
 
+
 ---
 
 ## 30) Frontend UAT & Launch Gate (Lean, Theme-Safe)
+
 **Goal:** Final verification that the UI/UX, routing, and API bindings meet production quality—without changing the theme and with minimum files.
 
 ### 30.1 UAT Checklist
+
 - **Visual Consistency:** All pages render inside `AppLayout` with one background; no page-level overrides; typography scale unified.
 - **Navigation:** Navbar sticky; active state visible; keyboard focus via `:focus-visible` works on links and buttons.
 - **Horoscopes Empty/Loaded:** 12 placeholders when empty; grid when data exists; no layout shift.
@@ -643,6 +666,7 @@ export default function AppLayout(){
 - **Motion/Particles:** `prefers-reduced-motion` supported; particles paused on blur/outside viewport; fpsLimit ≤ 60.
 
 ### 30.2 Quick Smoke (dev)
+
 ```bash
 # health
 curl -sS http://localhost:5173/ > /dev/null && echo OK-frontend
@@ -652,10 +676,12 @@ curl -sS -X POST http://localhost:5173/api/orders -H 'Content-Type: application/
 ```
 
 ### 30.3 Performance & A11y (lightweight)
+
 - **CLS/LCP**: verify no layout jumps (use container rhythm); hero images (if any) have dimensions.
 - **A11y**: tab through critical CTAs; ensure visible focus and proper aria labels; confirm reduced-motion path.
 
 ### 30.4 Sign‑off Criteria
+
 - Zero console warnings during normal navigation.
 - All smoke checks return `2xx` and render correct empty/loaded states.
 - No hard‑coded colors/shadows; only `var(--*)` tokens.
@@ -664,6 +690,7 @@ curl -sS -X POST http://localhost:5173/api/orders -H 'Content-Type: application/
 ---
 
 ## 31) Post‑UAT Handover (Docs to include)
+
 - **Routes Map:** current URLs with ownership.
 - **Components Map (tiny):** file list (≤ the current set) with brief responsibility lines.
 - **API Contracts:** inputs/outputs for calls used by the frontend.
@@ -672,3 +699,305 @@ curl -sS -X POST http://localhost:5173/api/orders -H 'Content-Type: application/
 
 > Reminder: Do **not** change the theme. Keep code maintainable & short. Keep repository lean—no unnecessary files.
 
+
+
+---
+
+## 32) Auth Binding (Fix 404) — Supabase Client on Frontend (Lean & Theme-Safe)
+
+**Problem (from screenshots):** `/api/auth/login` returns **404** → backend route not present. **Do not** add more backend code now. Bind login via **Supabase client** on the frontend using the **anon** key, keep repo lean, and (optionally) call `/api/auth/sync` after sign‑in if the backend provides it.
+
+### 32.1 Env (Vite)
+
+Create `.env.local` (not committed):
+
+```
+VITE_SUPABASE_URL=... 
+VITE_SUPABASE_ANON_KEY=...
+```
+
+> Use Vite `import.meta.env.VITE_*` vars. Never expose **service\_role** on the client.
+
+### 32.2 Tiny client (1 file)
+
+```ts
+// src/lib/supabase.ts
+import { createClient } from '@supabase/supabase-js';
+export const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_ANON_KEY!
+);
+```
+
+### 32.3 Minimal auth helpers (co-located, no bloat)
+
+```ts
+// src/lib/auth.ts
+import { supabase } from './supabase';
+export const signIn = (email:string, password:string) => supabase.auth.signInWithPassword({ email, password });
+export const signOut = () => supabase.auth.signOut();
+export const getUser = () => supabase.auth.getUser(); // validated via server
+```
+
+### 32.4 Update Login.jsx (replace 404 call)
+
+- Remove calls to `/api/auth/login`.
+- On submit → `await signIn(email,password)`.
+- On success: optionally `await api.authSync()` if available, then route to role landing.
+- Respect reduced motion & theme; show inline error (no alerts).
+
+```tsx
+// Login.jsx (excerpt)
+const onSubmit = async (e) => {
+  e.preventDefault();
+  setBusy(true);
+  const { data, error } = await signIn(email, password);
+  setBusy(false);
+  if (error) setErr(error.message); else navigate('/');
+};
+```
+
+### 32.5 Acceptance
+
+- Submitting the form no longer hits `/api/auth/login`; network shows **200** from Supabase Auth.
+- Session persists by default; `getUser()` returns the signed‑in user; role UI shows accordingly.
+- No console errors; theme untouched; **no new folders** added.
+
+> Non‑negotiable: Do not change the theme; keep code **maintainable & short**; keep repository lean.
+
+
+
+---
+
+## 33) Auth Guards & Role-Gated Navigation (Supabase Client)
+
+**Goal:** Protect routes and gate UI by role using the existing Supabase client. Keep it minimal; do not touch the theme.
+
+### 33.1 RequireAuth (tiny)
+
+```tsx
+// src/components/RequireAuth.jsx
+import { useEffect, useState } from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
+import { getUser } from '../lib/auth';
+export default function RequireAuth(){
+  const [u,setU] = useState(null), [done,setDone] = useState(false);
+  useEffect(()=>{ getUser().then(({ data })=>{ setU(data?.user||null); setDone(true); }); },[]);
+  if(!done) return null; // keep UI clean; layout stays
+  return u ? <Outlet/> : <Navigate to="/login" replace/>;
+}
+```
+
+### 33.2 RoleGate (tiny)
+
+```tsx
+// src/components/RoleGate.jsx
+import { useEffect, useState } from 'react';
+import { getUser } from '../lib/auth';
+export default function RoleGate({ allow = [], children }){
+  const [ok,setOk] = useState(false);
+  useEffect(()=>{ getUser().then(({ data })=>{
+    const r = data?.user?.user_metadata?.role; setOk(r && allow.includes(r));
+  }); },[allow]);
+  return ok ? children : null; // or a small inline 403 message
+}
+```
+
+### 33.3 Router wiring
+
+```jsx
+// router excerpt
+<Route element={<RequireAuth/>}>
+  <Route path="/orders/:id" element={<Order/>} />
+  <Route path="/admin" element={<RoleGate allow={["admin","superadmin"]}><Admin/></RoleGate>} />
+</Route>
+```
+
+### 33.4 State sync (optional)
+
+- If backend exposes `/api/auth/sync`, call it once after sign-in to ensure profile/role mirrors Auth.
+
+### 33.5 Storage rule (must)
+
+- Do **not** store tokens manually. Supabase persists the session. If you need to cache UI bits, store only non‑sensitive display data.
+
+### Acceptance
+
+- Unauthenticated users hitting protected routes are redirected to `/login`.
+- Admin routes are visible only for allowed roles.
+- Navbar updates via `onAuthStateChange` without reload.
+- No new folders added; code remains small and clear. Theme untouched.
+
+
+
+---
+
+## 34) Final Main Page UI/UX — Production‑Level Spec (Theme‑Pure)
+
+**Non‑negotiable:** Do **not** change the theme. Reuse the cosmic/neon tokens, spacing, radii, shadows, and background from the Windows project. Keep components **short, clear, maintainable**, and avoid new folders.
+
+### 34.1 Structure (above the fold → below the fold)
+
+1. **Navbar (sticky):** left brand; right links (Home, Services, Horoscopes, Sign In/Out); hamburger at <768px; active link under‑glow.
+2. **Hero (2 lines):** headline ≤ 80ch; supporting copy ≤ 120ch; two CTAs (Primary = Get Your Reading, Secondary = Daily Horoscopes) with icon+label spacing; subtle entry motion respecting reduced‑motion.
+3. **Signals/Trust (optional, single row):** small icons & 1‑liners (Private Audio • Secure Payments • 18+ Only) — same typography scale.
+4. **Daily Preview:** 6 zodiac cards from `GET /api/horoscopes/daily`; if empty → placeholder grid of 12 zodiac icons.
+5. **Services Teaser:** 3 featured cards (tarot/astro/numerology) with price badge and CTA → `/services`.
+6. **Footer (compact):** links to Terms/Privacy/Refund/Contact; copyright.
+
+### 34.2 Components (tiny)
+
+- `HeroCTA`: button pair with shared class names; `aria-busy` on fetch; uses CSS tokens only.
+- `ZodiacPreview`: fetch once, show empty state grid when `count=0`.
+- `ServiceCard`: equal heights via layout CSS (no JS). One CTA per card.
+
+### 34.3 Motion & A11y
+
+- Global reduced‑motion: CSS media query + `useReducedMotion()` for Hero/preview.
+- Keyboard: visible `:focus-visible`; tabindex on CTAs; skip links optional.
+
+### 34.4 Acceptance (Main Page)
+
+- Layout does not shift after load; consistent section rhythm; CTAs aligned to grid.
+- Empty vs loaded states render cleanly; no alerts popups.
+- No inline colors/shadows; only theme tokens (`var(--*)`).
+
+---
+
+## 35) Pages Inventory & Route Map (All Roles, Minimal Files)
+
+> Keep routes flat; use **layout route** with `AppLayout` and the single mounted background.
+
+### 35.1 Public
+
+- `/` Home (hero + daily preview + services teaser)
+- `/services` Services grid (3 cols desktop)
+- `/horoscopes` Full daily grid (12 when empty)
+- `/login` Sign in form (Supabase Auth)
+- `/legal/terms` • `/legal/privacy` • `/legal/refund` (simple content pages)
+
+### 35.2 Client
+
+- `/orders` My Orders (list)
+- `/orders/:id` Order detail (timeline + invoice link)
+- `/checkout` Create order & pay (intent → provider)
+- `/profile` Profile (DOB → zodiac compute; contact prefs)
+
+### 35.3 Reader
+
+- `/reader/queue` Assigned orders only
+- `/reader/orders/:id` Upload result (audio) + notes
+
+### 35.4 Monitor
+
+- `/monitor/review` Results & horoscopes approval queue
+- `/monitor/calls` Live calls control (terminate)
+
+### 35.5 Admin/Superadmin
+
+- `/admin/users` User list (unblock only)
+- `/admin/rate-limits` Limits & 429 counters
+- `/admin/metrics` KPIs snapshot
+- `/admin/exports` CSV exports & audit trail link
+
+### 35.6 Auth/Guards
+
+- Wrap protected clusters with `RequireAuth`; gate admin routes with `RoleGate allow={["admin","superadmin"]}`.
+
+---
+
+## 36) Wiring Matrix — Page ↔ API (Contracts at a Glance)
+
+| Page/Feature    | Endpoint(s)                                                  | Notes                                                 |          |                          |
+| --------------- | ------------------------------------------------------------ | ----------------------------------------------------- | -------- | ------------------------ |
+| Home → Preview  | `GET /api/horoscopes/daily`                                  | show 6; empty state renders 12 placeholders           |          |                          |
+| Services        | (local config or `GET /api/services` if present)             | one CTA per card → `/checkout?service=...`            |          |                          |
+| Checkout        | `POST /api/orders`, `POST /api/payments/intent`              | on success → `/orders/:id`                            |          |                          |
+| Order detail    | `GET /api/orders/:id`, `GET /api/payments/invoice/:order_id` | polling with backoff; never cache Signed URL          |          |                          |
+| Reader upload   | `POST /api/orders/:id/result`                                | attach audio blob; server stores private; emits notif |          |                          |
+| Monitor review  | \`POST /api/horoscopes/\:id/approve                          | reject`, `POST /api/orders/\:id/approve               | reject\` | inline comments optional |
+| Calls (monitor) | `POST /api/calls/terminate`                                  | audit trail                                           |          |                          |
+| Admin metrics   | `GET /api/ops/metrics`, `GET /api/ops/snapshot`              | golden signals & counters                             |          |                          |
+
+**Client Auth:** Supabase `signInWithPassword`/`getUser` for session; optional `/api/auth/sync` after sign‑in.
+
+---
+
+## 37) One‑Shot Build Plan (Finish Line)
+
+**Objective:** Ship the entire UI surface and bindings in a single focused update without altering theme or expanding file count.
+
+### 37.1 Implement/Polish (Frontend)
+
+- Finalize Main Page per §34.
+- Build `/services`, `/horoscopes`, `/orders`, `/orders/:id`, `/checkout`, `/profile`, `/login` with the shared layout and tokens only.
+- Add `RequireAuth` + `RoleGate` wrappers (per §33) for client/reader/admin paths.
+- Add inline error blocks and loading skeletons only where remote data exists.
+
+### 37.2 Bindings (API)
+
+- Ensure Vite proxy `/api/*` → backend (no rewrite unless needed). Base path constant.
+- Use `src/lib/api.ts` helper (check `response.ok` before `.json()`); keep functions tiny.
+- Poll order status with capped exponential backoff; open invoice via short‑lived Signed URL; do not store it in state.
+
+### 37.3 Acceptance (Global)
+
+- No console warnings; all routes render inside `AppLayout` with one background.
+- All listed pages reachable; guards/roles work; login updates navbar live.
+- Network panel: all calls return 2xx; 404/5xx surfaced as inline error blocks.
+- Repo diff minimal; no new folders unrelated to this scope.
+
+---
+
+## 38) Final Execution Prompt (Copy‑Paste for Agent)
+
+**Do not change the theme.** Keep the repository lean (**no 1000 files**) and code **maintainable & short**.
+
+"Read all SAMIA‑TAROT master context files and Sections 34–37 of this playbook. Do NOT touch the global theme; every new page must exactly match the cosmic/neon design.
+
+**Scope (one update):**
+
+1. Finish the main page per §34 (hero, daily preview with empty state, services teaser, footer).
+2. Implement the remaining pages and routes per §35 using the `AppLayout` single background:
+   - Public: `/`, `/services`, `/horoscopes`, `/login`, `/legal/*`
+   - Client: `/orders`, `/orders/:id`, `/checkout`, `/profile`
+   - Reader: `/reader/queue`, `/reader/orders/:id`
+   - Monitor: `/monitor/review`, `/monitor/calls`
+   - Admin: `/admin/users`, `/admin/rate-limits`, `/admin/metrics`, `/admin/exports`
+3. Wire all pages to APIs following the Wiring Matrix (§36) using the tiny `src/lib/api.ts` helper.
+4. Use Supabase Auth on the client only (anon key) for login and session (`signInWithPassword`, `getUser`, `onAuthStateChange`), and gate routes via `RequireAuth`/`RoleGate`.
+5. Add inline error blocks and minimal skeletons; no alerts. Respect reduced‑motion.
+6. Ensure Vite proxy `/api/*` → backend; keep a single base path constant.
+
+**Acceptance:**
+
+- No console warnings. All routes render inside `AppLayout` with identical theme/background.
+- Public/Client/Reader/Monitor/Admin flows load and call the right endpoints with 2xx.
+- Order flow: create → detail → polling with capped backoff → invoice via short‑lived Signed URL (not cached).
+- Repo remains lean—no new folders beyond what this scope requires.
+
+Ship the full update in a single PR with a concise changelog."
+
+
+
+---
+
+## 39) One‑PR, One‑Pass — Merge & Verify Checklist
+
+**Scope:** Implement Sections 34–37 exactly; no theme changes; minimal diffs; single PR.
+
+### 39.1 PR Metadata
+
+- **Title:** `feat(ui): finish main page + full pages & wiring (one‑pass)`
+- **Labels:** `frontend`, `theme-locked`, `one-pass`
+- **Changelog (short):**
+  - add: public pages (home/services/horoscopes/login/legal)
+  - add: client pages (orders/orders\:id/checkout/profile)
+  - add: reader/monitor/admin pages per §35
+  - add: auth guards (RequireAuth/RoleGate)
+  - fix: api bindings + invoice signed-url handling
+  - chore: tiny api helper, router glue; no theme changes
+
+### 39.2 Diff Boundaries (must NOT exceed)
+
+- **Allowed files:** router, AppLayout, pages listed in §35, `src/lib/api.ts`, \`src

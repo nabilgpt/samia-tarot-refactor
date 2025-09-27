@@ -504,10 +504,61 @@ export const api = {
   notifications: notificationsService,
 };
 
+// Polling utility with exponential backoff + jitter (AWS best practice)
+// Throws on non-ready states to enable retry loop
+export interface PollOptions {
+  maxAttempts?: number;
+  maxDelay?: number;
+  jitter?: boolean;
+  checkFn?: (result: any) => boolean;
+}
+
+export const pollWithBackoff = async <T = any>(
+  fn: () => Promise<T>,
+  options: PollOptions = {}
+): Promise<T> => {
+  const {
+    maxAttempts = 5,
+    maxDelay = 16000,
+    jitter = true,
+    checkFn = (result) => !!result
+  } = options;
+
+  let delay = 1000;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const result = await fn();
+
+      if (checkFn(result)) {
+        return result;
+      }
+
+      if (attempt < maxAttempts - 1) {
+        const jitterMs = jitter ? Math.floor(Math.random() * 400) - 200 : 0;
+        const waitTime = Math.min(delay, maxDelay) + jitterMs;
+        await new Promise(resolve => setTimeout(resolve, Math.max(0, waitTime)));
+        delay *= 2;
+      } else {
+        throw new Error('Polling timeout: maximum attempts reached');
+      }
+    } catch (error) {
+      if (attempt === maxAttempts - 1) {
+        throw error;
+      }
+      const jitterMs = jitter ? Math.floor(Math.random() * 400) - 200 : 0;
+      const waitTime = Math.min(delay, maxDelay) + jitterMs;
+      await new Promise(resolve => setTimeout(resolve, Math.max(0, waitTime)));
+      delay *= 2;
+    }
+  }
+
+  throw new Error('Polling timeout: maximum attempts reached');
+};
+
 // Helper functions for error handling in components
 export const handleApiError = (error: any) => {
   if (error instanceof ProfileIncompleteError) {
-    // Redirect to profile completion flow
     return {
       type: 'profile_incomplete',
       message: 'Please complete your profile first',
@@ -539,7 +590,6 @@ export const handleApiError = (error: any) => {
     };
   }
 
-  // Unknown error
   return {
     type: 'unknown',
     message: 'An unexpected error occurred',

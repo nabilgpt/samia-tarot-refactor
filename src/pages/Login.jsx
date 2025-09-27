@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Sparkles, ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle } from 'lucide-react';
-import { api } from '../lib/api';
+import { login } from '../lib/auth';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -62,20 +62,17 @@ const Login = () => {
     }
 
     try {
-      const response = await api.login({
-        email: formData.email,
-        password: formData.password
-      });
+      const user = await login(formData.email, formData.password);
 
-      // Store auth token (simplified for demo)
-      localStorage.setItem('authToken', response.token);
+      // Supabase handles session persistence automatically
+      // No need to manually store sensitive data in localStorage
 
       // Redirect to home page
       navigate('/');
     } catch (error) {
       console.error('Login error:', error);
       setError(
-        error.message.includes('404') || error.message.includes('401')
+        error.message.includes('Invalid login credentials') || error.message.includes('Email not confirmed')
           ? 'Invalid email or password'
           : 'Login failed. Please check your connection and try again.'
       );
@@ -85,45 +82,27 @@ const Login = () => {
   };
 
   return (
-    <div>
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-theme-card/80 backdrop-blur-lg border-b border-theme-cosmic/20 p-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <Link to="/" className="text-2xl font-bold gradient-text flex items-center group">
-            <Sparkles className="w-8 h-8 mr-2 text-gold-primary animate-pulse group-hover:rotate-12 transition-transform duration-300" />
-            SAMIA TAROT
-          </Link>
-          <Link
-            to="/"
-            className="flex items-center px-4 py-2 bg-cosmic-gradient hover:shadow-theme-cosmic text-theme-inverse font-medium rounded-lg transition-all duration-300 transform hover:scale-105"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Home
-          </Link>
-        </div>
-      </nav>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12"
+    >
+      <div className="w-full max-w-md">
+        <motion.div variants={itemVariants} className="text-center mb-8">
+          <div className="text-4xl md:text-5xl mb-4">🔮</div>
+          <h1 className="fluid-heading-md font-bold gradient-text mb-2">
+            Welcome Back
+          </h1>
+          <p className="fluid-text-base text-theme-secondary">
+            Sign in to access your cosmic journey
+          </p>
+        </motion.div>
 
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="relative z-10 min-h-screen flex items-center justify-center px-4 py-12"
-      >
-        <div className="w-full max-w-md">
-          <motion.div variants={itemVariants} className="text-center mb-8">
-            <div className="text-5xl mb-4">🔮</div>
-            <h1 className="text-3xl font-bold gradient-text mb-2">
-              Welcome Back
-            </h1>
-            <p className="text-theme-secondary">
-              Sign in to access your cosmic journey
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={itemVariants}
-            className="bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-2xl p-8 shadow-theme-card"
-          >
+        <motion.div
+          variants={itemVariants}
+          className="bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-2xl p-6 md:p-8 shadow-theme-card"
+        >
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <motion.div
@@ -176,7 +155,8 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-theme-muted hover:text-theme-primary transition-colors duration-300"
+                    className="touch-target absolute right-3 top-1/2 transform -translate-y-1/2 text-theme-muted hover:text-theme-primary transition-colors duration-300"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -204,7 +184,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full px-6 py-3 bg-cosmic-gradient hover:shadow-theme-cosmic text-theme-inverse font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className="touch-target-large w-full px-6 py-3 bg-cosmic-gradient hover:shadow-theme-cosmic text-theme-inverse font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {loading ? (
                   <span className="flex items-center justify-center">
@@ -230,15 +210,14 @@ const Login = () => {
               </p>
               <Link
                 to="/register"
-                className="inline-flex items-center px-6 py-2 bg-transparent border border-theme-cosmic text-theme-primary hover:bg-theme-cosmic hover:text-theme-inverse rounded-lg transition-all duration-300"
+                className="touch-target inline-flex items-center px-6 py-2 bg-transparent border border-theme-cosmic text-theme-primary hover:bg-theme-cosmic hover:text-theme-inverse rounded-lg transition-all duration-300"
               >
                 Create Account
               </Link>
             </motion.div>
-          </motion.div>
-        </div>
-      </motion.div>
-    </div>
+        </motion.div>
+      </div>
+    </motion.div>
   );
 };
 

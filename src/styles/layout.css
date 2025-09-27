@@ -1,0 +1,511 @@
+/* Layout.css - Responsive layout utilities and media queries */
+
+/* Container utilities */
+.container {
+  max-width: 72rem; /* ~1152px */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--spacing-4, 1rem);
+  padding-right: var(--spacing-4, 1rem);
+}
+
+/* Responsive grid systems - Mobile first (2 → 3 cols) */
+.grid-responsive {
+  display: grid;
+  gap: var(--spacing-4, 1rem);
+  grid-template-columns: repeat(2, 1fr); /* Mobile: 2 columns */
+}
+
+.grid-responsive-auto {
+  display: grid;
+  gap: var(--spacing-4, 1rem);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Auto-responsive */
+}
+
+.grid-horoscope {
+  display: grid;
+  gap: var(--spacing-3, 0.75rem);
+  grid-template-columns: repeat(2, 1fr); /* Mobile: 2 columns */
+}
+
+.grid-services {
+  display: grid;
+  gap: var(--spacing-6, 1.5rem);
+  grid-template-columns: 1fr; /* Mobile: 1 column */
+}
+
+/* Card System - Standardized structure */
+.card-base {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--theme-card);
+  border: 1px solid var(--theme-cosmic);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(12px);
+}
+
+.card-base:hover {
+  border-color: var(--gold-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.card-base:focus-visible {
+  outline: 2px solid var(--gold-primary);
+  outline-offset: 2px;
+}
+
+/* Card structure components */
+.card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.card-base:hover .card-icon {
+  transform: scale(1.1);
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--theme-primary);
+  margin-bottom: 0.75rem;
+  line-height: 1.2;
+  text-align: center;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-description {
+  color: var(--theme-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+  text-align: center;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.card-cta {
+  margin-top: auto;
+}
+
+/* Equal height utility (legacy support) */
+.card-equal-height {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.card-equal-height > * {
+  flex-grow: 1;
+}
+
+/* Fluid typography with clamp() */
+.fluid-heading-xl {
+  font-size: clamp(2.5rem, 5vw, 4.5rem); /* 40px → 72px */
+  line-height: 1.1;
+}
+
+.fluid-heading-lg {
+  font-size: clamp(2rem, 4vw, 3rem); /* 32px → 48px */
+  line-height: 1.2;
+}
+
+.fluid-heading-md {
+  font-size: clamp(1.5rem, 3vw, 2rem); /* 24px → 32px */
+  line-height: 1.3;
+}
+
+.fluid-text-lg {
+  font-size: clamp(1.125rem, 2vw, 1.5rem); /* 18px → 24px */
+  line-height: 1.6;
+}
+
+.fluid-text-base {
+  font-size: clamp(1rem, 1.5vw, 1.125rem); /* 16px → 18px */
+  line-height: 1.6;
+}
+
+/* Button System - Primary (filled) and Secondary (outlined) */
+.btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-base:focus {
+  outline: none;
+}
+
+.btn-base:focus-visible {
+  outline: 2px solid var(--gold-primary);
+  outline-offset: 2px;
+}
+
+.btn-base:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Primary Button - Filled */
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: var(--theme-inverse, #fff);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary Button - Outlined */
+.btn-secondary {
+  background: transparent;
+  color: var(--theme-primary, #fff);
+  border: 2px solid var(--theme-cosmic);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--theme-cosmic);
+  color: var(--theme-inverse, #fff);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* Touch targets - minimum 24x24px per WCAG 2.5.8 */
+.touch-target {
+  min-width: 24px;
+  min-height: 24px;
+  padding: var(--spacing-2, 0.5rem);
+}
+
+.touch-target-large {
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--spacing-3, 0.75rem);
+}
+
+/* Button spacing for touch targets */
+.button-group {
+  display: flex;
+  gap: var(--spacing-3, 0.75rem);
+  flex-wrap: wrap;
+}
+
+.button-group-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 0.75rem);
+}
+
+/* Content width constraints for readability */
+.content-readable {
+  max-width: 65ch; /* ~50-75 characters */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.content-narrow {
+  max-width: 45ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Loading skeleton components - Layout hinting */
+.skeleton {
+  background: linear-gradient(90deg,
+    rgba(255, 255, 255, 0.1) 25%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.1) 75%);
+  background-size: 200% 100%;
+  border-radius: 0.5rem;
+  animation: skeleton-shimmer 2s ease-in-out infinite;
+}
+
+.skeleton-card {
+  background: var(--theme-card);
+  border: 1px solid var(--theme-cosmic);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.skeleton-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+}
+
+.skeleton-title {
+  height: 1.5rem;
+  margin-bottom: 0.75rem;
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.skeleton-text {
+  height: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-text:nth-child(3) {
+  width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.skeleton-text:nth-child(4) {
+  width: 70%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.skeleton-price {
+  height: 1.5rem;
+  width: 60px;
+  margin: 1rem auto;
+}
+
+.skeleton-button {
+  height: 44px;
+  border-radius: 0.75rem;
+  margin-top: auto;
+}
+
+/* Horoscope grid skeleton - layout hinting */
+.skeleton-horoscope {
+  aspect-ratio: 1;
+  padding: 1rem;
+}
+
+.skeleton-horoscope-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin: 0 auto 0.75rem;
+}
+
+.skeleton-horoscope-title {
+  height: 1rem;
+  width: 70%;
+  margin: 0 auto 0.5rem;
+}
+
+.skeleton-horoscope-text {
+  height: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.skeleton-horoscope-text:nth-child(4) {
+  width: 85%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.skeleton-horoscope-text:last-child {
+  width: 65%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .card-base,
+  .btn-base,
+  .card-icon {
+    transition: none;
+  }
+
+  .card-base:hover,
+  .btn-primary:hover,
+  .btn-secondary:hover {
+    transform: none;
+  }
+
+  .skeleton {
+    animation: none;
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Mobile-first responsive breakpoints */
+
+/* Small screens - 480px and up */
+@media (min-width: 30rem) {
+  .container {
+    padding-left: var(--spacing-6, 1.5rem);
+    padding-right: var(--spacing-6, 1.5rem);
+  }
+
+  .button-group-mobile {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .grid-horoscope {
+    grid-template-columns: repeat(3, 1fr); /* Tablet: 3 columns */
+  }
+}
+
+/* Medium screens - 768px and up */
+@media (min-width: 48rem) {
+  .container {
+    padding-left: var(--spacing-8, 2rem);
+    padding-right: var(--spacing-8, 2rem);
+  }
+
+  .grid-responsive {
+    grid-template-columns: repeat(3, 1fr); /* Tablet/Desktop: 3 columns */
+  }
+
+  .grid-horoscope {
+    grid-template-columns: repeat(4, 1fr); /* Desktop: 4 columns */
+  }
+
+  .grid-services {
+    grid-template-columns: repeat(2, 1fr); /* Tablet: 2 columns */
+  }
+
+  /* Navigation adjustments */
+  .nav-mobile {
+    display: none;
+  }
+
+  .nav-desktop {
+    display: flex;
+  }
+}
+
+/* Large screens - 1024px and up */
+@media (min-width: 64rem) {
+  .grid-horoscope {
+    grid-template-columns: repeat(6, 1fr); /* Large desktop: 6 columns */
+  }
+
+  .grid-services {
+    grid-template-columns: repeat(3, 1fr); /* Desktop: 3 columns */
+  }
+}
+
+/* Extra large screens - 1280px and up */
+@media (min-width: 80rem) {
+  .container {
+    padding-left: var(--spacing-12, 3rem);
+    padding-right: var(--spacing-12, 3rem);
+  }
+}
+
+/* Mobile navigation utilities */
+@media (max-width: 47.9rem) {
+  .nav-desktop {
+    display: none;
+  }
+
+  .nav-mobile {
+    display: block;
+  }
+
+  /* Stack form elements on mobile */
+  .form-responsive {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4, 1rem);
+  }
+
+  /* Full-width buttons on mobile */
+  .button-responsive {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Desktop navigation */
+@media (min-width: 48rem) {
+  .form-responsive {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-4, 1rem);
+    align-items: end;
+  }
+
+  .button-responsive {
+    width: auto;
+  }
+}
+
+/* Print styles */
+@media print {
+  .container {
+    max-width: none;
+    padding: 0;
+  }
+
+  .grid-responsive,
+  .grid-horoscope,
+  .grid-services {
+    grid-template-columns: 1fr;
+  }
+}

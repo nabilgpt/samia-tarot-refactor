@@ -1,70 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Sparkles, ArrowLeft, Clock, CheckCircle, AlertCircle, Download } from 'lucide-react';
-import { api } from '../lib/api';
+import api from '../lib/api';
 
 const Order = () => {
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [invoiceUrl, setInvoiceUrl] = useState(null);
-  const [pollInterval, setPollInterval] = useState(3000); // Start with 3 seconds
+  const [polling, setPolling] = useState(false);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (orderId) {
       loadOrder();
-      let timeoutId;
-
-      const scheduleNextPoll = () => {
-        if (pollInterval) {
-          timeoutId = setTimeout(() => {
-            loadOrder();
-            scheduleNextPoll();
-          }, pollInterval);
-        }
-      };
-
-      scheduleNextPoll();
-      return () => {
-        if (timeoutId) clearTimeout(timeoutId);
-      };
     }
-  }, [orderId, pollInterval]);
+  }, [orderId]);
 
   const loadOrder = async () => {
     try {
+      setLoading(true);
       const orderData = await api.getOrder(orderId);
       setOrder(orderData);
 
-      // Reset poll interval on successful load
-      if (pollInterval > 3000) {
-        setPollInterval(3000);
-      }
-
-      // If order is completed or failed, stop polling
-      if (orderData.status === 'completed' || orderData.status === 'failed') {
-        setPollInterval(null);
-      }
-
-      // If order is completed, fetch invoice URL (signed URL with ≤15m TTL)
-      if (orderData.status === 'completed' && !invoiceUrl) {
-        try {
-          const invoice = await api.invoiceUrl(orderId);
-          setInvoiceUrl(invoice.signed_url);
-        } catch (invoiceError) {
-          console.error('Error loading invoice:', invoiceError);
-        }
+      if (orderData.status === 'pending' || orderData.status === 'processing') {
+        setPolling(true);
+        pollOrderStatus(orderData);
       }
     } catch (err) {
       console.error('Error loading order:', err);
       setError('Order not found or unable to load order details');
-
-      // Implement exponential backoff on error
-      setPollInterval(Math.min(pollInterval * 1.5, 30000)); // Max 30 seconds
     } finally {
       setLoading(false);
+    }
+  };
+
+  const pollOrderStatus = async () => {
+    const maxAttempts = 5;
+    const baseDelay = 1000;
+    const controller = new AbortController();
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (controller.signal.aborted) break;
+
+      try {
+        const data = await api.getOrder(orderId);
+        if (data.status === 'completed' || data.status === 'failed') {
+          setOrder(data);
+          setPolling(false);
+          return;
+        }
+
+        const delay = Math.min(baseDelay * Math.pow(2, attempt), 16000);
+        const jitter = Math.random() * 400 - 200;
+        await new Promise(resolve => setTimeout(resolve, delay + jitter));
+      } catch (err) {
+        console.error('Polling error:', err);
+        if (attempt === maxAttempts - 1) {
+          setPolling(false);
+        }
+      }
+    }
+    setPolling(false);
+  };
+
+  const handleDownloadInvoice = async () => {
+    try {
+      const invoice = await api.payments.getInvoice(orderId);
+      if (invoice && invoice.download_url) {
+        window.open(invoice.download_url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      console.error('Error fetching invoice:', err);
+      setError('Unable to generate invoice. Please try again.');
     }
   };
 
@@ -108,12 +117,11 @@ const Order = () => {
     }
   };
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
+      transition: shouldReduceMotion ? { duration: 0.1 } : {
         delayChildren: 0.3,
         staggerChildren: 0.1
       }
@@ -121,11 +129,11 @@ const Order = () => {
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: shouldReduceMotion ? { opacity: 0 } : { y: 20, opacity: 0 },
     visible: {
       y: 0,
       opacity: 1,
-      transition: {
+      transition: shouldReduceMotion ? { duration: 0.2 } : {
         type: "spring",
         stiffness: 100,
         damping: 12
@@ -260,17 +268,13 @@ const Order = () => {
                       <p className="text-theme-secondary mb-6">
                         Your personalized cosmic reading has been completed and is ready for download.
                       </p>
-                      {invoiceUrl && (
-                        <a
-                          href={invoiceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center px-6 py-3 bg-cosmic-gradient text-theme-inverse font-bold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-theme-card"
-                        >
-                          <Download className="w-5 h-5 mr-2" />
-                          Download Invoice
-                        </a>
-                      )}
+                      <button
+                        onClick={handleDownloadInvoice}
+                        className="btn-base btn-primary inline-flex items-center"
+                      >
+                        <Download className="w-5 h-5 mr-2" />
+                        Download Invoice
+                      </button>
                     </div>
                   </div>
                 ) : (
