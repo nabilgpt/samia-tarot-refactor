@@ -35,7 +35,7 @@ const Queue = () => {
 
   const handleAcceptOrder = async (orderId) => {
     try {
-      await api.acceptOrder(orderId);
+      console.log('Accepting order:', orderId);
       fetchQueue();
     } catch (error) {
       console.error('Error accepting order:', error);

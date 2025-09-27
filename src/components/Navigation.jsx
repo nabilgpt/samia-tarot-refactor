@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Sparkles, Menu, X, Home, Zap, Star, User, ShoppingBag, Eye, Shield, Settings, LogOut, Package, Users, BarChart3, PhoneCall } from 'lucide-react';
 import { getCurrentUser, logout } from '../lib/auth';
 
@@ -8,8 +8,18 @@ const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const shouldReduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     getCurrentUser()
@@ -87,7 +97,16 @@ const Navigation = () => {
   const closeMenu = () => setIsMobileMenuOpen(false);
 
   return (
-    <nav className="sticky top-0 z-50 bg-theme-card/95 backdrop-blur-xl border-b border-theme-cosmic/20">
+    <motion.nav
+      className={`sticky top-0 z-50 backdrop-blur-xl border-b transition-all duration-300 ${
+        scrolled
+          ? 'bg-theme-card/98 border-gold-primary/30 shadow-theme-cosmic'
+          : 'bg-theme-card/95 border-theme-cosmic/20'
+      }`}
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+    >
       <div className="container">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -96,7 +115,19 @@ const Navigation = () => {
             className="text-2xl font-bold gradient-text flex items-center group"
             onClick={closeMenu}
           >
-            <Sparkles className="w-8 h-8 mr-2 text-gold-primary animate-pulse group-hover:rotate-12 transition-transform duration-300" />
+            <motion.div
+              animate={shouldReduceMotion ? {} : {
+                rotate: [0, 10, -10, 0],
+                scale: [1, 1.1, 1]
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: 'easeInOut'
+              }}
+            >
+              <Sparkles className="w-8 h-8 mr-2 text-gold-primary group-hover:rotate-12 transition-transform duration-300" />
+            </motion.div>
             <span className="hidden sm:inline">SAMIA TAROT</span>
             <span className="sm:hidden">SAMIA</span>
           </Link>
@@ -120,10 +151,15 @@ const Navigation = () => {
                     layoutId="activeTab"
                     className="absolute inset-0 bg-gold-primary/10 rounded-lg"
                     initial={false}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    transition={shouldReduceMotion ? { duration: 0.1 } : { type: "spring", stiffness: 500, damping: 30 }}
                   />
                 )}
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gold-primary rounded-full group-hover:w-full transition-all duration-300"></span>
+                <motion.span
+                  className="absolute bottom-0 left-0 h-0.5 bg-gold-primary rounded-full"
+                  initial={{ width: 0 }}
+                  whileHover={{ width: '100%' }}
+                  transition={{ duration: 0.3 }}
+                ></motion.span>
               </Link>
             ))}
 
@@ -228,7 +264,7 @@ const Navigation = () => {
           )}
         </AnimatePresence>
       </div>
-    </nav>
+    </motion.nav>
   );
 };
 

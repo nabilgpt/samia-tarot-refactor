@@ -19,9 +19,9 @@ const AppLayout = () => {
         value: "transparent",
       },
     },
-    fpsLimit: 45, // Optimized for better performance
-    pauseOnBlur: true, // Pause when tab is not active
-    pauseOnOutsideViewport: true, // Pause when not visible
+    fpsLimit: 60,
+    pauseOnBlur: true,
+    pauseOnOutsideViewport: true,
     interactivity: {
       detectsOn: "window", // Optimize interaction detection
       events: {

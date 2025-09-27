@@ -303,6 +303,18 @@ p {
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
 /* New cosmic floating animations */
 @keyframes float {
   0%, 100% {
@@ -1013,4 +1025,48 @@ a:focus-visible,
   outline: 3px solid var(--theme-primary) !important;
   outline-offset: 2px !important;
   transform: scale(1.02);
+}
+
+/* -----------------------------------------------------------------------------
+   Performance Optimizations - Phase 5
+   ----------------------------------------------------------------------------- */
+
+/* Contain layout shifts */
+.card-base,
+.bg-theme-card,
+.skeleton-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 300px;
+}
+
+/* GPU acceleration for animations */
+.animate-pulse,
+.animate-spin,
+.animate-float,
+.cosmic-pulse,
+.gold-shimmer {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize font loading */
+@font-face {
+  font-family: 'Inter';
+  font-display: swap;
+  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+}
+
+/* Optimize image loading */
+img {
+  content-visibility: auto;
+  loading: lazy;
+}
+
+/* Optimize gradients */
+.gradient-text,
+.bg-cosmic-gradient,
+.bg-gold-gradient-theme {
+  background-attachment: fixed;
+  background-size: 200% 200%;
 }

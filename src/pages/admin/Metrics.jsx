@@ -16,7 +16,7 @@ const Metrics = () => {
   const loadMetrics = async () => {
     try {
       setLoading(true);
-      const data = await api.ops.metrics();
+      const data = await api.getMetrics();
       setMetrics(data);
       setError(null);
     } catch (err) {

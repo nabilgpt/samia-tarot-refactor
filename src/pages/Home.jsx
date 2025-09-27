@@ -133,13 +133,29 @@ const Home = () => {
           <div className="text-center space-y-8">
             {/* Hero Content */}
             <motion.div variants={itemVariants} className="space-y-6">
-              <h1 className="fluid-heading-xl font-bold gradient-text content-narrow">
+              <motion.h1
+                className="fluid-heading-xl font-bold gradient-text content-narrow"
+                animate={shouldReduceMotion ? {} : {
+                  backgroundPosition: ['0%', '100%', '0%']
+                }}
+                transition={{
+                  duration: 8,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}
+                style={{
+                  backgroundSize: '200% 200%'
+                }}
+              >
                 Unlock Your Cosmic Destiny
-              </h1>
-              <p className="fluid-text-lg text-theme-secondary content-readable">
+              </motion.h1>
+              <motion.p
+                className="fluid-text-lg text-theme-secondary content-readable"
+                variants={itemVariants}
+              >
                 Discover the mysteries of your future through ancient wisdom and modern insight.
                 Connect with certified readers for personalized guidance.
-              </p>
+              </motion.p>
             </motion.div>
 
             {/* Hero CTAs */}
@@ -165,12 +181,27 @@ const Home = () => {
             {/* Trust Signals */}
             <motion.div variants={itemVariants} className="grid grid-cols-3 gap-4 md:gap-6 max-w-md mx-auto pt-4">
               {trustSignals.map((signal, index) => (
-                <div key={index} className="flex flex-col items-center space-y-2 text-center">
-                  <div className="text-gold-primary">
+                <motion.div
+                  key={index}
+                  className="flex flex-col items-center space-y-2 text-center"
+                  whileHover={shouldReduceMotion ? {} : { scale: 1.05, y: -5 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <motion.div
+                    className="text-gold-primary"
+                    animate={shouldReduceMotion ? {} : {
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      delay: index * 0.2
+                    }}
+                  >
                     {signal.icon}
-                  </div>
+                  </motion.div>
                   <span className="text-sm font-medium text-theme-secondary">{signal.text}</span>
-                </div>
+                </motion.div>
               ))}
             </motion.div>
           </div>
@@ -202,15 +233,33 @@ const Home = () => {
             </div>
           ) : dailyHoroscopes.length > 0 ? (
             <div className="grid-horoscope max-w-4xl mx-auto">
-              {dailyHoroscopes.slice(0, 6).map((horoscope) => (
+              {dailyHoroscopes.slice(0, 6).map((horoscope, index) => (
                 <motion.div
                   key={horoscope.zodiac}
                   variants={itemVariants}
                   className="bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-lg p-4 hover:border-gold-primary transition-all duration-300 group aspect-square flex flex-col justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-primary focus-visible:ring-offset-2"
                   tabIndex="0"
+                  whileHover={shouldReduceMotion ? {} : {
+                    scale: 1.05,
+                    borderColor: 'var(--gold-primary)',
+                    boxShadow: '0 0 20px rgba(251, 191, 36, 0.3)'
+                  }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
                   <div className="text-center space-y-2">
-                    <div className="text-2xl">{zodiacSigns.find(z => z.name === horoscope.zodiac)?.icon || '⭐'}</div>
+                    <motion.div
+                      className="text-2xl"
+                      animate={shouldReduceMotion ? {} : {
+                        rotate: [0, 10, -10, 0]
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        delay: index * 0.3
+                      }}
+                    >
+                      {zodiacSigns.find(z => z.name === horoscope.zodiac)?.icon || '⭐'}
+                    </motion.div>
                     <h3 className="font-semibold text-theme-primary text-sm">{horoscope.zodiac}</h3>
                     <p className="text-xs text-theme-secondary line-clamp-2 leading-relaxed">{horoscope.preview || 'Cosmic energies align for you today...'}</p>
                   </div>
@@ -261,25 +310,47 @@ const Home = () => {
           </div>
 
           <div className="grid-services mb-8">
-            {featuredServices.map((service) => (
+            {featuredServices.map((service, index) => (
               <motion.div
                 key={service.id}
                 variants={itemVariants}
                 className="card-equal-height bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-2xl p-6 hover:border-gold-primary transition-all duration-300 group relative overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-primary focus-visible:ring-offset-2"
                 tabIndex="0"
+                whileHover={shouldReduceMotion ? {} : {
+                  scale: 1.03,
+                  y: -10,
+                  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)'
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
               >
-                {/* Background gradient */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-2xl`} />
+                <motion.div
+                  className={`absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500 rounded-2xl`}
+                  initial={{ opacity: 0 }}
+                  whileHover={{ opacity: 0.1 }}
+                />
 
                 <div className="relative z-10 text-center space-y-4">
                   {/* Icon */}
-                  <div>
-                    <div className={`inline-flex p-3 rounded-full bg-gradient-to-br ${service.gradient} shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                  <motion.div
+                    animate={shouldReduceMotion ? {} : {
+                      rotate: [0, 5, -5, 0],
+                      scale: [1, 1.05, 1]
+                    }}
+                    transition={{
+                      duration: 4,
+                      repeat: Infinity,
+                      delay: index * 0.5
+                    }}
+                  >
+                    <motion.div
+                      className={`inline-flex p-3 rounded-full bg-gradient-to-br ${service.gradient} shadow-lg group-hover:scale-110 transition-transform duration-300`}
+                      whileHover={{ rotate: 15, scale: 1.2 }}
+                    >
                       <div className="text-white">
                         {service.icon}
                       </div>
-                    </div>
-                  </div>
+                    </motion.div>
+                  </motion.div>
 
                   {/* Content */}
                   <div className="space-y-3">

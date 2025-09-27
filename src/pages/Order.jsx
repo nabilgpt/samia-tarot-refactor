@@ -67,13 +67,28 @@ const Order = () => {
 
   const handleDownloadInvoice = async () => {
     try {
+      setError(null);
       const invoice = await api.payments.getInvoice(orderId);
-      if (invoice && invoice.download_url) {
-        window.open(invoice.download_url, '_blank', 'noopener,noreferrer');
+
+      if (invoice && invoice.signedUrl) {
+        const opened = api.payments.openInvoiceInNewTab(invoice.signedUrl);
+
+        if (!opened) {
+          setError('Pop-up blocked. Please allow pop-ups for this site.');
+        }
+      } else {
+        setError('Invoice URL not available. Please contact support.');
       }
     } catch (err) {
       console.error('Error fetching invoice:', err);
-      setError('Unable to generate invoice. Please try again.');
+
+      if (err.status === 503) {
+        setError('Invoice service temporarily unavailable. Please try again in a few moments.');
+      } else if (err.status === 404) {
+        setError('Invoice not found. It may still be generating.');
+      } else {
+        setError(err.message || 'Unable to generate invoice. Please try again.');
+      }
     }
   };
 
