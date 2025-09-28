@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -421,7 +420,7 @@ input, textarea, select {
   transition: all 0.3s ease;
 }
 
-input:focus, textarea:focus, select:focus {
+input:focus-visible, textarea:focus-visible, select:focus-visible {
   border-color: var(--cosmic-primary);
   box-shadow: 0 0 0 3px var(--cosmic-glow);
   outline: none;
@@ -761,9 +760,9 @@ a:hover {
   @apply border-gray-500;
 }
 
-.cosmic-form-field input:focus,
-.cosmic-form-field textarea:focus,
-.cosmic-form-field select:focus {
+.cosmic-form-field input:focus-visible,
+.cosmic-form-field textarea:focus-visible,
+.cosmic-form-field select:focus-visible {
   @apply ring-gold-400/30 border-gold-400;
 }
 

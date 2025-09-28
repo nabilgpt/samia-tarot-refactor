@@ -1,182 +1,93 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, useReducedMotion } from 'framer-motion';
-import { Sparkles, Star, ArrowLeft } from 'lucide-react';
-import api from '../lib/api';
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
 
-const Horoscopes = () => {
-  const [horoscopes, setHoroscopes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const shouldReduceMotion = useReducedMotion();
+const zodiacSigns = [
+  { name: 'Aries', emoji: '♈', dates: 'Mar 21 - Apr 19' },
+  { name: 'Taurus', emoji: '♉', dates: 'Apr 20 - May 20' },
+  { name: 'Gemini', emoji: '♊', dates: 'May 21 - Jun 20' },
+  { name: 'Cancer', emoji: '♋', dates: 'Jun 21 - Jul 22' },
+  { name: 'Leo', emoji: '♌', dates: 'Jul 23 - Aug 22' },
+  { name: 'Virgo', emoji: '♍', dates: 'Aug 23 - Sep 22' },
+  { name: 'Libra', emoji: '♎', dates: 'Sep 23 - Oct 22' },
+  { name: 'Scorpio', emoji: '♏', dates: 'Oct 23 - Nov 21' },
+  { name: 'Sagittarius', emoji: '♐', dates: 'Nov 22 - Dec 21' },
+  { name: 'Capricorn', emoji: '♑', dates: 'Dec 22 - Jan 19' },
+  { name: 'Aquarius', emoji: '♒', dates: 'Jan 20 - Feb 18' },
+  { name: 'Pisces', emoji: '♓', dates: 'Feb 19 - Mar 20' }
+]
+
+export default function Horoscopes() {
+  const [horoscopes, setHoroscopes] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const loadHoroscopes = async () => {
-      try {
-        const data = await api.dailyHoroscopes();
-        setHoroscopes(data);
-      } catch (error) {
-        console.error('Error loading horoscopes:', error);
-        setHoroscopes([]);
-      } finally {
-        setLoading(false);
+    fetchHoroscopes()
+  }, [])
+
+  const fetchHoroscopes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('horoscopes_public_today')
+        .select('*')
+        .order('zodiac', { ascending: true })
+
+      if (!error) {
+        setHoroscopes(data || [])
       }
-    };
-
-    loadHoroscopes();
-  }, []);
-
-  const zodiacSigns = [
-    'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
-    'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
-  ];
-
-  // Animation variants with reduced motion support
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: shouldReduceMotion ? { duration: 0.3 } : {
-        delayChildren: 0.3,
-        staggerChildren: 0.1
-      }
+    } catch (err) {
+      console.error('Error fetching horoscopes:', err)
+    } finally {
+      setLoading(false)
     }
-  };
-
-  const itemVariants = {
-    hidden: shouldReduceMotion ? { opacity: 0 } : { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: shouldReduceMotion ? { duration: 0.3 } : {
-        type: "spring",
-        stiffness: 100,
-        damping: 12
-      }
-    }
-  };
+  }
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="relative z-10 py-12 md:py-20"
-    >
-      <div className="container">
-          {/* Header */}
-        <motion.div variants={itemVariants} className="text-center mb-12 md:mb-16">
-          <h1 className="fluid-heading-xl font-bold gradient-text mb-6">
-            Today's Cosmic Messages
-          </h1>
-          <div className="w-32 h-1 bg-cosmic-gradient mx-auto mb-8 rounded-full shadow-theme-cosmic" />
-          <p className="fluid-text-lg text-theme-secondary content-readable">
-            {horoscopes.length > 0
-              ? `${horoscopes.length} cosmic insights await you today`
-              : 'The stars are aligning for today\'s revelations'
-            }
-          </p>
-        </motion.div>
+    <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <header className="text-center mb-12">
+        <h1 className="text-5xl font-bold bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent mb-4">
+          Daily Horoscopes
+        </h1>
+        <p className="text-white/80 max-w-2xl mx-auto">
+          Discover what the stars have aligned for you today. Your cosmic guidance awaits.
+        </p>
+      </header>
 
-          {/* Horoscopes Grid */}
-        {loading ? (
-          // Loading skeleton
-          <div className="grid-horoscope">
-              {zodiacSigns.map((sign) => (
-                <div key={sign} className="bg-theme-card backdrop-blur-sm border border-theme-cosmic rounded-xl p-6 animate-pulse">
-                  <div className="h-12 w-12 bg-theme-tertiary rounded-full mx-auto mb-4"></div>
-                  <div className="h-4 bg-theme-tertiary rounded mb-3"></div>
-                  <div className="h-3 bg-theme-tertiary rounded w-3/4 mx-auto mb-2"></div>
-                  <div className="h-3 bg-theme-tertiary rounded w-1/2 mx-auto"></div>
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="h-48 rounded-2xl bg-white/5 border border-white/10 animate-pulse" />
+          ))}
+        </div>
+      ) : horoscopes.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {horoscopes.map((horoscope, idx) => {
+            const sign = zodiacSigns.find(s => s.name.toLowerCase() === horoscope.zodiac.toLowerCase())
+            return (
+              <div key={horoscope.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 hover:border-purple-500/50 transition-all duration-300">
+                <div className="text-center mb-4">
+                  <span className="text-5xl">{sign?.emoji || '⭐'}</span>
+                  <h3 className="text-2xl font-bold mt-2">{horoscope.zodiac}</h3>
+                  <p className="text-white/50 text-sm">{sign?.dates}</p>
                 </div>
-              ))}
-            </div>
-        ) : (
-          // Always show all zodiac signs
-          <div className="grid-horoscope">
-              {zodiacSigns.map((sign) => {
-                const horoscope = horoscopes.find(h => h.zodiac === sign);
-
-                return (
-                  <motion.div
-                    key={sign}
-                    variants={itemVariants}
-                    whileHover={{
-                      y: -8,
-                      transition: { type: "spring", stiffness: 400, damping: 25 }
-                    }}
-                    className={`group bg-theme-card backdrop-blur-sm border rounded-xl p-4 md:p-6 transition-all duration-300 shadow-theme-card ${
-                      horoscope
-                        ? 'border-theme-cosmic hover:border-gold-primary hover:shadow-theme-gold cursor-pointer'
-                        : 'border-theme-muted/30 opacity-60'
-                    }`}
-                  >
-                    <div className="text-center">
-                      <div className={`text-3xl mb-3 ${horoscope ? '' : 'grayscale opacity-50'}`}>✨</div>
-                      <h3 className={`text-lg font-semibold mb-3 transition-colors ${
-                        horoscope
-                          ? 'text-theme-primary group-hover:text-gold-primary'
-                          : 'text-theme-muted'
-                      }`}>
-                        {sign}
-                      </h3>
-                      {horoscope ? (
-                        <p className="text-theme-secondary text-xs leading-relaxed line-clamp-4">
-                          {horoscope.text_content || 'Your cosmic message awaits...'}
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          <p className="text-theme-muted text-xs italic">
-                            Coming soon...
-                          </p>
-                          <div className="text-xs text-theme-muted/60">
-                            <div className="w-8 h-0.5 bg-theme-muted/20 mx-auto mb-1"></div>
-                            <div className="w-6 h-0.5 bg-theme-muted/20 mx-auto"></div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-          </div>
-        )}
-
-        {/* Additional content when no horoscopes available */}
-        {!loading && horoscopes.length === 0 && (
-          <motion.div variants={itemVariants} className="text-center py-12 md:py-16 mt-12">
-              <motion.div
-                animate={shouldReduceMotion ? { y: 0 } : { y: [-8, 8, -8] }}
-                transition={shouldReduceMotion ? {} : { duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                className="text-6xl mb-6 inline-block"
-              >
-                🔮
-              </motion.div>
-              <h3 className="text-2xl font-bold gradient-text mb-4">
-                Today's Cosmic Messages Are Being Channeled
-              </h3>
-              <p className="text-theme-secondary mb-8 leading-relaxed max-w-lg mx-auto">
-                Our mystical readers are connecting with celestial energies to bring you personalized insights.
-              </p>
-              <div className="button-group-mobile">
-                <Link
-                  to="/services"
-                  className="button-responsive touch-target inline-flex items-center justify-center px-6 py-3 bg-cosmic-gradient hover:shadow-theme-cosmic text-theme-inverse font-semibold rounded-xl transition-all duration-300 transform hover:scale-105"
-                >
-                  Get Personal Reading
-                  <Star className="ml-2 w-4 h-4" />
-                </Link>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="button-responsive touch-target px-6 py-3 bg-transparent border border-theme-cosmic text-theme-primary hover:bg-theme-cosmic hover:text-theme-inverse rounded-xl transition-all duration-300"
-                >
-                  Refresh
-                </button>
+                <p className="text-white/80 leading-relaxed">{horoscope.text}</p>
               </div>
-          </motion.div>
-        )}
-      </div>
-    </motion.div>
-  );
-};
-
-export default Horoscopes;
+            )
+          })}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {zodiacSigns.map((sign) => (
+            <div key={sign.name} className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 opacity-50">
+              <div className="text-center mb-4">
+                <span className="text-5xl">{sign.emoji}</span>
+                <h3 className="text-2xl font-bold mt-2">{sign.name}</h3>
+                <p className="text-white/50 text-sm">{sign.dates}</p>
+              </div>
+              <p className="text-white/60 text-center italic">Coming soon...</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

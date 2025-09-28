@@ -9,7 +9,37 @@ export interface AuthUser {
   lastName?: string
 }
 
-export const login = async (email: string, password: string): Promise<AuthUser> => {
+export const signUpWithPassword = async (
+  email: string,
+  password: string,
+  metadata?: { first_name?: string; last_name?: string }
+): Promise<AuthUser> => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: metadata
+    }
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!data.user) {
+    throw new Error('Sign up failed')
+  }
+
+  return {
+    id: data.user.id,
+    email: data.user.email!,
+    role: 'client',
+    firstName: metadata?.first_name,
+    lastName: metadata?.last_name
+  }
+}
+
+export const signInWithPassword = async (email: string, password: string): Promise<AuthUser> => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password
@@ -20,11 +50,10 @@ export const login = async (email: string, password: string): Promise<AuthUser> 
   }
 
   if (!data.user) {
-    throw new Error('Login failed')
+    throw new Error('Sign in failed')
   }
 
-  // Get role from user metadata
-  const role = data.user.user_metadata?.role || 'client'
+  const role = await fetchUserRoleFromAPI(data.session.access_token)
 
   return {
     id: data.user.id,
@@ -35,19 +64,29 @@ export const login = async (email: string, password: string): Promise<AuthUser> 
   }
 }
 
-export const logout = async (): Promise<void> => {
+export const signOut = async (): Promise<void> => {
   const { error } = await supabase.auth.signOut()
   if (error) {
     throw new Error(error.message)
   }
 }
 
-export const getCurrentUser = async (): Promise<AuthUser | null> => {
+export const refreshSession = async (): Promise<void> => {
+  const { error } = await supabase.auth.refreshSession()
+  if (error && error.message !== 'Auth session missing!') {
+    throw new Error(error.message)
+  }
+}
+
+export const getUser = async (): Promise<AuthUser | null> => {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return null
 
-  const role = user.user_metadata?.role || 'client'
+  const { data: { session } } = await supabase.auth.getSession()
+  const role = session?.access_token
+    ? await fetchUserRoleFromAPI(session.access_token)
+    : 'client'
 
   return {
     id: user.id,
@@ -58,10 +97,33 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
   }
 }
 
+const fetchUserRoleFromAPI = async (accessToken: string): Promise<string> => {
+  try {
+    const response = await fetch('/api/profile/me', {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-store, must-revalidate, private',
+        'Pragma': 'no-cache',
+        'Authorization': `Bearer ${accessToken}`
+      }
+    })
+
+    if (response.ok) {
+      const profile = await response.json()
+      return profile.role_code || profile.role || 'client'
+    }
+  } catch (err) {
+    console.warn('Failed to fetch role from API', err)
+  }
+
+  return 'client'
+}
+
 export const onAuthStateChange = (callback: (user: AuthUser | null) => void) => {
   return supabase.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
-      const role = session.user.user_metadata?.role || 'client'
+      const role = await fetchUserRoleFromAPI(session.access_token)
+
       callback({
         id: session.user.id,
         email: session.user.email!,
@@ -74,3 +136,8 @@ export const onAuthStateChange = (callback: (user: AuthUser | null) => void) => 
     }
   })
 }
+
+// Backwards compatibility exports
+export const login = signInWithPassword
+export const logout = signOut
+export const getCurrentUser = getUser

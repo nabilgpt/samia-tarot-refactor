@@ -30,56 +30,35 @@ const getDailyHoroscopes = async () => {
   }
 };
 
+const getProfile = async () => {
+  try {
+    const response = await fetch('/api/profile/me', {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-store, must-revalidate, private',
+        'Pragma': 'no-cache'
+      }
+    });
+    return ensureOk(response);
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    throw error;
+  }
+};
+
 const getServices = async () => {
-  const services = [
-    {
-      id: 'tarot_basic',
-      code: 'tarot_basic',
-      name: 'Tarot Reading',
-      description: 'Traditional tarot card reading',
-      base_price: 25.00
-    },
-    {
-      id: 'astrology',
-      code: 'astrology',
-      name: 'Astrology Reading',
-      description: 'Birth chart and planetary analysis',
-      base_price: 35.00
-    },
-    {
-      id: 'numerology',
-      code: 'numerology',
-      name: 'Numerology Reading',
-      description: 'Life path and destiny numbers',
-      base_price: 20.00
-    },
-    {
-      id: 'coffee',
-      code: 'coffee',
-      name: 'Coffee Reading',
-      description: 'Traditional coffee cup reading',
-      base_price: 30.00
-    },
-    {
-      id: 'healing',
-      code: 'healing',
-      name: 'Spiritual Healing',
-      description: 'Energy healing and guidance',
-      base_price: 40.00
-    },
-    {
-      id: 'direct_call',
-      code: 'direct_call',
-      name: 'Direct Call',
-      description: 'Live reading session',
-      base_price: 50.00
-    }
-  ];
-  return services;
+  try {
+    const response = await fetch('/api/services');
+    const data = await ensureOk(response);
+    return Array.isArray(data?.services) ? data.services : [];
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    return [];
+  }
 };
 
 const createOrder = async (payload) => {
-  const response = await fetch('/api/orders', {
+  const response = await fetch('http://localhost:5000/api/orders', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -436,9 +415,62 @@ const openMediaInNewTab = (signedUrl) => {
   return win !== null;
 };
 
+const getReaders = async () => {
+  try {
+    const response = await fetch('/api/readers');
+    const data = await ensureOk(response);
+    return Array.isArray(data?.readers) ? data.readers : [];
+  } catch (error) {
+    console.error('Error fetching readers:', error);
+    return [];
+  }
+};
+
+const getOnlineReaders = async () => {
+  try {
+    const response = await fetch('/api/readers/online', {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-store, private'
+      }
+    });
+    const data = await ensureOk(response);
+    return Array.isArray(data?.readers) ? data.readers : [];
+  } catch (error) {
+    console.error('Error fetching online readers:', error);
+    return [];
+  }
+};
+
+const getAvailability = async (readerId, date) => {
+  try {
+    const response = await fetch(`/api/availability?reader_id=${readerId}&date=${date}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-store, private'
+      }
+    });
+    const data = await ensureOk(response);
+    return data.slots || [];
+  } catch (error) {
+    console.error('Error fetching availability:', error);
+    return [];
+  }
+};
+
+const initiateCall = async (payload) => {
+  const response = await fetch('/api/calls/initiate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  return ensureOk(response);
+};
+
 const api = {
   getDailyHoroscopes,
   dailyHoroscopes: getDailyHoroscopes,
+  getProfile,
   getServices,
   services: getServices,
   createOrder,
@@ -460,6 +492,10 @@ const api = {
   getHoroscopeMedia,
   getOrderMedia,
   openMediaInNewTab,
+  getReaders,
+  getOnlineReaders,
+  getAvailability,
+  initiateCall,
   ensureOk,
   SIGNED_URL_TTL_SECONDS
 };

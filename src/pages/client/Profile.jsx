@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { User, Mail, Calendar, Star, Shield, Edit3, Save, X, AlertCircle, CheckCircle } from 'lucide-react';
-import { getCurrentUser } from '../../lib/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Profile = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -23,30 +22,19 @@ const Profile = () => {
   const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
-    loadUserProfile();
-  }, []);
-
-  const loadUserProfile = async () => {
-    try {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
+    if (user) {
       setFormData({
-        name: currentUser.user_metadata?.name || '',
-        birth_date: currentUser.user_metadata?.birth_date || '',
-        timezone: currentUser.user_metadata?.timezone || '',
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || '',
+        birth_date: '',
+        timezone: '',
         preferences: {
-          email_notifications: currentUser.user_metadata?.preferences?.email_notifications ?? true,
-          reading_reminders: currentUser.user_metadata?.preferences?.reading_reminders ?? true,
-          promotional_emails: currentUser.user_metadata?.preferences?.promotional_emails ?? false
+          email_notifications: true,
+          reading_reminders: true,
+          promotional_emails: false
         }
       });
-    } catch (error) {
-      console.error('Error loading profile:', error);
-      setError('Failed to load profile');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [user]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -67,7 +55,6 @@ const Profile = () => {
   };
 
   const handleCancel = () => {
-    loadUserProfile();
     setEditing(false);
     setError(null);
   };
@@ -175,7 +162,7 @@ const Profile = () => {
                 </p>
                 <div className="flex items-center mt-1 text-theme-muted text-sm">
                   <Shield className="w-3 h-3 mr-1" />
-                  Role: {user?.user_metadata?.role || 'client'}
+                  Role: {user?.role || 'client'}
                 </div>
               </div>
             </div>

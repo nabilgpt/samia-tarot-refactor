@@ -1,386 +1,574 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { CreditCard, Lock, Shield, ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react';
+import { CreditCard, Lock, Shield, ArrowLeft, AlertCircle, CheckCircle, Calendar, Clock, Phone, MessageSquare, User, Circle, AlertTriangle, Globe, BookOpen, Zap } from 'lucide-react';
 import api from '../../lib/api';
-import { api as paymentsApi } from '../../services/api';
 
 const Checkout = () => {
   const [searchParams] = useSearchParams();
-  const [service, setService] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState(null);
-  const [question, setQuestion] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('card');
   const navigate = useNavigate();
   const shouldReduceMotion = useReducedMotion();
 
-  const serviceId = searchParams.get('service');
+  const [services, setServices] = useState([]);
+  const [readers, setReaders] = useState([]);
+  const [onlineReaders, setOnlineReaders] = useState([]);
+
+  const [selectedService, setSelectedService] = useState(null);
+  const [selectedReader, setSelectedReader] = useState(null);
+  const [mode, setMode] = useState('reading');
+  const [flow, setFlow] = useState('scheduled');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [questions, setQuestions] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [consent18, setConsent18] = useState(false);
+  const [notifChannel, setNotifChannel] = useState('email');
+
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState(null);
+
+  const serviceParam = searchParams.get('service');
+  const readerParam = searchParams.get('reader');
 
   useEffect(() => {
-    if (serviceId) {
-      loadService();
-    } else {
-      setError('No service selected');
-      setLoading(false);
-    }
-  }, [serviceId]);
+    loadInitialData();
+  }, []);
 
-  const loadService = async () => {
-    try {
-      const services = await api.getServices();
-      const selectedService = services.find(s => s.code === serviceId || s.id.toString() === serviceId);
-      if (selectedService) {
-        setService({
-          ...selectedService,
-          id: selectedService.code || selectedService.id.toString(),
-          title: selectedService.name,
-          price: selectedService.base_price > 0 ? selectedService.base_price : 25.00
-        });
-      } else {
-        setError('Service not found');
+  useEffect(() => {
+    if (selectedReader && date && flow === 'scheduled') {
+      loadAvailability();
+    }
+  }, [selectedReader, date]);
+
+  useEffect(() => {
+    if (selectedReader) {
+      const isOnline = onlineReaders.some(r => r.id === selectedReader);
+      if (isOnline && flow === 'scheduled') {
+        setFlow('instant');
       }
-    } catch (error) {
-      console.error('Error loading service:', error);
-      setError('Failed to load service details');
+    }
+  }, [selectedReader, onlineReaders]);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      const [servicesData, readersData, onlineData] = await Promise.all([
+        api.getServices(),
+        api.getReaders(),
+        api.getOnlineReaders()
+      ]);
+
+      setServices(servicesData);
+      setReaders(readersData);
+      setOnlineReaders(onlineData);
+
+      if (serviceParam) {
+        const svc = servicesData.find(s => s.id === serviceParam || s.code === serviceParam);
+        if (svc) setSelectedService(svc.id);
+      }
+
+      if (readerParam) {
+        const rdr = readersData.find(r => r.id === readerParam);
+        if (rdr) {
+          setSelectedReader(rdr.id);
+          const isOnline = onlineData.some(o => o.id === rdr.id);
+          if (isOnline) setFlow('instant');
+        }
+      }
+    } catch (err) {
+      setError('Failed to load checkout data');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCheckout = async (e) => {
+  const loadAvailability = async () => {
+    if (!selectedReader || !date) return;
+    try {
+      const slots = await api.getAvailability(selectedReader, date);
+      setAvailableSlots(slots.filter(s => s.status === 'free'));
+    } catch (err) {
+      console.error('Failed to load availability:', err);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!service) return;
+
+    if (!selectedService || !selectedReader || !consent18) {
+      setError('Please fill in all required fields and accept terms');
+      return;
+    }
+
+    if (flow === 'scheduled' && (!date || !time)) {
+      setError('Please select date and time for scheduled session');
+      return;
+    }
+
+    if (mode === 'calling' && !contactPhone) {
+      setError('Phone number required for calling mode');
+      return;
+    }
 
     setProcessing(true);
     setError(null);
 
     try {
-      const orderData = {
-        service_code: service.code || service.id,
-        question_text: question.trim() || undefined,
-        is_gold: false
+      const service = services.find(s => s.id === selectedService);
+
+      const orderPayload = {
+        service_id: selectedService,
+        reader_id: selectedReader,
+        mode,
+        flow,
+        scheduled_at: flow === 'scheduled' ? `${date}T${time}:00` : null,
+        questions: questions.trim() || null,
+        contact_phone: contactPhone || null,
+        notif_channel: notifChannel,
+        timezone
       };
 
-      const order = await paymentsApi.orders.createOrder(orderData);
+      if (flow === 'emergency') {
+        const paymentIntent = await api.payments.createPaymentIntent({
+          amount: service.base_price * 1.5,
+          currency: 'USD',
+          description: `Emergency Call - ${service.name}`
+        });
 
-      if (order && order.order_id) {
-        try {
-          await paymentsApi.payments.createPaymentIntent({
-            order_id: order.order_id
-          });
-        } catch (paymentError) {
-          console.warn('Payment intent creation failed, proceeding to order page:', paymentError);
-        }
+        const call = await api.initiateCall({
+          order_id: null,
+          reader_id: selectedReader,
+          emergency: 1
+        });
 
-        navigate(`/orders/${order.order_id}`);
+        navigate(`/orders/${call.id}`);
       } else {
-        throw new Error('Order creation failed');
+        const order = await api.createOrder(orderPayload);
+
+        if (order && order.order_id) {
+          await api.payments.createPaymentIntent({
+            order_id: order.order_id,
+            amount: service.base_price,
+            currency: 'USD'
+          });
+
+          if (flow === 'instant' && mode === 'calling') {
+            await api.initiateCall({
+              order_id: order.order_id,
+              reader_id: selectedReader,
+              emergency: 0
+            });
+          }
+
+          navigate(`/orders/${order.order_id}`);
+        } else {
+          throw new Error('Order creation failed');
+        }
       }
-    } catch (error) {
-      console.error('Checkout error:', error);
-      setError(error.message || 'Failed to process order. Please try again.');
+    } catch (err) {
+      setError(err.message || 'Checkout failed. Please try again.');
     } finally {
       setProcessing(false);
     }
   };
 
-  const itemVariants = {
-    hidden: shouldReduceMotion ? { opacity: 0 } : { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: shouldReduceMotion ? { duration: 0.3 } : {
-        type: "spring",
-        stiffness: 100,
-        damping: 12
-      }
-    }
-  };
+  const service = services.find(s => s.id === selectedService);
+  const reader = readers.find(r => r.id === selectedReader);
+  const isReaderOnline = onlineReaders.some(r => r.id === selectedReader);
+
+  const totalPrice = service ? (flow === 'emergency' ? service.base_price * 1.5 : service.base_price) : 0;
 
   if (loading) {
     return (
-      <div className="min-h-screen py-20 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="text-center">
-            <div className="animate-pulse">
-              <div className="w-32 h-8 bg-theme-tertiary rounded mx-auto mb-4"></div>
-              <div className="w-64 h-4 bg-theme-tertiary rounded mx-auto"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error && !service) {
-    return (
-      <div className="min-h-screen py-20 px-4">
-        <div className="container mx-auto max-w-4xl text-center">
-          <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-theme-primary mb-4">Checkout Error</h1>
-          <p className="text-theme-secondary mb-6">{error}</p>
-          <button
-            onClick={() => navigate('/services')}
-            className="inline-flex items-center px-6 py-3 bg-cosmic-gradient text-theme-inverse font-medium rounded-lg"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Services
-          </button>
+      <div className="container py-12">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-theme-cosmic/20 rounded w-1/3 mx-auto"></div>
+          <div className="h-64 bg-theme-cosmic/20 rounded"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-20 px-4">
-      <div className="container mx-auto max-w-4xl">
+    <div className="container py-12">
+      <motion.div
+        initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={shouldReduceMotion ? { duration: 0.3 } : { type: "spring", stiffness: 100, damping: 12 }}
+      >
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold gradient-text mb-2">Complete Your Booking</h1>
+          <p className="text-theme-secondary">Customize your mystical experience</p>
+        </div>
 
-        {/* Header */}
-        <motion.div
-          variants={itemVariants}
-          initial="hidden"
-          animate="visible"
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl md:text-5xl font-bold gradient-text mb-4">
-            Secure Checkout
-          </h1>
-          <div className="w-32 h-1 bg-cosmic-gradient mx-auto mb-6 rounded-full shadow-theme-cosmic" />
-          <p className="text-theme-secondary text-lg">
-            Complete your spiritual guidance order
-          </p>
-        </motion.div>
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
 
-        <div className="grid lg:grid-cols-3 gap-8">
-
-          {/* Order Summary */}
-          <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            className="lg:col-span-1"
-          >
-            <div className="bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-2xl p-6 sticky top-24">
-              <h2 className="text-xl font-bold text-theme-primary mb-6">Order Summary</h2>
-
-              {service && (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold text-theme-primary">{service.title}</h3>
-                      <p className="text-theme-secondary text-sm">{service.description}</p>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-theme-cosmic pt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-theme-secondary">Service</span>
-                      <span className="font-semibold text-theme-primary">${service.price.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="text-theme-secondary">Processing Fee</span>
-                      <span className="font-semibold text-theme-primary">$0.00</span>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-theme-cosmic pt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-theme-primary">Total</span>
-                      <span className="text-2xl font-bold gradient-text">${service.price.toFixed(2)}</span>
-                    </div>
-                    <p className="text-theme-muted text-xs mt-1">One-time payment</p>
+              {!serviceParam && (
+                <div className="card p-6">
+                  <h2 className="text-xl font-bold text-theme-primary mb-4">Select Service</h2>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {services.map(svc => (
+                      <label key={svc.id} className="cursor-pointer">
+                        <input
+                          type="radio"
+                          name="service"
+                          value={svc.id}
+                          checked={selectedService === svc.id}
+                          onChange={() => setSelectedService(svc.id)}
+                          className="sr-only"
+                        />
+                        <div className={`p-4 rounded-lg border-2 transition-all ${
+                          selectedService === svc.id
+                            ? 'border-gold-primary bg-gold-primary/10'
+                            : 'border-theme-cosmic hover:border-theme-cosmic/60'
+                        }`}>
+                          <h3 className="font-semibold text-theme-primary">{svc.name}</h3>
+                          <p className="text-sm text-theme-secondary">${svc.base_price}</p>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* Trust Signals */}
-              <div className="mt-6 pt-6 border-t border-theme-cosmic">
-                <div className="space-y-3">
-                  <div className="flex items-center text-theme-secondary text-sm">
-                    <Shield className="w-4 h-4 text-gold-primary mr-2" />
-                    SSL Encrypted Payment
-                  </div>
-                  <div className="flex items-center text-theme-secondary text-sm">
-                    <Lock className="w-4 h-4 text-gold-primary mr-2" />
-                    Private & Confidential
-                  </div>
-                  <div className="flex items-center text-theme-secondary text-sm">
-                    <CheckCircle className="w-4 h-4 text-gold-primary mr-2" />
-                    Satisfaction Guaranteed
+              {!readerParam && (
+                <div className="card p-6">
+                  <h2 className="text-xl font-bold text-theme-primary mb-4">Select Reader</h2>
+                  <div className="space-y-3">
+                    {readers.map(rdr => {
+                      const online = onlineReaders.some(o => o.id === rdr.id);
+                      return (
+                        <label key={rdr.id} className="cursor-pointer block">
+                          <input
+                            type="radio"
+                            name="reader"
+                            value={rdr.id}
+                            checked={selectedReader === rdr.id}
+                            onChange={() => setSelectedReader(rdr.id)}
+                            className="sr-only"
+                          />
+                          <div className={`p-4 rounded-lg border-2 transition-all flex items-center gap-3 ${
+                            selectedReader === rdr.id
+                              ? 'border-gold-primary bg-gold-primary/10'
+                              : 'border-theme-cosmic hover:border-theme-cosmic/60'
+                          }`}>
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gold-primary to-purple-500 flex items-center justify-center">
+                              <User className="w-6 h-6 text-theme-inverse" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-theme-primary">{rdr.firstName} {rdr.lastName}</h3>
+                                {online && (
+                                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/20">
+                                    <Circle className="w-2 h-2 fill-green-500 text-green-500" />
+                                    <span className="text-xs text-green-400">Online</span>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-sm text-theme-secondary">{rdr.bio}</p>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
+              )}
+
+              <div className="card p-6">
+                <h2 className="text-xl font-bold text-theme-primary mb-4">Session Details</h2>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-theme-secondary mb-2">Mode</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="cursor-pointer">
+                        <input
+                          type="radio"
+                          name="mode"
+                          value="reading"
+                          checked={mode === 'reading'}
+                          onChange={(e) => setMode(e.target.value)}
+                          className="sr-only"
+                        />
+                        <div className={`p-3 rounded-lg border-2 text-center ${
+                          mode === 'reading' ? 'border-gold-primary bg-gold-primary/10' : 'border-theme-cosmic'
+                        }`}>
+                          <MessageSquare className="w-5 h-5 mx-auto mb-1" />
+                          <span className="text-sm font-medium">Reading</span>
+                        </div>
+                      </label>
+                      <label className="cursor-pointer">
+                        <input
+                          type="radio"
+                          name="mode"
+                          value="calling"
+                          checked={mode === 'calling'}
+                          onChange={(e) => setMode(e.target.value)}
+                          className="sr-only"
+                        />
+                        <div className={`p-3 rounded-lg border-2 text-center ${
+                          mode === 'calling' ? 'border-gold-primary bg-gold-primary/10' : 'border-theme-cosmic'
+                        }`}>
+                          <Phone className="w-5 h-5 mx-auto mb-1" />
+                          <span className="text-sm font-medium">Calling</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-theme-secondary mb-2">Flow</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <label className="cursor-pointer">
+                        <input
+                          type="radio"
+                          name="flow"
+                          value="scheduled"
+                          checked={flow === 'scheduled'}
+                          onChange={(e) => setFlow(e.target.value)}
+                          className="sr-only"
+                        />
+                        <div className={`p-3 rounded-lg border-2 text-center ${
+                          flow === 'scheduled' ? 'border-gold-primary bg-gold-primary/10' : 'border-theme-cosmic'
+                        }`}>
+                          <Calendar className="w-5 h-5 mx-auto mb-1" />
+                          <span className="text-xs font-medium">Scheduled</span>
+                        </div>
+                      </label>
+                      {isReaderOnline && (
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="flow"
+                            value="instant"
+                            checked={flow === 'instant'}
+                            onChange={(e) => setFlow(e.target.value)}
+                            className="sr-only"
+                          />
+                          <div className={`p-3 rounded-lg border-2 text-center ${
+                            flow === 'instant' ? 'border-gold-primary bg-gold-primary/10' : 'border-theme-cosmic'
+                          }`}>
+                            <Clock className="w-5 h-5 mx-auto mb-1" />
+                            <span className="text-xs font-medium">Instant</span>
+                          </div>
+                        </label>
+                      )}
+                      <label className="cursor-pointer">
+                        <input
+                          type="radio"
+                          name="flow"
+                          value="emergency"
+                          checked={flow === 'emergency'}
+                          onChange={(e) => setFlow(e.target.value)}
+                          className="sr-only"
+                        />
+                        <div className={`p-3 rounded-lg border-2 text-center ${
+                          flow === 'emergency' ? 'border-red-500 bg-red-500/10' : 'border-theme-cosmic'
+                        }`}>
+                          <AlertTriangle className="w-5 h-5 mx-auto mb-1" />
+                          <span className="text-xs font-medium">Emergency</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {flow === 'scheduled' && (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-theme-secondary mb-2">Date</label>
+                        <input
+                          type="date"
+                          value={date}
+                          onChange={(e) => setDate(e.target.value)}
+                          className="w-full bg-theme-card border border-theme-cosmic rounded-lg p-3 text-theme-primary"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-theme-secondary mb-2">Time</label>
+                        <select
+                          value={time}
+                          onChange={(e) => setTime(e.target.value)}
+                          className="w-full bg-theme-card border border-theme-cosmic rounded-lg p-3 text-theme-primary"
+                          required
+                        >
+                          <option value="">Select time</option>
+                          {availableSlots.map(slot => (
+                            <option key={slot.start_at} value={slot.start_at}>
+                              {slot.start_at} - {slot.end_at}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {flow === 'emergency' && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                      <p className="text-red-400 text-sm">
+                        <AlertTriangle className="w-4 h-4 inline mr-2" />
+                        Emergency calls are 1.5x standard rate and require immediate pickup
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-theme-secondary mb-2">Your Questions</label>
+                    <textarea
+                      value={questions}
+                      onChange={(e) => setQuestions(e.target.value)}
+                      placeholder="What would you like guidance on?"
+                      className="w-full h-24 bg-theme-card border border-theme-cosmic rounded-lg p-3 text-theme-primary resize-none"
+                      maxLength={500}
+                    />
+                    <p className="text-xs text-theme-muted mt-1">{questions.length}/500</p>
+                  </div>
+
+                  {mode === 'calling' && (
+                    <div>
+                      <label className="block text-sm font-medium text-theme-secondary mb-2">Contact Phone</label>
+                      <input
+                        type="tel"
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value)}
+                        placeholder="+1 (555) 123-4567"
+                        className="w-full bg-theme-card border border-theme-cosmic rounded-lg p-3 text-theme-primary"
+                        required
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-theme-secondary mb-2">Notification Channel</label>
+                    <select
+                      value={notifChannel}
+                      onChange={(e) => setNotifChannel(e.target.value)}
+                      className="w-full bg-theme-card border border-theme-cosmic rounded-lg p-3 text-theme-primary"
+                    >
+                      <option value="email">Email</option>
+                      <option value="sms">SMS</option>
+                      <option value="whatsapp">WhatsApp</option>
+                    </select>
+                  </div>
+
+                  <label className="flex items-start cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={consent18}
+                      onChange={(e) => setConsent18(e.target.checked)}
+                      className="mt-1 mr-3"
+                      required
+                    />
+                    <span className="text-sm text-theme-secondary">
+                      I confirm that I am 18 years or older and agree to the <a href="/legal/terms" className="text-gold-primary hover:underline">Terms of Service</a>
+                    </span>
+                  </label>
+                </div>
               </div>
+
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-center">
+                  <AlertCircle className="w-5 h-5 text-red-400 mr-3" />
+                  <p className="text-red-400">{error}</p>
+                </div>
+              )}
             </div>
-          </motion.div>
 
-          {/* Checkout Form */}
-          <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            animate="visible"
-            className="lg:col-span-2"
-          >
-            <form onSubmit={handleCheckout} className="space-y-8">
+            <div className="lg:col-span-1">
+              <div className="card p-6 sticky top-24">
+                <h2 className="text-xl font-bold text-theme-primary mb-4">Order Summary</h2>
 
-              {/* Question Section */}
-              <div className="bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-2xl p-6">
-                <h2 className="text-xl font-bold text-theme-primary mb-4">Your Question</h2>
-                <p className="text-theme-secondary text-sm mb-4">
-                  Share what's on your mind to help your reader provide personalized guidance (optional)
-                </p>
-                <textarea
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="What would you like guidance on? The more specific you are, the more detailed your reading will be..."
-                  className="w-full h-32 bg-theme-card border border-theme-cosmic rounded-lg p-4 text-theme-primary placeholder-theme-muted focus:border-gold-primary focus:outline-none transition-colors duration-300 resize-none"
-                  maxLength={500}
-                />
-                <div className="text-right text-theme-muted text-xs mt-2">
-                  {question.length}/500 characters
-                </div>
-              </div>
-
-              {/* Payment Method */}
-              <div className="bg-theme-card backdrop-blur-lg border border-theme-cosmic rounded-2xl p-6">
-                <h2 className="text-xl font-bold text-theme-primary mb-4">Payment Method</h2>
-
-                <div className="space-y-3 mb-6">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="card"
-                      checked={paymentMethod === 'card'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="sr-only"
-                    />
-                    <div className={`flex items-center w-full p-4 border-2 rounded-lg transition-all duration-300 ${
-                      paymentMethod === 'card'
-                        ? 'border-gold-primary bg-gold-primary/10'
-                        : 'border-theme-cosmic hover:border-theme-cosmic/60'
-                    }`}>
-                      <CreditCard className={`w-5 h-5 mr-3 ${paymentMethod === 'card' ? 'text-gold-primary' : 'text-theme-secondary'}`} />
-                      <div>
-                        <p className="font-medium text-theme-primary">Credit/Debit Card</p>
-                        <p className="text-theme-secondary text-sm">Visa, Mastercard, American Express</p>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="paypal"
-                      checked={paymentMethod === 'paypal'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="sr-only"
-                    />
-                    <div className={`flex items-center w-full p-4 border-2 rounded-lg transition-all duration-300 ${
-                      paymentMethod === 'paypal'
-                        ? 'border-gold-primary bg-gold-primary/10'
-                        : 'border-theme-cosmic hover:border-theme-cosmic/60'
-                    }`}>
-                      <div className={`w-5 h-5 mr-3 rounded ${paymentMethod === 'paypal' ? 'bg-gold-primary' : 'bg-theme-secondary'}`} />
-                      <div>
-                        <p className="font-medium text-theme-primary">PayPal</p>
-                        <p className="text-theme-secondary text-sm">Pay with your PayPal account</p>
-                      </div>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Mock Payment Form */}
-                {paymentMethod === 'card' && (
+                {service && (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-theme-secondary text-sm mb-2">Card Number</label>
-                      <input
-                        type="text"
-                        placeholder="1234 5678 9012 3456"
-                        className="w-full bg-theme-card border border-theme-cosmic rounded-lg p-3 text-theme-primary placeholder-theme-muted focus:border-gold-primary focus:outline-none transition-colors duration-300"
-                      />
+                      <h3 className="font-semibold text-theme-primary">{service.name}</h3>
+                      <p className="text-sm text-theme-secondary">{service.description}</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-theme-secondary text-sm mb-2">Expiry Date</label>
-                        <input
-                          type="text"
-                          placeholder="MM/YY"
-                          className="w-full bg-theme-card border border-theme-cosmic rounded-lg p-3 text-theme-primary placeholder-theme-muted focus:border-gold-primary focus:outline-none transition-colors duration-300"
-                        />
+
+                    {reader && (
+                      <div className="flex items-center gap-3 p-3 bg-theme-cosmic/10 rounded-lg">
+                        <User className="w-8 h-8" />
+                        <div>
+                          <p className="font-medium text-theme-primary">{reader.firstName} {reader.lastName}</p>
+                          <p className="text-xs text-theme-secondary">{reader.bio}</p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-theme-secondary text-sm mb-2">CVC</label>
-                        <input
-                          type="text"
-                          placeholder="123"
-                          className="w-full bg-theme-card border border-theme-cosmic rounded-lg p-3 text-theme-primary placeholder-theme-muted focus:border-gold-primary focus:outline-none transition-colors duration-300"
-                        />
+                    )}
+
+                    <div className="border-t border-theme-cosmic pt-4 space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-theme-secondary">Service</span>
+                        <span className="font-semibold">${service.base_price.toFixed(2)}</span>
+                      </div>
+                      {flow === 'emergency' && (
+                        <div className="flex justify-between text-red-400">
+                          <span>Emergency Fee (50%)</span>
+                          <span className="font-semibold">+${(service.base_price * 0.5).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-theme-cosmic pt-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-bold">Total</span>
+                        <span className="text-2xl font-bold gradient-text">${totalPrice.toFixed(2)}</span>
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-theme-secondary text-sm mb-2">Cardholder Name</label>
-                      <input
-                        type="text"
-                        placeholder="John Doe"
-                        className="w-full bg-theme-card border border-theme-cosmic rounded-lg p-3 text-theme-primary placeholder-theme-muted focus:border-gold-primary focus:outline-none transition-colors duration-300"
-                      />
+
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center text-theme-secondary">
+                        <Shield className="w-4 h-4 text-gold-primary mr-2" />
+                        SSL Encrypted
+                      </div>
+                      <div className="flex items-center text-theme-secondary">
+                        <Lock className="w-4 h-4 text-gold-primary mr-2" />
+                        Private & Secure
+                      </div>
+                      <div className="flex items-center text-theme-secondary">
+                        <CheckCircle className="w-4 h-4 text-gold-primary mr-2" />
+                        Satisfaction Guaranteed
+                      </div>
                     </div>
+
+                    <button
+                      type="submit"
+                      disabled={processing || !selectedService || !selectedReader || !consent18}
+                      className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {processing ? (
+                        <span className="flex items-center justify-center">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Processing...
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center">
+                          <Lock className="w-4 h-4 mr-2" />
+                          Complete ${totalPrice.toFixed(2)}
+                        </span>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => navigate(-1)}
+                      className="btn-secondary w-full"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2 inline" />
+                      Back
+                    </button>
                   </div>
                 )}
               </div>
-
-              {/* Error Display */}
-              {error && (
-                <motion.div
-                  variants={itemVariants}
-                  className="bg-red-500/10 border border-red-500/20 rounded-xl p-4"
-                >
-                  <div className="flex items-center">
-                    <AlertCircle className="w-5 h-5 text-red-400 mr-3" />
-                    <p className="text-red-400">{error}</p>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Submit Button */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  type="button"
-                  onClick={() => navigate('/services')}
-                  className="flex-1 px-6 py-4 bg-transparent border border-theme-cosmic text-theme-primary hover:bg-theme-cosmic hover:text-theme-inverse font-semibold rounded-xl transition-all duration-300"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2 inline" />
-                  Back to Services
-                </button>
-                <button
-                  type="submit"
-                  disabled={processing || !service}
-                  className="flex-1 px-6 py-4 bg-cosmic-gradient hover:shadow-theme-cosmic text-theme-inverse font-bold rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                >
-                  {processing ? (
-                    <span className="flex items-center justify-center">
-                      <div className="w-4 h-4 border-2 border-theme-inverse border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Processing...
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center">
-                      <Lock className="w-4 h-4 mr-2" />
-                      Complete Order ${service?.price?.toFixed(2) || '0.00'}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-            </form>
-          </motion.div>
-
-        </div>
-
-      </div>
+            </div>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 };

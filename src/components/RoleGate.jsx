@@ -1,26 +1,17 @@
-import { useEffect, useState } from 'react';
-import { getCurrentUser } from '../lib/auth';
+import { useAuth } from '../contexts/AuthContext';
 
 const RoleGate = ({ allow = [], children, fallback = null }) => {
-  const [hasAccess, setHasAccess] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getCurrentUser()
-      .then((user) => {
-        const userRole = user?.role;
-        setHasAccess(userRole && allow.includes(userRole));
-        setLoading(false);
-      })
-      .catch(() => {
-        setHasAccess(false);
-        setLoading(false);
-      });
-  }, [allow]);
+  const { user, loading } = useAuth();
 
   if (loading) {
-    return null; // Keep UI clean during loading
+    return (
+      <div className="min-h-[200px] flex items-center justify-center">
+        <div className="animate-pulse text-theme-secondary">Loading permissions...</div>
+      </div>
+    );
   }
+
+  const hasAccess = user?.role && allow.includes(user.role);
 
   if (!hasAccess) {
     return fallback || (
