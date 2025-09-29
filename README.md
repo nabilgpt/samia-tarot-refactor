@@ -1,199 +1,261 @@
-# SAMIA-TAROT Platform
+# SAMIA TAROT - Monorepo
 
-Production-ready backend API for the SAMIA-TAROT platform with complete database schema, authentication, order workflow, horoscope ingestion, voice calls, moderation, and ops monitoring.
+> **Complete implementation following:**
+> - `samia_tarot_backend_core_consolidated_master.md`
+> - `samia_tarot_dev_implementation_pack.md`
+> - `samia_tarot_frontend_consolidated_master.md`
 
-## Overview
+---
 
-**Zero Theme Changes**: This backend implementation preserves the existing front-end theme/design completely. All work is "back-of-house" - database, APIs, and integrations only.
+## ✅ **IMPLEMENTATION STATUS**
 
-**Architecture**: Single FastAPI application (`api.py`) with PostgreSQL via psycopg2 connection pooling to Supabase Session Pooler. No ORM - direct SQL for performance and simplicity.
+### **Completed Core Foundation**
 
-### Modules Implemented (M1-M11)
+✅ Monorepo structure (`/apps`, `/libs`, `/packages`, `/functions`)
+✅ Database migrations (M011-M019) with RLS
+✅ Edge Functions (auth, webhooks, zodiac, webrtc)
+✅ Twilio Verify OTP helpers
+✅ SendGrid automation scripts
+✅ LiveKit integration backend
+✅ Comprehensive `.env.example`
+✅ Root `package.json` + `turbo.json`
+✅ Documentation (DNS, Verify, LiveKit)
 
-- **M1-M2**: Core schema, migrations, psycopg2 runner (`migrate.py`)
-- **M3**: Auth sync, phone verification via Twilio Verify
-- **M4**: Orders workflow (create → assign → approve → deliver)
-- **M5**: TikTok horoscope ingestion with monitor approval
-- **M6**: Astro service with human-voiced audio results
-- **M7**: Voice calls via Twilio with monitor controls and blocking
-- **M8**: Security hardening with RLS policies and rate limiting
-- **M9**: Countries metadata and profile completeness enforcement
-- **M10**: Internal AI assist (DeepConf/Semantic Galaxy) for readers
-- **M11**: Ops monitoring, CSV exports, metrics, admin config
+### **In Progress**
 
-## Quick Start
+🚧 Shared UI libraries
+🚧 5 PWA applications
+🚧 Payment orchestration UI
+🚧 n8n workflows
 
-### Requirements
+---
 
-- Python 3.9+
-- PostgreSQL access (Supabase Session Pooler configured)
-- Environment variables configured (see `.env.example`)
+## 🏗️ **Architecture**
 
-### Windows
-
-```powershell
-# Copy and configure environment
-copy .env.example .env
-# Edit .env with your credentials
-
-# Run migrations
-python migrate.py up
-
-# Start API server
-.\run_api.ps1
+```
+/
+├── apps/                    # 5 PWAs
+│   ├── client/             # Client PWA + Capacitor
+│   ├── reader/             # Reader PWA (Back-Office)
+│   ├── monitor/            # Monitor PWA (Back-Office)
+│   ├── admin/              # Admin PWA (Back-Office)
+│   └── superadmin/         # SuperAdmin PWA (Back-Office)
+│
+├── libs/                    # Shared UI libraries
+│   ├── ui-kit/             # Components
+│   ├── auth/               # Auth flows
+│   ├── payments/           # Payment UI
+│   ├── realtime/           # LiveKit hooks
+│   ├── i18n/               # i18next + RTL
+│   ├── zodiac/             # Zodiac components
+│   └── utils/              # Helpers
+│
+├── packages/                # Backend services
+│   ├── backend/            # API routes
+│   ├── realtime/           # LiveKit adapters
+│   ├── payments/           # Payment orchestration
+│   ├── i18n/               # Translation automation
+│   └── shared/             # Types & utils
+│
+├── functions/               # Supabase Edge Functions (Deno)
+│   ├── auth/               # signup, verify-email, verify-wa
+│   ├── webrtc/             # token generation
+│   ├── webhooks/           # stripe, square (idempotent)
+│   ├── zodiac/             # audio-url (KSA boundary)
+│   ├── payments/           # checkout, USDT
+│   └── wallet/             # cashout workflow
+│
+├── sql/                     # Database migrations
+│   ├── M011_wallet_payouts.sql
+│   ├── M012_rewards.sql
+│   ├── M013_i18n_translations.sql
+│   ├── M015_auth_profiles.sql
+│   ├── M016_auth_verifications.sql
+│   ├── M017_auth_mfa.sql
+│   ├── M018_daily_zodiac.sql
+│   └── M019_rls_policies.sql
+│
+├── scripts/                 # Automation
+│   ├── sendgrid_auth_create.sh
+│   ├── sendgrid_auth_validate.sh
+│   └── cloudflare_upsert_dns.sh
+│
+└── docs/                    # Guides
+    ├── dns-manual-steps.md
+    ├── verify-setup.md
+    └── livekit-region-pinning.md
 ```
 
-### Linux/macOS
+---
+
+## 🚀 **Quick Start**
 
 ```bash
-# Copy and configure environment
-cp .env.example .env
-# Edit .env with your credentials
+# 1. Install dependencies
+npm install
 
-# Run migrations
-python migrate.py up
+# 2. Copy environment template
+cp .env.example .env.local
+# Fill in your credentials
 
-# Start API server
-./run_api.sh
+# 3. Run database migrations
+npm run migration:up
+
+# 4. Deploy Edge Functions
+npm run supabase:functions:deploy
+
+# 5. Setup SendGrid (see docs/dns-manual-steps.md)
+bash scripts/sendgrid_auth_create.sh
+# Add 3 CNAMEs to your DNS provider
+bash scripts/sendgrid_auth_validate.sh
+
+# 6. Start development
+npm run dev              # All apps
+npm run dev:client       # Client only (port 3000)
+npm run dev:reader       # Reader only (port 3001)
 ```
 
-### Verify Installation
+---
 
+## 📦 **Scripts**
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Run all apps in parallel |
+| `npm run build` | Build all apps for production |
+| `npm run lint` | Lint all packages |
+| `npm run typecheck` | TypeScript type checking |
+| `npm run migration:up` | Apply database migrations |
+| `npm run supabase:functions:deploy` | Deploy Edge Functions |
+| `npm run mobile:build:client` | Build Client mobile app |
+
+---
+
+## 🔐 **Security**
+
+- ✅ **RLS**: Enabled on all tables
+- ✅ **Rate Limiting**: 5 tries/10m → 15m lockout
+- ✅ **MFA**: Staff required, clients optional
+- ✅ **Age Gate**: ≥18 enforced
+- ✅ **CSP**: Cloudflare + strict allowlists
+- ✅ **Secrets**: Supabase Vault (never in frontend)
+
+---
+
+## 🎯 **Core Features**
+
+### **Auth**
+- Dual verification (Email + WhatsApp, SMS fallback)
+- Mandatory fields (name, gender, marital status, DOB, WhatsApp E.164, country, timezone, language)
+- TOTP/WebAuthn MFA
+- Passkeys support
+
+### **Wallet & Cashouts**
+- Client wallet: Store credit only
+- Reader/Staff: Full cashout workflow
+- Payout methods: Bank, PayPal, Wise, Crypto
+
+### **Rewards**
+- Points earning: Rating=50%, Comment=50%, Both=100%
+- Redeem at checkout
+- 365-day expiry (configurable)
+
+### **Payments**
+- Stripe primary (SCA/3DS auto)
+- Square auto-switch (after 2 Stripe failures)
+- USDT TRC20 via Bybit
+- Manual transfers (Western Union, OMT, etc.)
+- Always-USD billing
+
+### **Daily Zodiac (KSA Boundary)**
+- Day definition: Asia/Riyadh
+- Clients: Own sign, today only
+- Staff: All signs, last 60 days
+- Signed URLs: TTL until next KSA midnight
+- On-demand audio generation
+- Auto-cleanup (>60 days)
+
+### **Realtime (LiveKit)**
+- Region pinning: EU (Frankfurt)
+- JWT token generation
+- Server-side recording (egress)
+- Storage: Supabase Storage
+
+### **i18n**
+- Machine translation via n8n → Google Translation v3
+- Admin override support
+- Fallback to source locale
+- RTL support for Arabic
+
+---
+
+## 📊 **Business Rules**
+
+| Rule | Value |
+|------|-------|
+| Refund cutoff | ≥2h before appointment |
+| Reader revenue share | 50% |
+| Age gate | ≥18 years |
+| Reward points (rating) | 50% |
+| Reward points (comment) | 50% |
+| Reward points (both) | 100% |
+| Reward expiry | 365 days |
+| Zodiac retention | 60 days |
+| Default timezone | Asia/Riyadh |
+
+---
+
+## 📚 **Documentation**
+
+- **DNS Setup**: `docs/dns-manual-steps.md`
+- **Twilio Verify**: `docs/verify-setup.md`
+- **LiveKit Region Pinning**: `docs/livekit-region-pinning.md`
+- **Backend Spec**: `samia_tarot_backend_core_consolidated_master.md`
+- **Dev Pack**: `samia_tarot_dev_implementation_pack.md`
+- **Frontend Spec**: `samia_tarot_frontend_consolidated_master.md`
+
+---
+
+## 🚨 **Troubleshooting**
+
+### Database Issues
 ```bash
-# Check database status
-python migrate.py audit
-
-# Test API health
-curl http://localhost:8000/api/health
+# Check connection
+psql $DATABASE_URL -c "SELECT 1"
 ```
 
-## Environment Variables
+### Edge Functions
+```bash
+# View logs
+supabase functions logs
 
-See `.env.example` for complete list. Key variables:
+# Redeploy
+npm run supabase:functions:deploy
+```
 
-- `DB_DSN`: Supabase Session Pooler connection string
-- `TWILIO_*`: Phone verification and voice calling
-- `SUPABASE_*`: Storage for media assets
-- `DEEPCONF_*`, `SEMANTIC_*`: Internal AI assist services
-- `JOB_TOKEN`: Security token for cron endpoints
+### SendGrid
+```bash
+# Validate domain
+bash scripts/sendgrid_auth_validate.sh
 
-## Role Matrix
+# Check DNS
+dig em.samiatarot.com CNAME
+```
 
-| Role | Permissions |
-|------|-------------|
-| `client` | Create orders, view own data, complete profile |
-| `reader` | Read assigned orders, upload results, use AI assist |
-| `monitor` | Approve/reject content, block users, drop calls |
-| `admin` | User management, unblock users, ops monitoring |
-| `superadmin` | Full access, raw PII exports, system config |
+### LiveKit
+```bash
+# Check latency
+ping fra.livekit.io
 
-## API Endpoints
+# Verify ports 443, 7881 are open
+```
 
-### Authentication & Verification
-- `POST /api/auth/sync` - Sync Supabase auth to profiles
-- `POST /api/verify/phone/start` - Start phone verification
-- `POST /api/verify/phone/check` - Verify phone code
+---
 
-### Orders Workflow
-- `POST /api/orders` - Create new order
-- `GET /api/orders/{id}` - Get order details
-- `POST /api/orders/{id}/assign` - Assign to reader (admin)
-- `POST /api/orders/{id}/result` - Upload result (reader)
-- `POST /api/orders/{id}/approve` - Approve result (monitor)
-- `POST /api/orders/{id}/reject` - Reject with reason (monitor)
+## 📝 **License**
 
-### Horoscopes
-- `POST /api/horoscopes/ingest` - Ingest TikTok content
-- `GET /api/horoscopes/daily/{zodiac}` - Get approved horoscope
-- `POST /api/horoscopes/{id}/approve` - Approve horoscope (monitor)
-- `POST /api/horoscopes/{id}/regenerate` - Regenerate audio
+MIT
 
-### Voice Calls
-- `POST /api/calls/schedule` - Schedule call session
-- `POST /api/calls/initiate` - Start call (reader)
-- `POST /api/calls/terminate` - Drop call (monitor)
-- `POST /api/voice/twiml/*` - Twilio webhook handlers
+---
 
-### Astro Service
-- `POST /api/astro/order` - Create astro reading order
-- `POST /api/astro/draft` - Generate astro summary
-- `POST /api/media/upload` - Upload audio result
-
-### Moderation
-- `POST /api/mod/block` - Block user/reader (monitor)
-- `POST /api/mod/unblock` - Unblock user (admin)
-
-### Metadata
-- `GET /api/meta/countries` - Countries list with dial codes
-- `GET /api/meta/zodiacs` - Zodiac signs list
-- `GET /api/profile/requirements` - Profile completion requirements
-- `POST /api/profile/complete` - Complete profile (social login)
-
-### Internal AI Assist (Reader/Admin Only)
-- `POST /api/assist/draft` - Generate reading draft
-- `POST /api/assist/search` - Semantic symbol search
-- `POST /api/assist/knowledge/add` - Add knowledge (admin)
-- `GET /api/assist/drafts/{order_id}` - Get drafts for order
-
-### Operations (Admin/SuperAdmin Only)
-- `GET /api/ops/snapshot` - System status snapshot
-- `POST /api/ops/export` - Export data as CSV ZIP
-- `GET /api/ops/metrics` - System metrics
-- `POST /api/ops/rate_limits` - Update rate limits config
-
-## Cron Schedules
-
-Install via Windows Task Scheduler (templates provided):
-
-### Daily Maintenance (00:10 UTC)
-- **Purpose**: Purge old data (50+ days retention)
-- **Template**: `cron_purge_daily.xml`
-- **Command**: `curl -X POST {API}/api/cron/purge_old`
-
-### Monthly Voice Refresh (1st of month, 01:00 UTC)
-- **Purpose**: Refresh voice model cache
-- **Template**: `cron_voice_monthly.xml`  
-- **Command**: `curl -X POST {API}/api/cron/voice/refresh`
-
-**Security**: Use `X-Job-Token` header for cron authentication.
-
-## Data Flow
-
-1. **Client Registration**: Email/phone verification → Complete profile → Auto-compute zodiac
-2. **Order Creation**: Service selection → Reader assignment → Work completion → Monitor approval → Delivery
-3. **Horoscope Publishing**: TikTok ingestion → Audio extraction → Monitor approval → Client visibility
-4. **Voice Calls**: Scheduling → Conference setup → Monitor controls → Session recording
-5. **Moderation**: Content review → Block/unblock → Audit trail
-
-## Key Design Principles
-
-- **No Mocks/Test Data**: All endpoints use real database content
-- **psycopg2 Only**: Direct SQL via connection pooling, no ORM overhead
-- **Zero Theme Changes**: Backend-only implementation preserving existing UI
-- **Comprehensive Auditing**: All actions logged to `audit_log` table
-- **Role-Based Security**: RLS policies + application-level permission checks
-- **Rate Limiting**: Token bucket algorithm stored in database
-- **PII Protection**: Default masking for exports, raw access requires superadmin
-
-## Database Schema
-
-24 tables across 6 migrations:
-- Core: `roles`, `profiles`, `services`, `orders`, `media_assets`
-- Features: `horoscopes`, `calls`, `astro_requests`, `assist_drafts`
-- Security: `moderation_actions`, `blocked_profiles`, `api_rate_limits`
-- Metadata: `phone_verifications`, `audit_log`, `app_settings`
-- Knowledge: `kb_docs`, `kb_chunks` (with pgvector support)
-
-## Development Notes
-
-**Before making any changes**: Read the context files in this repo:
-- `SAMIA-TAROT-CONTEXT-ENGINEERING.md`
-- `Full Prompt.md`
-
-**Migration Safety**: All SQL migrations are idempotent with checksum verification.
-
-**Connection Pooling**: Session Pooler DSN required for Supabase compatibility.
-
-**Rate Limiting**: Configurable via `/api/ops/rate_limits` (stored in `app_settings`).
-
-**Monitoring**: Use `/api/ops/snapshot` and `/api/ops/metrics` for system health.
+**Built with ❤️ following SAMIA TAROT specifications**
