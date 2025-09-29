@@ -1,0 +1,2 @@
+-- Placeholder for future shared helpers/policies
+-- (app_role(), is_admin(), etc. already created earlier idempotently)

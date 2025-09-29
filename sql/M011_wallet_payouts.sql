@@ -1,115 +1,62 @@
--- M011_wallet_payouts.sql
--- Wallet & Cashout System (as per Backend Core Spec)
--- Client wallet = store credit only (no cashout)
--- Readers/Staff eligible for cashout
+-- Helpers (idempotent)
+create or replace function app_role() returns text language sql stable as $$
+  select coalesce(current_setting('request.jwt.claims', true)::jsonb ->> 'app_role', 'client');
+$$;
+create or replace function is_staff() returns boolean language sql stable as $$ select app_role() in ('reader','monitor','admin','superadmin'); $$;
+create or replace function is_admin() returns boolean language sql stable as $$ select app_role() in ('admin','superadmin'); $$;
+create or replace function is_super_admin() returns boolean language sql stable as $$ select app_role() = 'superadmin'; $$;
 
-CREATE TABLE IF NOT EXISTS payout_accounts (
-  id BIGSERIAL PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES profiles(id),
-  account_type TEXT NOT NULL CHECK (account_type IN ('bank_transfer', 'paypal', 'wise', 'crypto')),
+-- payout method enum (idempotent)
+do $$ begin
+  if not exists (select 1 from pg_type where typname = 'payout_method') then
+    create type payout_method as enum ('bank_transfer','western_union','whish','al_haram');
+  end if;
+end $$;
 
-  -- Bank details (encrypted in production)
-  bank_name TEXT,
-  account_number TEXT,
-  routing_number TEXT,
-  swift_code TEXT,
-  iban TEXT,
-
-  -- PayPal/Wise
-  email TEXT,
-
-  -- Crypto
-  wallet_address TEXT,
-  network TEXT,
-
-  is_verified BOOLEAN DEFAULT FALSE,
-  is_primary BOOLEAN DEFAULT FALSE,
-
-  metadata JSONB DEFAULT '{}'::jsonb,
-
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-  CONSTRAINT one_primary_per_user UNIQUE (user_id, is_primary) WHERE is_primary = TRUE
+create table if not exists payout_accounts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  method payout_method not null,
+  details jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
-CREATE TABLE IF NOT EXISTS cashout_requests (
-  id BIGSERIAL PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES profiles(id),
-  payout_account_id BIGINT NOT NULL REFERENCES payout_accounts(id),
+alter table payout_accounts enable row level security;
+create index if not exists idx_payout_accounts_user on payout_accounts(user_id);
 
-  amount_usd NUMERIC(12,2) NOT NULL CHECK (amount_usd > 0),
+-- Owner can CRUD own records; admins read all; monitors read-only
+create policy "payout_accounts_owner_select" on payout_accounts for select using (auth.uid() = user_id or is_admin() or app_role() = 'monitor');
+create policy "payout_accounts_owner_cud"    on payout_accounts for all    using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-  -- Workflow: pending_review_admin → pending_execution_superadmin → settled/rejected
-  status TEXT NOT NULL DEFAULT 'pending_review_admin'
-    CHECK (status IN ('pending_review_admin', 'pending_execution_superadmin', 'settled', 'rejected')),
+-- cashout status enum (idempotent)
+do $$ begin
+  if not exists (select 1 from pg_type where typname = 'cashout_status') then
+    create type cashout_status as enum ('pending_review_admin','pending_execution_superadmin','settled','rejected');
+  end if;
+end $$;
 
-  reviewed_by UUID REFERENCES profiles(id),
-  reviewed_at TIMESTAMPTZ,
-  review_notes TEXT,
-
-  executed_by UUID REFERENCES profiles(id),
-  executed_at TIMESTAMPTZ,
-  execution_notes TEXT,
-
-  settlement_reference TEXT,
-  settlement_proof_url TEXT,
-
-  rejected_reason TEXT,
-
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+create table if not exists cashout_requests (
+  id uuid primary key default gen_random_uuid(),
+  requester_id uuid not null references auth.users(id) on delete cascade,
+  payout_account_id uuid not null references payout_accounts(id) on delete restrict,
+  amount_cents integer not null check (amount_cents > 0),
+  currency text not null default 'USD',
+  status cashout_status not null default 'pending_review_admin',
+  admin_reviewer uuid,
+  superadmin_executor uuid,
+  proof_url text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_payout_accounts_user_id ON payout_accounts(user_id);
-CREATE INDEX IF NOT EXISTS idx_cashout_requests_user_id ON cashout_requests(user_id);
-CREATE INDEX IF NOT EXISTS idx_cashout_requests_status ON cashout_requests(status);
+alter table cashout_requests enable row level security;
+create index if not exists idx_cashout_requests_requester on cashout_requests(requester_id);
+create index if not exists idx_cashout_requests_status on cashout_requests(status);
+create index if not exists idx_cashout_requests_created on cashout_requests(created_at);
 
--- RLS Policies
-ALTER TABLE payout_accounts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE cashout_requests ENABLE ROW LEVEL SECURITY;
-
--- Payout accounts: users see own, admins see all
-CREATE POLICY payout_accounts_select_own ON payout_accounts
-  FOR SELECT USING (
-    auth.uid() = user_id
-    OR EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid()
-      AND role_id IN (SELECT id FROM roles WHERE code IN ('admin', 'superadmin'))
-    )
-  );
-
-CREATE POLICY payout_accounts_insert_own ON payout_accounts
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY payout_accounts_update_own ON payout_accounts
-  FOR UPDATE USING (auth.uid() = user_id);
-
--- Cashout requests: users see own, admins/superadmins see all
-CREATE POLICY cashout_requests_select_own ON cashout_requests
-  FOR SELECT USING (
-    auth.uid() = user_id
-    OR EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid()
-      AND role_id IN (SELECT id FROM roles WHERE code IN ('admin', 'superadmin'))
-    )
-  );
-
-CREATE POLICY cashout_requests_insert_own ON cashout_requests
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
--- Only admins can update (review), only superadmins can execute
-CREATE POLICY cashout_requests_update_admin ON cashout_requests
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid()
-      AND role_id IN (SELECT id FROM roles WHERE code IN ('admin', 'superadmin'))
-    )
-  );
-
-COMMENT ON TABLE payout_accounts IS 'Non-client cashout accounts (readers/staff only)';
-COMMENT ON TABLE cashout_requests IS 'Cashout workflow: pending_review_admin → pending_execution_superadmin → settled/rejected';
+-- Policies: owner read & create; admin can transition; superadmin settles; monitor read-only
+create policy "cashout_owner_read"    on cashout_requests for select using (auth.uid() = requester_id or is_admin() or app_role() = 'monitor');
+create policy "cashout_owner_create"  on cashout_requests for insert with check (auth.uid() = requester_id);
+create policy "cashout_admin_update"  on cashout_requests for update using (is_admin()) with check (is_admin());
+create policy "cashout_super_settle"  on cashout_requests for update using (is_super_admin()) with check (is_super_admin());
