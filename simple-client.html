@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client PWA - سامية تاروت</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-green-900 to-emerald-800 min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <div class="text-6xl mb-4">🔮</div>
+            <h1 class="text-4xl font-bold mb-2">سامية تاروت</h1>
+            <p class="text-xl opacity-80">تطبيق العملاء - Client PWA</p>
+        </header>
+
+        <!-- Daily Zodiac -->
+        <section class="bg-white/10 backdrop-blur-md rounded-2xl p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4 flex items-center">
+                ⭐ برجك اليوم
+                <span class="text-sm bg-green-500 px-2 py-1 rounded-full mr-2">جديد</span>
+            </h2>
+            <div class="bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-xl p-4">
+                <h3 class="text-xl font-semibold mb-2">برج الأسد</h3>
+                <p class="text-white/80 leading-relaxed">
+                    اليوم يحمل لك طاقة إيجابية قوية. النجوم تشير إلى فرص جديدة في العمل والحب.
+                    كن مستعداً لاستقبال التغييرات الإيجابية وثق بحدسك.
+                </p>
+                <div class="flex items-center mt-4">
+                    <button class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg flex items-center">
+                        🎵 استمع للقراءة الصوتية
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="grid md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-6">
+                <h3 class="text-xl font-bold mb-4">🔮 احجز قراءة</h3>
+                <p class="text-white/80 mb-4">اختر قارئك المفضل واحجز جلسة شخصية</p>
+                <button class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold">
+                    تصفح القراء
+                </button>
+            </div>
+
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-6">
+                <h3 class="text-xl font-bold mb-4">💰 محفظتي</h3>
+                <p class="text-white/80 mb-2">الرصيد المتاح: <span class="font-bold">$125.50</span></p>
+                <p class="text-white/80 mb-4">نقاط المكافآت: <span class="font-bold">890 نقطة</span></p>
+                <button class="w-full bg-green-600 hover:bg-green-700 py-3 rounded-lg font-semibold">
+                    إدارة المحفظة
+                </button>
+            </div>
+        </section>
+
+        <!-- Recent Sessions -->
+        <section class="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4">📅 جلساتي الأخيرة</h3>
+            <div class="space-y-3">
+                <div class="bg-white/5 rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-semibold">قراءة التاروت الشاملة</h4>
+                        <p class="text-sm text-white/70">مع سامية الخبيرة - 45 دقيقة</p>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-sm text-green-400">مكتملة</p>
+                        <p class="text-xs text-white/60">أمس 7:30 م</p>
+                    </div>
+                </div>
+
+                <div class="bg-white/5 rounded-lg p-4 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-semibold">استشارة روحانية</h4>
+                        <p class="text-sm text-white/70">مع أحمد الروحاني - 30 دقيقة</p>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-sm text-blue-400">قادمة</p>
+                        <p class="text-xs text-white/60">غداً 3:00 م</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation -->
+        <nav class="fixed bottom-0 left-0 right-0 bg-green-800/90 backdrop-blur-md border-t border-white/10">
+            <div class="flex justify-around py-3">
+                <button class="flex flex-col items-center text-white">
+                    <span class="text-xl mb-1">🏠</span>
+                    <span class="text-xs">الرئيسية</span>
+                </button>
+                <button class="flex flex-col items-center text-white/60">
+                    <span class="text-xl mb-1">🔍</span>
+                    <span class="text-xs">استكشاف</span>
+                </button>
+                <button class="flex flex-col items-center text-white/60">
+                    <span class="text-xl mb-1">📅</span>
+                    <span class="text-xs">جلساتي</span>
+                </button>
+                <button class="flex flex-col items-center text-white/60">
+                    <span class="text-xl mb-1">👤</span>
+                    <span class="text-xs">حسابي</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Back to Demo -->
+        <div class="text-center mt-8 pb-20">
+            <a href="/demo.html" class="text-white/60 hover:text-white underline">
+                ← العودة للرئيسية
+            </a>
+        </div>
+    </div>
+</body>
+</html>

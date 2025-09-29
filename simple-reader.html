@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reader PWA - قراء سامية تاروت</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 to-purple-800 min-h-screen text-white">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <div class="text-6xl mb-4">💼</div>
+            <h1 class="text-4xl font-bold mb-2">لوحة القارئ</h1>
+            <p class="text-xl opacity-80">مرحباً سامية الخبيرة</p>
+        </header>
+
+        <!-- Stats -->
+        <section class="grid md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold text-green-400">$2,450</div>
+                <div class="text-sm text-white/70">الأرباح الإجمالية</div>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold text-blue-400">23</div>
+                <div class="text-sm text-white/70">العملاء النشطون</div>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold text-yellow-400">4.8</div>
+                <div class="text-sm text-white/70">التقييم</div>
+            </div>
+            <div class="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center">
+                <div class="text-2xl font-bold text-purple-400">3</div>
+                <div class="text-sm text-white/70">جلسات قادمة</div>
+            </div>
+        </section>
+
+        <!-- Today's Schedule -->
+        <section class="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4">📅 مواعيد اليوم</h3>
+            <div class="space-y-3">
+                <div class="bg-green-500/20 border-r-4 border-green-500 rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="font-semibold">سارة أحمد</h4>
+                            <p class="text-sm text-white/70">قراءة التاروت - 30 دقيقة</p>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-bold text-green-400">2:30 م</p>
+                            <button class="text-xs bg-green-600 px-2 py-1 rounded">دخول</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-blue-500/20 border-r-4 border-blue-500 rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="font-semibold">محمد علي</h4>
+                            <p class="text-sm text-white/70">استشارة روحانية - 45 دقيقة</p>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-bold text-blue-400">4:00 م</p>
+                            <button class="text-xs bg-blue-600 px-2 py-1 rounded">جاهز</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="grid md:grid-cols-3 gap-4 mb-8">
+            <button class="bg-white/10 backdrop-blur-md rounded-xl p-6 hover:bg-white/20 transition">
+                <div class="text-3xl mb-2">📅</div>
+                <h3 class="font-bold">إدارة المواعيد</h3>
+            </button>
+            <button class="bg-white/10 backdrop-blur-md rounded-xl p-6 hover:bg-white/20 transition">
+                <div class="text-3xl mb-2">💰</div>
+                <h3 class="font-bold">طلب سحب</h3>
+            </button>
+            <button class="bg-white/10 backdrop-blur-md rounded-xl p-6 hover:bg-white/20 transition">
+                <div class="text-3xl mb-2">📧</div>
+                <h3 class="font-bold">الرسائل</h3>
+            </button>
+        </section>
+
+        <!-- Back to Demo -->
+        <div class="text-center">
+            <a href="/demo.html" class="text-white/60 hover:text-white underline">
+                ← العودة للرئيسية
+            </a>
+        </div>
+    </div>
+</body>
+</html>

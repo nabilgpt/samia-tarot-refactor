@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>سامية تاروت - منصة القراءات الروحانية</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#7c3aed" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="سامية تاروت" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="سامية تاروت" />
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="منصة سامية تاروت للقراءات الروحانية والأبراج اليومية مع خبراء معتمدين" />
+    <meta name="keywords" content="تاروت, أبراج, قراءة روحانية, سامية, لبنان, قراءة الطالع" />
+    <meta property="og:title" content="سامية تاروت - منصة القراءات الروحانية" />
+    <meta property="og:description" content="احجز جلسة قراءة روحانية مع خبراء معتمدين واكتشف برجك اليومي" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
+
+    <style>
+      * {
+        font-family: 'Amiri', serif;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #1e1b4b, #7c3aed, #3b82f6);
+        overflow-x: hidden;
+      }
+
+      #loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #1e1b4b, #7c3aed, #3b82f6);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        z-index: 9999;
+      }
+
+      .loading-logo {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        animation: pulse 2s infinite;
+      }
+
+      .loading-text {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+        text-align: center;
+      }
+
+      .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top: 3px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.7; transform: scale(1.1); }
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      /* Hide loading screen when React loads */
+      .loaded #loading-screen {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+      <div class="loading-logo">🔮</div>
+      <div class="loading-text">
+        <h1>سامية تاروت</h1>
+        <p>جاري تحميل منصة القراءات الروحانية...</p>
+      </div>
+      <div class="loading-spinner"></div>
+    </div>
+
+    <!-- React App Root -->
+    <div id="root"></div>
+
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

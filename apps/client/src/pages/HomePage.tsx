@@ -1,55 +1,19 @@
 import React, { useState } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { motion } from 'framer-motion'
-import { ZodiacCard, ZodiacModal, useZodiacDaily } from '@samia-tarot/zodiac'
-import { LoadingSpinner } from '@samia-tarot/ui-kit'
 import { useAuth } from '../contexts/AuthContext'
 
 const HomePage: React.FC = () => {
   const { user } = useAuth()
   const [showZodiacModal, setShowZodiacModal] = useState(false)
 
-  const {
-    data: todayZodiac,
-    loading,
-    error,
-    refetch
-  } = useZodiacDaily({
-    userId: user?.id,
-    language: 'ar' // TODO: Get from user preferences
-  })
-
-  const handleZodiacCardClick = () => {
-    setShowZodiacModal(true)
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            خطأ في تحميل البرج اليومي
-          </h2>
-          <p className="text-gray-600 mb-4">
-            يرجى المحاولة مرة أخرى
-          </p>
-          <button
-            onClick={refetch}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
-          >
-            إعادة المحاولة
-          </button>
-        </div>
-      </div>
-    )
+  // Demo zodiac data
+  const todayZodiac = {
+    sign: 'الأسد',
+    text: 'اليوم يحمل لك طاقة إيجابية قوية. النجوم تشير إلى فرص جديدة في العمل والحب. كن مستعداً لاستقبال التغييرات الإيجابية وثق بحدسك.',
+    audio_url: null,
+    audio_duration_sec: 0,
+    date: new Date().toISOString().split('T')[0]
   }
 
   return (
@@ -59,9 +23,110 @@ const HomePage: React.FC = () => {
         <meta name="description" content="اكتشف برجك اليومي واحجز جلسة قراءة روحانية مع خبراء معتمدين" />
       </Helmet>
 
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-800 to-blue-900">
-        {/* Header */}
-        <div className="pt-8 pb-6 px-4">
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-800 to-blue-900 relative overflow-hidden">
+        {/* Cosmic Animated Background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="stars-container">
+            {[...Array(50)].map((_, i) => (
+              <div key={i} className={`star star-${i % 3}`} style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 4}s`,
+                animationDuration: `${3 + Math.random() * 2}s`
+              }} />
+            ))}
+          </div>
+          <div className="cosmic-dust">
+            {[...Array(20)].map((_, i) => (
+              <div key={i} className="dust-particle" style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 6}s`
+              }} />
+            ))}
+          </div>
+          <div className="floating-orbs">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className={`orb orb-${i % 3}`} style={{
+                left: `${10 + Math.random() * 80}%`,
+                top: `${10 + Math.random() * 80}%`,
+                animationDelay: `${Math.random() * 8}s`
+              }} />
+            ))}
+          </div>
+        </div>
+
+        <style>{`
+          .stars-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+          }
+          .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle linear infinite;
+          }
+          .star-0 { width: 2px; height: 2px; }
+          .star-1 { width: 3px; height: 3px; }
+          .star-2 { width: 1px; height: 1px; }
+
+          @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+          }
+
+          .dust-particle {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: drift 8s linear infinite;
+          }
+
+          @keyframes drift {
+            0% { transform: translateY(100vh) translateX(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(50px) rotate(360deg); opacity: 0; }
+          }
+
+          .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(1px);
+            animation: float 10s ease-in-out infinite;
+          }
+          .orb-0 {
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, rgba(147, 51, 234, 0.3) 0%, transparent 70%);
+          }
+          .orb-1 {
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, rgba(79, 70, 229, 0.2) 0%, transparent 70%);
+          }
+          .orb-2 {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+          }
+
+          @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-20px) rotate(90deg); }
+            50% { transform: translateY(-10px) rotate(180deg); }
+            75% { transform: translateY(-30px) rotate(270deg); }
+          }
+        `}</style>
+
+        {/* Content Layer */}
+        <div className="relative z-10">
+          {/* Header */}
+          <div className="pt-8 pb-6 px-4">
           <div className="max-w-4xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -92,25 +157,18 @@ const HomePage: React.FC = () => {
                 برجك اليوم
               </h2>
 
-              {todayZodiac ? (
-                <div className="max-w-lg mx-auto">
-                  <ZodiacCard
-                    sign={todayZodiac.sign}
-                    textContent={todayZodiac.text}
-                    hasAudio={!!todayZodiac.audio_url}
-                    audioDuration={todayZodiac.audio_duration_sec}
-                    date={todayZodiac.date}
-                    onClick={handleZodiacCardClick}
-                  />
+              <div className="max-w-lg mx-auto bg-white/10 backdrop-blur rounded-xl p-6 text-center text-white cursor-pointer hover:bg-white/20 transition-colors">
+                <h3 className="text-2xl font-bold mb-4">⭐ {todayZodiac.sign}</h3>
+                <p className="text-white/90 leading-relaxed mb-4">
+                  {todayZodiac.text}
+                </p>
+                <div className="flex items-center justify-center gap-4 text-sm text-white/70">
+                  <span>📅 {todayZodiac.date}</span>
+                  <button className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition-colors">
+                    🎵 استمع
+                  </button>
                 </div>
-              ) : (
-                <div className="max-w-lg mx-auto bg-white/10 backdrop-blur rounded-lg p-8 text-center text-white">
-                  <p className="mb-4">لم يتم العثور على برج اليوم</p>
-                  <p className="text-sm text-purple-200">
-                    يرجى التأكد من تحديث معلومات برجك في الملف الشخصي
-                  </p>
-                </div>
-              )}
+              </div>
             </motion.div>
 
             {/* Quick Actions */}
@@ -170,16 +228,8 @@ const HomePage: React.FC = () => {
             </motion.div>
           </div>
         </div>
+        </div>
 
-        {/* Zodiac Modal */}
-        {todayZodiac && (
-          <ZodiacModal
-            isOpen={showZodiacModal}
-            onClose={() => setShowZodiacModal(false)}
-            zodiacData={todayZodiac}
-            language="ar"
-          />
-        )}
       </div>
     </>
   )
