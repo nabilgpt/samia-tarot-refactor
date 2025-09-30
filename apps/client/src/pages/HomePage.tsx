@@ -1,238 +1,327 @@
-import React, { useState } from 'react'
-import { Helmet } from 'react-helmet-async'
-import { motion } from 'framer-motion'
-import { useAuth } from '../contexts/AuthContext'
+import React from 'react';
+import { Helmet } from 'react-helmet-async';
+import CosmicBackground from '../components/CosmicBackground';
 
-const HomePage: React.FC = () => {
-  const { user } = useAuth()
-  const [showZodiacModal, setShowZodiacModal] = useState(false)
-
-  // Demo zodiac data
-  const todayZodiac = {
-    sign: 'الأسد',
-    text: 'اليوم يحمل لك طاقة إيجابية قوية. النجوم تشير إلى فرص جديدة في العمل والحب. كن مستعداً لاستقبال التغييرات الإيجابية وثق بحدسك.',
-    audio_url: null,
-    audio_duration_sec: 0,
-    date: new Date().toISOString().split('T')[0]
-  }
+export default function HomePage() {
+  React.useEffect(() => {
+    console.log('HomePage mounted');
+    // Scroll to top when component mounts
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <>
       <Helmet>
         <title>الرئيسية - سامية تاروت</title>
-        <meta name="description" content="اكتشف برجك اليومي واحجز جلسة قراءة روحانية مع خبراء معتمدين" />
+        <meta name="description" content="اكتشف قدرك مع مدام سامية - تواصل مع خبراء قراءة التاروت واكتشف أسرار مستقبلك" />
       </Helmet>
 
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-800 to-blue-900 relative overflow-hidden">
-        {/* Cosmic Animated Background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="stars-container">
-            {[...Array(50)].map((_, i) => (
-              <div key={i} className={`star star-${i % 3}`} style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 4}s`,
-                animationDuration: `${3 + Math.random() * 2}s`
-              }} />
-            ))}
+      {/* Advanced particle background */}
+      <CosmicBackground />
+
+      {/* Main content - FIXED positioning to ensure visibility */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '0',
+          left: '0',
+          right: '0',
+          bottom: '0',
+          overflowY: 'auto',
+          zIndex: 10,
+          paddingTop: '80px', // Space for dev banner + top navbar
+          paddingBottom: '80px' // Space for bottom nav
+        }}
+        dir="rtl">
+
+        {/* Main Content Container */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 'calc(100vh - 120px)', // Account for padding
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+
+          {/* Large Main Heading - Orange to Pink to Cyan gradient exactly like image */}
+          <h1 style={{
+            fontSize: 'clamp(3rem, 7vw, 6rem)',
+            fontWeight: 'bold',
+            marginBottom: '0.5rem',
+            lineHeight: '1.2',
+            background: 'linear-gradient(90deg, #f97316 0%, #ec4899 50%, #06b6d4 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            fontFamily: 'Amiri, serif'
+          }}>
+            اكتشف قدرك
+          </h1>
+
+          {/* Secondary Heading - Pink to Purple gradient exactly like image */}
+          <h2 style={{
+            fontSize: 'clamp(2.5rem, 6vw, 5rem)',
+            fontWeight: 'bold',
+            marginBottom: '2rem',
+            lineHeight: '1.2',
+            background: 'linear-gradient(90deg, #f97316 0%, #ec4899 35%, #a855f7 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            fontFamily: 'Amiri, serif'
+          }}>
+            مع مدام سامية
+          </h2>
+
+          {/* Subtitle - Light gray/white like in image */}
+          <p style={{
+            fontSize: 'clamp(1.1rem, 2.5vw, 1.4rem)',
+            color: 'rgba(255, 255, 255, 0.8)',
+            marginBottom: '3rem',
+            maxWidth: '800px',
+            lineHeight: '1.8',
+            fontWeight: '400',
+            fontFamily: 'Amiri, serif'
+          }}>
+            تواصل مع خبراء قراءة التاروت واكتشف أسرار مستقبلك
+          </p>
+
+          {/* Action Buttons - Matching exact styles from image */}
+          <div style={{
+            display: 'flex',
+            flexDirection: window.innerWidth < 640 ? 'column' : 'row',
+            gap: '1.5rem',
+            marginBottom: '4rem'
+          }}>
+            {/* Left Button - Purple/Transparent with white text */}
+            <button
+              style={{
+                padding: '1rem 2.5rem',
+                background: 'rgba(139, 92, 246, 0.15)',
+                backdropFilter: 'blur(10px)',
+                border: '2px solid rgba(139, 92, 246, 0.3)',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '1.125rem',
+                borderRadius: '1rem',
+                cursor: 'pointer',
+                minWidth: '240px',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.75rem',
+                fontFamily: 'Amiri, serif'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.25)';
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)';
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}>
+              تعرف على خدماتنا
+              <span style={{ fontSize: '1.3rem' }}>←</span>
+            </button>
+
+            {/* Right Button - Golden/Orange gradient exactly like image */}
+            <button
+              style={{
+                padding: '1rem 2.5rem',
+                background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                color: '#000000',
+                fontWeight: 'bold',
+                fontSize: '1.125rem',
+                borderRadius: '1rem',
+                cursor: 'pointer',
+                minWidth: '240px',
+                boxShadow: '0 10px 30px rgba(251, 191, 36, 0.3)',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.75rem',
+                border: 'none',
+                fontFamily: 'Amiri, serif'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.boxShadow = '0 15px 40px rgba(251, 191, 36, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = '0 10px 30px rgba(251, 191, 36, 0.3)';
+              }}>
+              <span style={{ fontSize: '1.3rem' }}>✨</span>
+              ابدأ القراءة الآن
+            </button>
           </div>
-          <div className="cosmic-dust">
-            {[...Array(20)].map((_, i) => (
-              <div key={i} className="dust-particle" style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 6}s`
-              }} />
-            ))}
-          </div>
-          <div className="floating-orbs">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className={`orb orb-${i % 3}`} style={{
-                left: `${10 + Math.random() * 80}%`,
-                top: `${10 + Math.random() * 80}%`,
-                animationDelay: `${Math.random() * 8}s`
-              }} />
-            ))}
-          </div>
-        </div>
 
-        <style>{`
-          .stars-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-          }
-          .star {
-            position: absolute;
-            background: white;
-            border-radius: 50%;
-            animation: twinkle linear infinite;
-          }
-          .star-0 { width: 2px; height: 2px; }
-          .star-1 { width: 3px; height: 3px; }
-          .star-2 { width: 1px; height: 1px; }
-
-          @keyframes twinkle {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.2); }
-          }
-
-          .dust-particle {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            animation: drift 8s linear infinite;
-          }
-
-          @keyframes drift {
-            0% { transform: translateY(100vh) translateX(0) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(-100vh) translateX(50px) rotate(360deg); opacity: 0; }
-          }
-
-          .orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(1px);
-            animation: float 10s ease-in-out infinite;
-          }
-          .orb-0 {
-            width: 60px;
-            height: 60px;
-            background: radial-gradient(circle, rgba(147, 51, 234, 0.3) 0%, transparent 70%);
-          }
-          .orb-1 {
-            width: 40px;
-            height: 40px;
-            background: radial-gradient(circle, rgba(79, 70, 229, 0.2) 0%, transparent 70%);
-          }
-          .orb-2 {
-            width: 80px;
-            height: 80px;
-            background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
-          }
-
-          @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            25% { transform: translateY(-20px) rotate(90deg); }
-            50% { transform: translateY(-10px) rotate(180deg); }
-            75% { transform: translateY(-30px) rotate(270deg); }
-          }
-        `}</style>
-
-        {/* Content Layer */}
-        <div className="relative z-10">
-          {/* Header */}
-          <div className="pt-8 pb-6 px-4">
-          <div className="max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center text-white mb-8"
-            >
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">
-                أهلاً وسهلاً، {user?.user_metadata?.first_name || 'عزيزي العميل'}
-              </h1>
-              <p className="text-purple-200 text-lg">
-                اكتشف ما يخبئه لك اليوم في عالم الأبراج
+          {/* Feature Cards - Matching dark glass effect from image */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(3, 1fr)',
+            gap: '1.5rem',
+            width: '100%',
+            maxWidth: '1000px'
+          }}>
+            {/* Expert Readers Card */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '1.5rem',
+              padding: '2rem',
+              textAlign: 'center',
+              transition: 'all 0.3s ease',
+              cursor: 'pointer',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)';
+              e.currentTarget.style.transform = 'translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 10px 30px rgba(139, 92, 246, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}>
+              <div style={{
+                fontSize: '3rem',
+                marginBottom: '1rem',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>👥</div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#fbbf24',
+                marginBottom: '0.75rem',
+                fontFamily: 'Amiri, serif'
+              }}>
+                خبراء معتمدون
+              </h3>
+              <p style={{
+                color: 'rgba(255, 255, 255, 0.6)',
+                fontSize: '0.95rem',
+                lineHeight: '1.6',
+                fontFamily: 'Amiri, serif'
+              }}>
+                قراء محترفون ذوو خبرة عالية
               </p>
-            </motion.div>
+            </div>
+
+            {/* 24/7 Service Card */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '1.5rem',
+              padding: '2rem',
+              textAlign: 'center',
+              transition: 'all 0.3s ease',
+              cursor: 'pointer',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)';
+              e.currentTarget.style.transform = 'translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 10px 30px rgba(139, 92, 246, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}>
+              <div style={{
+                fontSize: '3rem',
+                marginBottom: '1rem',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>🕐</div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#fbbf24',
+                marginBottom: '0.75rem',
+                fontFamily: 'Amiri, serif'
+              }}>
+                متاح 24/7
+              </h3>
+              <p style={{
+                color: 'rgba(255, 255, 255, 0.6)',
+                fontSize: '0.95rem',
+                lineHeight: '1.6',
+                fontFamily: 'Amiri, serif'
+              }}>
+                خدمة متواصلة في أي وقت
+              </p>
+            </div>
+
+            {/* Secure & Confidential Card */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '1.5rem',
+              padding: '2rem',
+              textAlign: 'center',
+              transition: 'all 0.3s ease',
+              cursor: 'pointer',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%)';
+              e.currentTarget.style.transform = 'translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 10px 30px rgba(139, 92, 246, 0.2)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}>
+              <div style={{
+                fontSize: '3rem',
+                marginBottom: '1rem',
+                background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>🛡️</div>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                color: '#fbbf24',
+                marginBottom: '0.75rem',
+                fontFamily: 'Amiri, serif'
+              }}>
+                آمن ومضمون
+              </h3>
+              <p style={{
+                color: 'rgba(255, 255, 255, 0.6)',
+                fontSize: '0.95rem',
+                lineHeight: '1.6',
+                fontFamily: 'Amiri, serif'
+              }}>
+                خصوصية تامة وحماية معلوماتك
+              </p>
+            </div>
           </div>
         </div>
-
-        {/* Main Content */}
-        <div className="px-4 pb-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Today's Zodiac */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="mb-8"
-            >
-              <h2 className="text-2xl font-bold text-white text-center mb-6">
-                برجك اليوم
-              </h2>
-
-              <div className="max-w-lg mx-auto bg-white/10 backdrop-blur rounded-xl p-6 text-center text-white cursor-pointer hover:bg-white/20 transition-colors">
-                <h3 className="text-2xl font-bold mb-4">⭐ {todayZodiac.sign}</h3>
-                <p className="text-white/90 leading-relaxed mb-4">
-                  {todayZodiac.text}
-                </p>
-                <div className="flex items-center justify-center gap-4 text-sm text-white/70">
-                  <span>📅 {todayZodiac.date}</span>
-                  <button className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-full transition-colors">
-                    🎵 استمع
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Quick Actions */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-            >
-              {/* Explore Readers */}
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-white/10 backdrop-blur rounded-lg p-6 text-center text-white cursor-pointer hover:bg-white/20 transition-colors"
-                onClick={() => window.location.href = '/explore'}
-              >
-                <div className="text-4xl mb-4">🔮</div>
-                <h3 className="text-lg font-semibold mb-2">
-                  استكشف القراء
-                </h3>
-                <p className="text-purple-200 text-sm">
-                  تصفح القراء المتاحين واحجز جلستك
-                </p>
-              </motion.div>
-
-              {/* My Sessions */}
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-white/10 backdrop-blur rounded-lg p-6 text-center text-white cursor-pointer hover:bg-white/20 transition-colors"
-                onClick={() => window.location.href = '/sessions'}
-              >
-                <div className="text-4xl mb-4">📋</div>
-                <h3 className="text-lg font-semibold mb-2">
-                  جلساتي
-                </h3>
-                <p className="text-purple-200 text-sm">
-                  تابع حجوزاتك وجلساتك السابقة
-                </p>
-              </motion.div>
-
-              {/* Wallet */}
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-white/10 backdrop-blur rounded-lg p-6 text-center text-white cursor-pointer hover:bg-white/20 transition-colors"
-                onClick={() => window.location.href = '/wallet'}
-              >
-                <div className="text-4xl mb-4">💰</div>
-                <h3 className="text-lg font-semibold mb-2">
-                  المحفظة
-                </h3>
-                <p className="text-purple-200 text-sm">
-                  إدارة رصيدك ونقاط المكافآت
-                </p>
-              </motion.div>
-            </motion.div>
-          </div>
-        </div>
-        </div>
-
       </div>
     </>
-  )
+  );
 }
-
-export default HomePage

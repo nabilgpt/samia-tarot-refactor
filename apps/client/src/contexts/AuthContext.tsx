@@ -1,13 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '@supabase/supabase-js'
 
 // Mock Supabase client for now
 const createClient = (url: string, key: string) => ({
   auth: {
     getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-    onAuthStateChange: () => ({ data: { subscription: null } }),
-    signInWithPassword: () => Promise.resolve({ data: { user: null }, error: new Error('Not implemented') }),
-    signUp: () => Promise.resolve({ data: { user: null }, error: new Error('Not implemented') }),
+    onAuthStateChange: (callback: any) => {
+      // Call callback immediately with no session for mock
+      setTimeout(() => callback('SIGNED_OUT', null), 0)
+      return { data: { subscription: { unsubscribe: () => {} } } }
+    },
+    signInWithPassword: (credentials: any) => Promise.resolve({ data: { user: null }, error: new Error('Not implemented') }),
+    signUp: (credentials: any) => Promise.resolve({ data: { user: null }, error: new Error('Not implemented') }),
     signOut: () => Promise.resolve({ error: null }),
   },
   from: () => ({
@@ -52,24 +55,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabaseClient.auth.getSession()
-      setUser(session?.user || null)
+    // For demo purposes, immediately set loading to false and no user
+    // Simulate a very quick auth check
+    const timer = setTimeout(() => {
+      setUser(null) // No user for demo
       setLoading(false)
-    }
+    }, 100)
 
-    getInitialSession()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user || null)
-        setLoading(false)
-      }
-    )
-
-    return () => subscription?.unsubscribe()
+    return () => clearTimeout(timer)
   }, [])
 
   const signIn = async (email: string, password: string) => {

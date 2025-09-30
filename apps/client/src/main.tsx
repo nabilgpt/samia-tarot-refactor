@@ -7,6 +7,7 @@ import { Toaster } from 'react-hot-toast'
 import App from './App'
 import ErrorFallback from './components/ErrorFallback'
 import { AuthProvider } from './contexts/AuthContext'
+import { UIProvider } from './contexts/UIContext'
 import './index.css'
 
 // Register service worker for PWA
@@ -22,6 +23,16 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   })
 }
 
+// Hide loading screen when React app starts
+document.body.classList.add('loaded')
+
+// Remove loading overlay after first render
+requestAnimationFrame(() => {
+  document.body.classList.add('app-loaded');
+  const el = document.getElementById('loading-screen');
+  if (el) el.remove();
+});
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary
@@ -35,22 +46,31 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       }}
     >
       <HelmetProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <App />
-            <Toaster
-              position="top-center"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#1e1b4b',
-                  color: '#fff',
-                  fontFamily: 'system-ui',
-                },
-              }}
-            />
-          </AuthProvider>
-        </BrowserRouter>
+        <UIProvider>
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true
+            }}
+          >
+            <AuthProvider>
+              <App />
+              <Toaster
+                position="top-center"
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: 'var(--bg-card)',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'Amiri, serif',
+                    border: '1px solid var(--border-cosmic)',
+                    backdropFilter: 'blur(10px)',
+                  },
+                }}
+              />
+            </AuthProvider>
+          </BrowserRouter>
+        </UIProvider>
       </HelmetProvider>
     </ErrorBoundary>
   </React.StrictMode>,

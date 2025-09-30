@@ -2,6 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =============================================================================
+   CSS Variables and Theme System (from original Samia Tarot project)
+   ============================================================================= */
+
+:root {
+  /* Dark Theme Variables (Default) - FORCE BLACK */
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-tertiary: #000000;
+  --bg-card: rgba(30, 41, 59, 0.8);
+  --bg-glass: rgba(51, 65, 85, 0.1);
+  --bg-overlay: rgba(15, 23, 42, 0.9);
+  --bg-input: rgba(51, 65, 85, 0.5);
+
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-inverse: #1e293b;
+
+  --cosmic-glow: rgba(217, 70, 239, 0.4);
+  --gold-glow: rgba(251, 191, 36, 0.4);
+  --cosmic-primary: #d946ef;
+  --cosmic-secondary: #8b5cf6;
+  --gold-primary: #fbbf24;
+  --gold-secondary: #f59e0b;
+
+  /* Particle and animation variables */
+  --particle-opacity: 0.8;
+  --particle-size: 2px;
+  --particle-glow: rgba(217, 70, 239, 0.6);
+  --orb-opacity-primary: 0.3;
+  --orb-opacity-secondary: 0.25;
+  --orb-opacity-tertiary: 0.2;
+
+  --border-color: rgba(251, 191, 36, 0.2);
+  --border-cosmic: rgba(217, 70, 239, 0.3);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+
+  --shadow-cosmic: 0 0 50px rgba(217, 70, 239, 0.3);
+  --shadow-gold: 0 0 30px rgba(251, 191, 36, 0.3);
+  --shadow-card: 0 10px 25px rgba(0, 0, 0, 0.3);
+
+  /* Enhanced gradients for night mode - FORCE BLACK */
+  --bg-gradient: #000000;
+  --cosmic-gradient: linear-gradient(135deg, rgba(217, 70, 239, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  --gold-gradient: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  --particle-gradient: radial-gradient(circle, var(--cosmic-primary) 0%, transparent 70%);
+  --orb-gradient-primary: radial-gradient(circle, var(--cosmic-primary) 0%, transparent 70%);
+  --orb-gradient-secondary: radial-gradient(circle, var(--gold-primary) 0%, transparent 70%);
+  --orb-gradient-tertiary: radial-gradient(circle, var(--cosmic-secondary) 0%, transparent 70%);
+}
+
+/* Light Theme Override */
+html.light {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #e2e8f0;
+  --bg-tertiary: #cbd5e1;
+  --bg-card: rgba(248, 250, 252, 0.9);
+  --bg-glass: rgba(226, 232, 240, 0.2);
+  --bg-overlay: rgba(248, 250, 252, 0.95);
+  --bg-input: rgba(203, 213, 225, 0.5);
+
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  --cosmic-glow: rgba(139, 92, 246, 0.3);
+  --gold-glow: rgba(217, 119, 6, 0.3);
+  --cosmic-primary: #8b5cf6;
+  --cosmic-secondary: #a855f7;
+  --gold-primary: #d97706;
+  --gold-secondary: #ea580c;
+
+  /* Light mode particle and animation variables */
+  --particle-opacity: 0.4;
+  --particle-size: 1.5px;
+  --particle-glow: rgba(139, 92, 246, 0.4);
+  --orb-opacity-primary: 0.1;
+  --orb-opacity-secondary: 0.08;
+  --orb-opacity-tertiary: 0.06;
+
+  --border-color: rgba(217, 119, 6, 0.3);
+  --border-cosmic: rgba(139, 92, 246, 0.4);
+  --border-subtle: rgba(0, 0, 0, 0.1);
+
+  --shadow-cosmic: 0 0 30px rgba(139, 92, 246, 0.2);
+  --shadow-gold: 0 0 20px rgba(217, 119, 6, 0.2);
+  --shadow-card: 0 10px 25px rgba(0, 0, 0, 0.1);
+
+  /* Enhanced gradients for day mode */
+  --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+  --cosmic-gradient: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%);
+  --gold-gradient: linear-gradient(135deg, #d97706 0%, #b45309 50%, #92400e 100%);
+}
+
 @layer base {
   * {
     font-family: 'Amiri', serif;
@@ -17,17 +113,221 @@
   body {
     margin: 0;
     padding: 0;
-    background: linear-gradient(135deg, #1e1b4b, #7c3aed, #3b82f6);
+    background: #000000 !important;
+    background-color: #000000 !important;
     min-height: 100vh;
     overflow-x: hidden;
+    transition: all 0.3s ease;
   }
 
   #root {
     min-height: 100vh;
   }
 
-  /* Loading screen styles already in HTML */
+  /* Loading screen styles */
   .loaded #loading-screen {
     display: none;
   }
+}
+
+/* =============================================================================
+   Cosmic Animation Keyframes
+   ============================================================================= */
+
+@keyframes cosmicPulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes goldShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  25% {
+    transform: translateY(-20px) translateX(10px);
+  }
+  50% {
+    transform: translateY(-10px) translateX(-5px);
+  }
+  75% {
+    transform: translateY(-15px) translateX(5px);
+  }
+}
+
+@keyframes floatDelayed {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  33% {
+    transform: translateY(15px) translateX(-10px);
+  }
+  66% {
+    transform: translateY(-10px) translateX(8px);
+  }
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-25px) translateX(15px) rotate(180deg);
+  }
+}
+
+@keyframes bounceSlow {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(-30px) scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+@keyframes cosmic-float {
+  0% { transform: translateY(0px) translateX(0px); }
+  33% { transform: translateY(-100px) translateX(50px); }
+  66% { transform: translateY(-200px) translateX(-50px); }
+  100% { transform: translateY(-300px) translateX(0px); }
+}
+
+/* =============================================================================
+   Cosmic Particle Effects
+   ============================================================================= */
+
+.cosmic-particles::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(var(--particle-size) var(--particle-size) at 20px 30px, var(--particle-glow), transparent),
+    radial-gradient(var(--particle-size) var(--particle-size) at 40px 70px, var(--cosmic-primary), transparent),
+    radial-gradient(1px 1px at 90px 40px, var(--gold-primary), transparent),
+    radial-gradient(1px 1px at 130px 80px, var(--cosmic-secondary), transparent),
+    radial-gradient(2px 2px at 160px 30px, var(--particle-glow), transparent);
+  background-repeat: repeat;
+  background-size: 200px 100px;
+  animation: cosmic-float 20s linear infinite;
+  opacity: var(--particle-opacity);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* =============================================================================
+   Animation Utility Classes
+   ============================================================================= */
+
+.cosmic-pulse {
+  animation: cosmicPulse 2s ease-in-out infinite;
+}
+
+.gold-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.gold-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--gold-glow), transparent);
+  animation: goldShimmer 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 8s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: floatDelayed 10s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+.animate-float-slow {
+  animation: floatSlow 12s ease-in-out infinite;
+  animation-delay: 4s;
+}
+
+.animate-bounce-slow {
+  animation: bounceSlow 6s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+/* =============================================================================
+   Theme-Aware Utility Classes
+   ============================================================================= */
+
+.bg-theme-primary { background-color: var(--bg-primary); }
+.bg-theme-secondary { background-color: var(--bg-secondary); }
+.bg-theme-tertiary { background-color: var(--bg-tertiary); }
+.bg-theme-card { background-color: var(--bg-card); backdrop-filter: blur(10px); }
+.bg-theme-glass { background-color: var(--bg-glass); backdrop-filter: blur(20px); }
+
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+.text-theme-muted { color: var(--text-muted); }
+
+.border-theme { border-color: var(--border-color); }
+.border-theme-cosmic { border-color: var(--border-cosmic); }
+.border-theme-subtle { border-color: var(--border-subtle); }
+
+.shadow-theme-cosmic { box-shadow: var(--shadow-cosmic); }
+.shadow-theme-gold { box-shadow: var(--shadow-gold); }
+.shadow-theme-card { box-shadow: var(--shadow-card); }
+
+.bg-cosmic-gradient { background: var(--cosmic-gradient); }
+.bg-gold-gradient-theme { background: var(--gold-gradient); }
+.bg-primary-gradient { background: var(--bg-gradient); }
+
+/* =============================================================================
+   Component Overrides
+   ============================================================================= */
+
+input, textarea, select {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--cosmic-primary);
+  box-shadow: 0 0 0 3px var(--cosmic-glow);
+  outline: none;
+}
+
+button {
+  transition: all 0.3s ease;
+}
+
+a {
+  color: var(--cosmic-primary);
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--gold-primary);
 }
